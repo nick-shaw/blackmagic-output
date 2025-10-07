@@ -238,22 +238,31 @@ class BlackmagicOutput:
 
         return self._device.set_frame_data(processed_frame)
 
-    def stop(self) -> bool:
+    def stop(self, send_black_frame: bool = False) -> bool:
         """
         Stop video output.
-        
+
+        Args:
+            send_black_frame: If True, send a black frame before stopping to avoid
+                            flickering or frozen last frame. Default: False
+
         Returns:
             True if successful, False otherwise
         """
         if self._output_started:
-            result = self._device.stop_output()
+            result = self._device.stop_output(send_black_frame)
             self._output_started = False
             return result
         return True
 
-    def cleanup(self):
-        """Cleanup resources and stop output."""
-        self.stop()
+    def cleanup(self, send_black_frame: bool = False):
+        """
+        Cleanup resources and stop output.
+
+        Args:
+            send_black_frame: If True, send a black frame before stopping. Default: False
+        """
+        self.stop(send_black_frame)
         self._device.cleanup()
         self._initialized = False
 

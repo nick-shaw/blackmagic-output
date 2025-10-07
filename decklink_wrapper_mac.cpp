@@ -261,18 +261,77 @@ bool DeckLinkOutput::startOutput()
     return true;
 }
 
-bool DeckLinkOutput::stopOutput()
+bool DeckLinkOutput::stopOutput(bool sendBlackFrame)
 {
+    if (sendBlackFrame && m_outputRunning && m_deckLinkOutput) {
+        // Create a black frame to clear the output before stopping
+        IDeckLinkMutableVideoFrame* blackFrame = nullptr;
+        if (createFrame(&blackFrame)) {
+            // Fill with black (0,0,0 in video levels)
+            void* frameBytes = nullptr;
+            blackFrame->GetBytes(&frameBytes);
+            if (frameBytes) {
+                long rowBytes = blackFrame->GetRowBytes();
+                long height = blackFrame->GetHeight();
+
+                // Fill frame with black based on pixel format
+                if (m_currentSettings.format == PixelFormat::Format8BitBGRA) {
+                    // BGRA: fill with 0,0,0,255
+                    uint8_t* pixels = static_cast<uint8_t*>(frameBytes);
+                    for (long i = 0; i < height * rowBytes / 4; i++) {
+                        pixels[i * 4 + 0] = 0;   // B
+                        pixels[i * 4 + 1] = 0;   // G
+                        pixels[i * 4 + 2] = 0;   // R
+                        pixels[i * 4 + 3] = 255; // A
+                    }
+                } else if (m_currentSettings.format == PixelFormat::Format10BitYUV) {
+                    // YUV10 v210: black is Y=64, U=512, V=512 in 10-bit
+                    uint32_t* pixels = static_cast<uint32_t*>(frameBytes);
+                    long numDwords = height * rowBytes / 4;
+                    for (long i = 0; i < numDwords; i += 4) {
+                        // v210 packing: U Y V in each DWORD
+                        pixels[i + 0] = (512 << 0) | (64 << 10) | (512 << 20); // U0 Y0 V0
+                        pixels[i + 1] = (64 << 0)  | (512 << 10) | (64 << 20); // Y1 U1 Y2
+                        pixels[i + 2] = (512 << 0) | (64 << 10) | (512 << 20); // V1 Y3 U2
+                        pixels[i + 3] = (64 << 0)  | (512 << 10) | (64 << 20); // Y4 V2 Y5
+                    }
+                } else {
+                    // YUV422: black is Y=16, U=128, V=128
+                    memset(frameBytes, 16, height * rowBytes);
+                }
+            }
+
+            // Wrap in HDR metadata if needed
+            IDeckLinkVideoFrame* frameToSchedule = blackFrame;
+            if (m_useHdrMetadata) {
+                frameToSchedule = createHdrFrame(blackFrame);
+                blackFrame->Release();
+            }
+
+            // Schedule the black frame
+            BMDTimeValue streamTime = (BMDTimeValue)m_totalFramesScheduled * m_frameDuration;
+            m_deckLinkOutput->ScheduleVideoFrame(frameToSchedule, streamTime, m_frameDuration, m_timeScale);
+            m_totalFramesScheduled++;
+            frameToSchedule->Release();
+
+            // Give it a moment to display the black frame
+            usleep(40000); // 40ms delay (almost 2 frames at 25fps)
+        }
+    }
+
     if (m_outputRunning && m_deckLinkOutput) {
-        m_deckLinkOutput->StopScheduledPlayback(0, nullptr, m_timeScale);
+        // Stop scheduled playback at the current time to ensure clean stop
+        BMDTimeValue actualStopTime = 0;
+        m_deckLinkOutput->StopScheduledPlayback(0, &actualStopTime, m_timeScale);
         m_outputRunning = false;
     }
-    
+
     if (m_outputEnabled && m_deckLinkOutput) {
+        // Disable video output - this should stop the output signal
         m_deckLinkOutput->DisableVideoOutput();
         m_outputEnabled = false;
     }
-    
+
     return true;
 }
 

@@ -305,7 +305,8 @@ PYBIND11_MODULE(decklink_output, m) {
             return self.setFrameData(ptr, size);
         }, "Set frame data from numpy array")
         .def("start_output", &DeckLinkOutput::startOutput, "Start video output")
-        .def("stop_output", &DeckLinkOutput::stopOutput, "Stop video output")
+        .def("stop_output", &DeckLinkOutput::stopOutput, "Stop video output",
+             py::arg("send_black_frame") = false)
         .def("cleanup", &DeckLinkOutput::cleanup, "Cleanup resources")
         .def("get_device_list", &DeckLinkOutput::getDeviceList, "Get list of available devices")
         .def("get_video_settings", &DeckLinkOutput::getVideoSettings, "Get video settings for display mode")

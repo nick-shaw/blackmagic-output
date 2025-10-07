@@ -58,7 +58,7 @@ public:
     bool setupOutput(const VideoSettings& settings);
     bool setFrameData(const uint8_t* data, size_t dataSize);
     bool startOutput();
-    bool stopOutput();
+    bool stopOutput(bool sendBlackFrame = false);
     void cleanup();
 
     struct HdrMetadataCustom {

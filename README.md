@@ -147,11 +147,14 @@ Update currently displayed frame with new data.
 Get information about a display mode.
 - Returns: Dictionary with 'width', 'height', 'framerate'
 
-**`stop() -> bool`**
+**`stop(send_black_frame=False) -> bool`**
 Stop video output.
+- `send_black_frame`: If True, sends a black frame before stopping to avoid flickering or frozen last frame
+- Returns: True if successful
 
-**`cleanup()`**
+**`cleanup(send_black_frame=False)`**
 Cleanup resources and stop output.
+- `send_black_frame`: If True, sends a black frame before stopping
 
 **Context Manager Support:**
 ```python
@@ -185,8 +188,9 @@ Set frame data from NumPy array (must be in correct format).
 **`start_output() -> bool`**
 Start scheduled video output.
 
-**`stop_output() -> bool`**
+**`stop_output(send_black_frame=False) -> bool`**
 Stop video output.
+- `send_black_frame`: If True, sends a black frame before stopping to avoid flickering or frozen last frame
 
 **`cleanup()`**
 Cleanup all resources.

@@ -54,8 +54,8 @@ def main():
     else:
         print("Failed to display frame")
 
-    # Cleanup
-    output.stop()
+    # Cleanup - send black frame before stopping to avoid flickering
+    output.stop(send_black_frame=True)
     output.cleanup()
 
 
@@ -109,11 +109,12 @@ def example_with_custom_metadata():
         except KeyboardInterrupt:
             print("\nStopping...")
 
-    output.stop()
+    # Cleanup - send black frame before stopping to avoid flickering
+    output.stop(send_black_frame=True)
     output.cleanup()
 
 
 if __name__ == "__main__":
     main()
     # Uncomment to try custom metadata:
-    example_with_custom_metadata()
+    # example_with_custom_metadata()
