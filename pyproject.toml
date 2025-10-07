@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "pybind11>=2.6.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "blackmagic-output"
+version = "1.0.0"
+description = "Python library for outputting video frames to Blackmagic DeckLink devices"
+readme = "README.md"
+requires-python = ">=3.7"
+license = "MIT"
+authors = [
+    {name = "Nick Shaw", email = "nick@antlerpost.com"}
+]
+maintainers = [
+    {name = "Nick Shaw", email = "nick@antlerpost.com"}
+]
+keywords = ["blackmagic", "decklink", "video", "output", "sdi", "hdmi", "broadcast"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: C++",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy>=1.19.0",
+    "pybind11>=2.6.0",
+]
+
+[project.optional-dependencies]
+examples = ["opencv-python", "pillow>=8.0.0"]
+dev = ["pytest", "black", "mypy"]
+
+[project.urls]
+Homepage = "https://github.com/nick-shaw/blackmagic-output"
+Repository = "https://github.com/nick-shaw/blackmagic-output"
+Issues = "https://github.com/nick-shaw/blackmagic-output/issues"

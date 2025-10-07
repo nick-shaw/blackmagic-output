@@ -3,9 +3,8 @@ Setup script for Blackmagic DeckLink Python Output Library
 """
 
 from pybind11.setup_helpers import Pybind11Extension, build_ext
-from pybind11 import get_cmake_dir
 import pybind11
-from setuptools import setup, Extension
+from setuptools import setup, find_packages
 import platform
 import os
 
@@ -28,7 +27,7 @@ if is_windows:
     decklink_libs = []
     extra_compile_args = ["/std:c++17"]
     extra_link_args = []
-    
+
 elif is_macos:
     decklink_include = [
         local_sdk_path,
@@ -38,7 +37,7 @@ elif is_macos:
     decklink_libs = []
     extra_compile_args = ["-std=c++17", "-framework", "CoreFoundation"]
     extra_link_args = ["-framework", "CoreFoundation"]
-    
+
 elif is_linux:
     decklink_include = [
         local_sdk_path,
@@ -92,56 +91,10 @@ for ext in ext_modules:
     ext.extra_link_args.extend(extra_link_args)
 
 setup(
-    name="blackmagic-output",
-    version="1.0.0",
-    description="Python library for Blackmagic DeckLink video output",
-    long_description=open("README.md").read() if os.path.exists("README.md") else "",
-    long_description_content_type="text/markdown",
-    author="Your Name",
-    author_email="your.email@example.com",
-    url="https://github.com/yourusername/blackmagic-output",
-    
-    # Python modules
-    py_modules=["blackmagic_output"],
-    
-    # C++ extensions
+    # Use pyproject.toml for metadata, but keep setup.py for build configuration
     ext_modules=ext_modules,
     cmdclass={"build_ext": build_ext},
-    
-    # Requirements
-    install_requires=[
-        "numpy>=1.19.0",
-        "pybind11>=2.6.0",
-    ],
-    
-    # Optional dependencies for development/examples
-    extras_require={
-        "examples": ["opencv-python", "pillow"],
-        "dev": ["pytest", "black", "mypy"],
-    },
-    
-    # Python version requirement
-    python_requires=">=3.7",
-    
-    # Package classification
-    classifiers=[
-        "Development Status :: 4 - Beta",
-        "Intended Audience :: Developers",
-        "Topic :: Multimedia :: Video",
-        "Topic :: Software Development :: Libraries :: Python Modules",
-        "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
-        "Programming Language :: C++",
-    ],
-    
-    # Keywords for package discovery
-    keywords="blackmagic decklink video output sdi hdmi",
-    
-    # Package data
+    package_dir={"": "src"},
+    packages=find_packages(where="src"),
     zip_safe=False,
 )
