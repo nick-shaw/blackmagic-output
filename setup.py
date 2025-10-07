@@ -16,9 +16,10 @@ is_linux = system == "Linux"
 
 # DeckLink SDK paths - platform-specific SDK files included in repo
 if is_windows:
-    local_sdk_path = os.path.join(os.path.dirname(__file__), "decklink_sdk", "Win", "include")
+    local_sdk_path_rel = os.path.join("decklink_sdk", "Win", "include")
+    local_sdk_path_abs = os.path.join(os.path.dirname(__file__), local_sdk_path_rel)
     decklink_include = [
-        local_sdk_path,
+        local_sdk_path_abs,
         "C:/Program Files/Blackmagic Design/DeckLink SDK/Win/include",
         "C:/Program Files (x86)/Blackmagic Design/DeckLink SDK/Win/include"
     ]
@@ -27,9 +28,10 @@ if is_windows:
     extra_link_args = []
 
 elif is_macos:
-    local_sdk_path = os.path.join(os.path.dirname(__file__), "decklink_sdk", "Mac", "include")
+    local_sdk_path_rel = os.path.join("decklink_sdk", "Mac", "include")
+    local_sdk_path_abs = os.path.join(os.path.dirname(__file__), local_sdk_path_rel)
     decklink_include = [
-        local_sdk_path,
+        local_sdk_path_abs,
         "/Applications/Blackmagic DeckLink SDK/Mac/include",
         "/usr/local/include/decklink"
     ]
@@ -38,9 +40,10 @@ elif is_macos:
     extra_link_args = ["-framework", "CoreFoundation"]
 
 elif is_linux:
-    local_sdk_path = os.path.join(os.path.dirname(__file__), "decklink_sdk", "Linux", "include")
+    local_sdk_path_rel = os.path.join("decklink_sdk", "Linux", "include")
+    local_sdk_path_abs = os.path.join(os.path.dirname(__file__), local_sdk_path_rel)
     decklink_include = [
-        local_sdk_path,
+        local_sdk_path_abs,
         "/usr/include/decklink",
         "/usr/local/include/decklink"
     ]
@@ -51,7 +54,7 @@ elif is_linux:
 else:
     raise RuntimeError(f"Unsupported platform: {system}")
 
-# Filter existing include paths
+# Filter existing include paths (use absolute paths for checking)
 existing_include_dirs = []
 for inc_dir in decklink_include:
     if os.path.exists(inc_dir):
@@ -60,7 +63,7 @@ for inc_dir in decklink_include:
 
 if not existing_include_dirs:
     print("WARNING: DeckLink SDK include directories not found.")
-    print("Please ensure the decklink_sdk/include directory exists with SDK headers")
+    print("Please ensure the decklink_sdk directory exists with platform-specific SDK headers")
     print(f"Searched paths: {decklink_include}")
 else:
     print(f"Using DeckLink SDK from: {existing_include_dirs[0]}")
@@ -73,7 +76,7 @@ ext_modules = [
             "python_bindings.cpp",
             "decklink_wrapper_mac.cpp" if is_macos else "decklink_wrapper.cpp",
             "decklink_hdr_frame.cpp",
-            os.path.join(local_sdk_path, "DeckLinkAPIDispatch.cpp"),
+            os.path.join(local_sdk_path_rel, "DeckLinkAPIDispatch.cpp"),
         ],
         include_dirs=[
             pybind11.get_include(),
