@@ -25,3 +25,8 @@ Thumbs.db
 *.dylib
 *.dll
 *.exe
+
+# Large images
+*.tiff
+*.tif
+*.png

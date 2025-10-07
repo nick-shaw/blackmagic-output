@@ -46,7 +46,7 @@ py::array_t<uint8_t> rgb_to_bgra(py::array_t<uint8_t> rgb_array, int width, int 
 }
 
 // Helper function to convert RGB uint16 array to 10-bit YUV v210 format
-py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int width, int height, DeckLinkOutput::Gamut colorimetry = DeckLinkOutput::Gamut::Rec709) {
+py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int width, int height, DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709) {
     auto buf = rgb_array.request();
 
     if (buf.ndim != 3 || buf.shape[2] != 3) {
@@ -90,7 +90,7 @@ py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int wi
                     float bf = b / 65535.0f;
 
                     float yf, uf, vf;
-                    if (colorimetry == DeckLinkOutput::Gamut::Rec2020) {
+                    if (matrix == DeckLinkOutput::Gamut::Rec2020) {
                         yf = 0.2627f * rf + 0.6780f * gf + 0.0593f * bf;
                         uf = -0.1396f * rf - 0.3604f * gf + 0.5000f * bf;
                         vf = 0.5000f * rf - 0.4598f * gf - 0.0402f * bf;
@@ -134,7 +134,7 @@ py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int wi
 }
 
 // Helper function to convert RGB float array to 10-bit YUV v210 format
-py::array_t<uint8_t> rgb_float_to_yuv10(py::array_t<float> rgb_array, int width, int height, DeckLinkOutput::Gamut colorimetry = DeckLinkOutput::Gamut::Rec709) {
+py::array_t<uint8_t> rgb_float_to_yuv10(py::array_t<float> rgb_array, int width, int height, DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709) {
     auto buf = rgb_array.request();
 
     if (buf.ndim != 3 || buf.shape[2] != 3) {
@@ -175,7 +175,7 @@ py::array_t<uint8_t> rgb_float_to_yuv10(py::array_t<float> rgb_array, int width,
                     float b = pixel[2];
 
                     float yf, uf, vf;
-                    if (colorimetry == DeckLinkOutput::Gamut::Rec2020) {
+                    if (matrix == DeckLinkOutput::Gamut::Rec2020) {
                         yf = 0.2627f * r + 0.6780f * g + 0.0593f * b;
                         uf = -0.1396f * r - 0.3604f * g + 0.5000f * b;
                         vf = 0.5000f * r - 0.4598f * g - 0.0402f * b;
@@ -238,9 +238,12 @@ PYBIND11_MODULE(decklink_output, m) {
         .value("HD720p50", DeckLinkOutput::DisplayMode::HD720p50)
         .value("HD720p60", DeckLinkOutput::DisplayMode::HD720p60);
 
-    py::enum_<DeckLinkOutput::Gamut>(m, "Gamut")
+    auto gamut_enum = py::enum_<DeckLinkOutput::Gamut>(m, "Gamut")
         .value("Rec709", DeckLinkOutput::Gamut::Rec709)
         .value("Rec2020", DeckLinkOutput::Gamut::Rec2020);
+
+    // Create Matrix as an alias to Gamut for clearer naming in RGB->YCbCr conversion
+    m.attr("Matrix") = gamut_enum;
 
     py::enum_<DeckLinkOutput::Eotf>(m, "Eotf")
         .value("SDR", DeckLinkOutput::Eotf::SDR)
@@ -322,12 +325,12 @@ PYBIND11_MODULE(decklink_output, m) {
     m.def("rgb_uint16_to_yuv10", &rgb_uint16_to_yuv10,
           "Convert RGB uint16 numpy array to 10-bit YUV v210 format",
           py::arg("rgb_array"), py::arg("width"), py::arg("height"),
-          py::arg("colorimetry") = DeckLinkOutput::Gamut::Rec709);
+          py::arg("matrix") = DeckLinkOutput::Gamut::Rec709);
 
     m.def("rgb_float_to_yuv10", &rgb_float_to_yuv10,
           "Convert RGB float numpy array to 10-bit YUV v210 format",
           py::arg("rgb_array"), py::arg("width"), py::arg("height"),
-          py::arg("colorimetry") = DeckLinkOutput::Gamut::Rec709);
+          py::arg("matrix") = DeckLinkOutput::Gamut::Rec709);
 
     // Helper function to create solid color frame
     m.def("create_solid_color_frame", [](int width, int height, py::tuple color) -> py::array_t<uint8_t> {

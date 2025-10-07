@@ -18,6 +18,19 @@ except ImportError:
     )
 
 
+class Matrix(Enum):
+    """RGB to Y'CbCr conversion matrix"""
+    Rec709 = _decklink.Gamut.Rec709
+    Rec2020 = _decklink.Gamut.Rec2020
+
+
+class Eotf(Enum):
+    """Electro-Optical Transfer Function for HDR"""
+    SDR = _decklink.Eotf.SDR
+    PQ = _decklink.Eotf.PQ
+    HLG = _decklink.Eotf.HLG
+
+
 class PixelFormat(Enum):
     """Supported pixel formats for DeckLink output"""
     YUV = _decklink.PixelFormat.YUV
@@ -52,6 +65,7 @@ class BlackmagicOutput:
         self._initialized = False
         self._output_started = False
         self._current_settings = None
+        self._current_matrix = Matrix.Rec709
 
     def initialize(self, device_index: int = 0) -> bool:
         """
@@ -100,25 +114,55 @@ class BlackmagicOutput:
             return True
         return False
 
-    def display_static_frame(self, frame_data: np.ndarray, 
+    def display_static_frame(self, frame_data: np.ndarray,
                            display_mode: DisplayMode,
-                           pixel_format: PixelFormat = PixelFormat.BGRA) -> bool:
+                           pixel_format: PixelFormat = PixelFormat.BGRA,
+                           matrix: Optional[Matrix] = None,
+                           hdr_metadata: Optional[dict] = None) -> bool:
         """
         Display a static frame continuously.
-        
+
         Args:
             frame_data: NumPy array containing image data
                        - For RGB: shape should be (height, width, 3)
                        - For BGRA: shape should be (height, width, 4)
             display_mode: Video resolution and frame rate
             pixel_format: Pixel format (default: BGRA)
-            
+            matrix: RGB to Y'CbCr conversion matrix (Rec709 or Rec2020).
+                   Only applies when pixel_format is YUV10. Default: Rec709
+            hdr_metadata: Optional HDR metadata dict with keys:
+                         - 'eotf': Eotf enum value (SDR, PQ, or HLG)
+                         - 'custom': Optional HdrMetadataCustom object
+                         If only eotf is provided, default metadata values are used.
+
         Returns:
             True if successful, False otherwise
         """
         if not self._initialized:
             if not self.initialize():
                 return False
+
+        # Set default matrix if not provided
+        if matrix is None:
+            matrix = Matrix.Rec709
+
+        # Store matrix for use in update_frame
+        self._current_matrix = matrix
+
+        # Handle HDR metadata if provided
+        if hdr_metadata is not None:
+            eotf = hdr_metadata.get('eotf')
+            if eotf is None:
+                raise ValueError("hdr_metadata must contain 'eotf' key")
+
+            custom = hdr_metadata.get('custom')
+            # Get the internal Gamut value from the Matrix enum
+            gamut = matrix.value
+
+            if custom is not None:
+                self._device.set_hdr_metadata_custom(gamut, eotf.value, custom)
+            else:
+                self._device.set_hdr_metadata(gamut, eotf.value)
 
         # Setup output if not already done or settings changed
         if (not self._current_settings or
@@ -128,8 +172,8 @@ class BlackmagicOutput:
                 return False
 
         # Convert frame data if necessary
-        processed_frame = self._prepare_frame_data(frame_data, pixel_format)
-        
+        processed_frame = self._prepare_frame_data(frame_data, pixel_format, matrix)
+
         # Set frame data
         if not self._device.set_frame_data(processed_frame):
             return False
@@ -190,7 +234,7 @@ class BlackmagicOutput:
         else:
             pixel_format = PixelFormat.YUV
 
-        processed_frame = self._prepare_frame_data(frame_data, pixel_format)
+        processed_frame = self._prepare_frame_data(frame_data, pixel_format, self._current_matrix)
 
         return self._device.set_frame_data(processed_frame)
 
@@ -213,15 +257,17 @@ class BlackmagicOutput:
         self._device.cleanup()
         self._initialized = False
 
-    def _prepare_frame_data(self, frame_data: np.ndarray, 
-                          pixel_format: PixelFormat) -> np.ndarray:
+    def _prepare_frame_data(self, frame_data: np.ndarray,
+                          pixel_format: PixelFormat,
+                          matrix: Matrix = Matrix.Rec709) -> np.ndarray:
         """
         Prepare frame data for output, converting format if necessary.
-        
+
         Args:
             frame_data: Input frame data
             pixel_format: Target pixel format
-            
+            matrix: RGB to Y'CbCr conversion matrix (only used for YUV10)
+
         Returns:
             Processed frame data ready for output
         """
@@ -247,12 +293,15 @@ class BlackmagicOutput:
             if frame_data.ndim != 3 or frame_data.shape[2] != 3:
                 raise ValueError("For YUV10 format, frame data must be HxWx3 (RGB)")
 
+            # Get the internal Gamut value from the Matrix enum
+            internal_matrix = matrix.value
+
             if frame_data.dtype == np.uint16:
                 # RGB uint16 to 10-bit YUV v210 conversion
-                return _decklink.rgb_uint16_to_yuv10(frame_data, settings.width, settings.height)
+                return _decklink.rgb_uint16_to_yuv10(frame_data, settings.width, settings.height, internal_matrix)
             elif frame_data.dtype in (np.float32, np.float64):
                 # RGB float to 10-bit YUV v210 conversion
-                return _decklink.rgb_float_to_yuv10(frame_data.astype(np.float32), settings.width, settings.height)
+                return _decklink.rgb_float_to_yuv10(frame_data.astype(np.float32), settings.width, settings.height, internal_matrix)
             else:
                 raise ValueError("For YUV10 format, frame data must be uint16 or float dtype")
 

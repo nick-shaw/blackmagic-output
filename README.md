@@ -119,13 +119,17 @@ Setup video output parameters.
 - `pixel_format`: Pixel format (default: BGRA)
 - Returns: True if successful
 
-**`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.BGRA) -> bool`**
+**`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.BGRA, matrix=None, hdr_metadata=None) -> bool`**
 Display a static frame continuously.
 - `frame_data`: NumPy array with image data:
   - RGB: shape (height, width, 3), dtype uint8/uint16/float32
   - BGRA: shape (height, width, 4), dtype uint8
 - `display_mode`: Video resolution and frame rate
 - `pixel_format`: Pixel format (BGRA, YUV, or YUV10)
+- `matrix`: Optional RGB to Y'CbCr conversion matrix (`Matrix.Rec709` or `Matrix.Rec2020`). Only used with YUV10 format. Default: Rec709
+- `hdr_metadata`: Optional HDR metadata dict with keys:
+  - `'eotf'`: Eotf enum (SDR, PQ, or HLG)
+  - `'custom'`: Optional HdrMetadataCustom object for custom metadata values
 - Returns: True if successful
 
 **`display_solid_color(color, display_mode) -> bool`**
@@ -250,16 +254,16 @@ Convert RGB to BGRA format.
 - `rgb_array`: NumPy array (H×W×3), dtype uint8
 - Returns: BGRA array (H×W×4), dtype uint8
 
-**`rgb_uint16_to_yuv10(rgb_array, width, height, colorimetry=Gamut.Rec709) -> np.ndarray`**
+**`rgb_uint16_to_yuv10(rgb_array, width, height, matrix=Matrix.Rec709) -> np.ndarray`**
 Convert RGB uint16 to 10-bit YUV v210 format.
 - `rgb_array`: NumPy array (H×W×3), dtype uint16 (0-65535 range)
-- `colorimetry`: Color space matrix (Rec709 or Rec2020)
+- `matrix`: RGB to Y'CbCr conversion matrix (Matrix.Rec709 or Matrix.Rec2020)
 - Returns: Packed v210 array
 
-**`rgb_float_to_yuv10(rgb_array, width, height, colorimetry=Gamut.Rec709) -> np.ndarray`**
+**`rgb_float_to_yuv10(rgb_array, width, height, matrix=Matrix.Rec709) -> np.ndarray`**
 Convert RGB float to 10-bit YUV v210 format.
 - `rgb_array`: NumPy array (H×W×3), dtype float32 (0.0-1.0 range)
-- `colorimetry`: Color space matrix (Rec709 or Rec2020)
+- `matrix`: RGB to Y'CbCr conversion matrix (Matrix.Rec709 or Matrix.Rec2020)
 - Returns: Packed v210 array
 
 **`create_solid_color_frame(width, height, color) -> np.ndarray`**
@@ -287,7 +291,11 @@ Create test patterns (from `blackmagic_output` module).
 - `YUV`: 8-bit YUV 4:2:2
 - `YUV10`: 10-bit YUV 4:2:2 (v210) - recommended for high-quality output with float/uint16 data
 
-**`Gamut`**
+**`Matrix`** (High-level API)
+- `Rec709`: ITU-R BT.709 RGB to Y'CbCr conversion matrix (standard HD)
+- `Rec2020`: ITU-R BT.2020 RGB to Y'CbCr conversion matrix (wide color gamut for HDR)
+
+**`Gamut`** (Low-level API, same values as Matrix)
 - `Rec709`: ITU-R BT.709 colorimetry (standard HD)
 - `Rec2020`: ITU-R BT.2020 colorimetry (wide color gamut for HDR)
 
@@ -435,11 +443,11 @@ with BlackmagicOutput() as output:
     input("Press Enter to stop...")
 ```
 
-### Example 7: HDR Output with Rec.2020 and HLG
+### Example 7: HDR Output with Rec.2020 and HLG (Simplified API)
 
 ```python
 import numpy as np
-import decklink_output as dl
+from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat, Matrix, Eotf
 
 # Create HDR content in linear RGB (0.0-1.0 range)
 # This could be from HDR grading, rendering, or tone mapping
@@ -454,12 +462,37 @@ for y in range(1080):
             0.5                 # Blue constant
         ]
 
-# Configure for HLG HDR output
+# Configure for HLG HDR output using the simplified API
+with BlackmagicOutput() as output:
+    output.initialize()
+
+    # Single call with matrix and HDR metadata
+    output.display_static_frame(
+        frame,
+        DisplayMode.HD1080p25,
+        pixel_format=PixelFormat.YUV10,
+        matrix=Matrix.Rec2020,           # Use Rec.2020 matrix
+        hdr_metadata={'eotf': Eotf.HLG}  # HLG with default metadata
+    )
+
+    input("Press Enter to stop...")
+```
+
+**Alternative: Low-level API for more control**
+
+```python
+import numpy as np
+import decklink_output as dl
+
+# Create HDR content
+frame = np.zeros((1080, 1920, 3), dtype=np.float32)
+# ... fill frame ...
+
+# Configure for HLG HDR output using low-level API
 output = dl.DeckLinkOutput()
 output.initialize()
 
-# IMPORTANT: Set HDR metadata BEFORE setup_output()
-# This embeds HDR metadata in every video frame
+# Set HDR metadata BEFORE setup_output()
 output.set_hdr_metadata(dl.Gamut.Rec2020, dl.Eotf.HLG)
 
 # Setup output
@@ -468,7 +501,7 @@ settings.format = dl.PixelFormat.YUV10
 output.setup_output(settings)
 
 # Convert RGB to YUV using Rec.2020 matrix
-yuv_data = dl.rgb_float_to_yuv10(frame, 1920, 1080, dl.Gamut.Rec2020)
+yuv_data = dl.rgb_float_to_yuv10(frame, 1920, 1080, dl.Matrix.Rec2020)
 output.set_frame_data(yuv_data)
 
 output.start_output()
@@ -477,11 +510,11 @@ output.stop_output()
 output.cleanup()
 ```
 
-### Example 8: HDR10 (PQ) Output
+### Example 8: HDR10 (PQ) Output (Simplified API)
 
 ```python
 import numpy as np
-import decklink_output as dl
+from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat, Matrix, Eotf
 
 # Create HDR10 content with PQ transfer function applied
 # Note: You need to apply PQ encoding to your linear/gamma RGB data first
@@ -490,6 +523,32 @@ frame = np.zeros((1080, 1920, 3), dtype=np.float32)
 # Fill with PQ-encoded HDR content
 # (Assume apply_pq_transfer() converts linear to PQ curve)
 # frame = apply_pq_transfer(linear_rgb_data)
+
+# Configure for HDR10 (PQ) output using the simplified API
+with BlackmagicOutput() as output:
+    output.initialize()
+
+    # Single call with Rec.2020 matrix and PQ metadata
+    output.display_static_frame(
+        frame,
+        DisplayMode.HD1080p25,
+        pixel_format=PixelFormat.YUV10,
+        matrix=Matrix.Rec2020,
+        hdr_metadata={'eotf': Eotf.PQ}
+    )
+
+    input("Press Enter to stop...")
+```
+
+**Alternative: Low-level API**
+
+```python
+import numpy as np
+import decklink_output as dl
+
+# Create HDR10 content
+frame = np.zeros((1080, 1920, 3), dtype=np.float32)
+# ... fill frame ...
 
 # Configure for HDR10 (PQ) output
 output = dl.DeckLinkOutput()
@@ -520,33 +579,87 @@ HDR metadata is embedded into each video frame using the DeckLink SDK's `IDeckLi
 
 ### Metadata Includes:
 
-- **Colorspace**: Rec.709 or Rec.2020 primaries
+- **Display Primaries**: Automatically set to match the matrix parameter (unless explicitly specified via custom metadata)
+  - Matrix.Rec709 → Rec.709 primaries (x,y): R(0.64, 0.33), G(0.30, 0.60), B(0.15, 0.06)
+  - Matrix.Rec2020 → Rec.2020 primaries (x,y): R(0.708, 0.292), G(0.170, 0.797), B(0.131, 0.046)
+- **White Point**: D65 (0.3127, 0.3290) for all matrices (unless explicitly specified)
 - **EOTF**: Electro-Optical Transfer Function (SDR/Rec.709, PQ/SMPTE ST 2084, or HLG)
-- **Mastering Display Info**: Default values for max/min luminance (1000 nits max, 0.0001 nits min)
-- **Content Light Levels**: Max content light level (1000 nits), max frame average (50 nits)
+- **Mastering Display Info**: Default values for max/min luminance
+- **Content Light Levels**: Max content light level and max frame average
 
 ### Default Metadata Values:
 
+**When using Matrix.Rec709:**
+```
+Display Primaries: Rec.709 (ITU-R BT.709)
+  Red:   (0.64, 0.33)
+  Green: (0.30, 0.60)
+  Blue:  (0.15, 0.06)
+White Point: D65 (0.3127, 0.3290)
+```
+
+**When using Matrix.Rec2020:**
+```
+Display Primaries: Rec.2020 (ITU-R BT.2020)
+  Red:   (0.708, 0.292)
+  Green: (0.170, 0.797)
+  Blue:  (0.131, 0.046)
+White Point: D65 (0.3127, 0.3290)
+```
+
+**Luminance values by EOTF:**
 ```python
-# SDR defaults (when using Eotf.SDR)
-- Primaries: Rec.709
-- Max Mastering Luminance: 100 nits
-- Min Mastering Luminance: 0.0001 nits
+# SDR (Eotf.SDR)
+Max Mastering Luminance: 100 nits
+Min Mastering Luminance: 0.0001 nits
+Max Content Light Level: 100 nits
+Max Frame Average Light Level: 50 nits
 
-# HLG defaults (when using Eotf.HLG)
-- Primaries: Rec.2020
-- Max Mastering Luminance: 1000 nits
-- Min Mastering Luminance: 0.0001 nits
+# HLG (Eotf.HLG)
+Max Mastering Luminance: 1000 nits
+Min Mastering Luminance: 0.0001 nits
+Max Content Light Level: 1000 nits
+Max Frame Average Light Level: 50 nits
 
-# PQ defaults (when using Eotf.PQ)
-- Primaries: Rec.2020
-- Max Mastering Luminance: 1000 nits
-- Min Mastering Luminance: 0.0001 nits
+# PQ (Eotf.PQ)
+Max Mastering Luminance: 1000 nits
+Min Mastering Luminance: 0.0001 nits
+Max Content Light Level: 1000 nits
+Max Frame Average Light Level: 50 nits
 ```
 
 ### Customizing HDR Metadata Values:
 
-For precise control over HDR metadata, use `set_hdr_metadata_custom()`:
+**High-level API:**
+
+```python
+from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat, Matrix, Eotf
+import decklink_output as dl
+
+# Create custom metadata
+custom = dl.HdrMetadataCustom()
+custom.display_primaries_red_x = 0.708
+custom.display_primaries_red_y = 0.292
+# ... set other values ...
+custom.max_mastering_luminance = 1000.0
+custom.min_mastering_luminance = 0.0001
+
+# Use in simplified API
+with BlackmagicOutput() as output:
+    output.initialize()
+    output.display_static_frame(
+        frame,
+        DisplayMode.HD1080p25,
+        pixel_format=PixelFormat.YUV10,
+        matrix=Matrix.Rec2020,
+        hdr_metadata={'eotf': Eotf.PQ, 'custom': custom}
+    )
+    input("Press Enter to stop...")
+```
+
+**Low-level API:**
+
+For precise control over HDR metadata with the low-level API, use `set_hdr_metadata_custom()`:
 
 ```python
 import decklink_output as dl
@@ -597,11 +710,12 @@ All 14 CEA-861.3/ITU-R BT.2100 HDR static metadata fields are supported:
 
 ### Important Notes:
 
-1. **Call order matters**: `set_hdr_metadata()` must be called before `setup_output()`
-2. **Frame-level metadata**: Metadata is embedded in every video frame, not set globally
-3. **Colorimetry consistency**: Use the same `Gamut` value in both `set_hdr_metadata()` and the RGB→YUV conversion functions
-4. **Transfer function**: The library only sets the metadata - you must apply the actual transfer function (PQ/HLG curve) to your RGB data before conversion
-5. **All 14 metadata fields supported**: The library implements all CEA-861.3/ITU-R BT.2100 HDR metadata fields including display primaries, white point, mastering display luminance, and content light levels
+1. **Simplified API**: With `display_static_frame()`, HDR metadata and matrix are set in a single call
+2. **Low-level API call order**: When using the low-level API, `set_hdr_metadata()` must be called before `setup_output()`
+3. **Frame-level metadata**: Metadata is embedded in every video frame, not set globally
+4. **Matrix consistency**: When using the simplified API, the same `matrix` parameter is used for both metadata and RGB→YUV conversion. With the low-level API, ensure consistency between `set_hdr_metadata()` and conversion functions.
+5. **Transfer function**: The library only sets the metadata - you must apply the actual transfer function (PQ/HLG curve) to your RGB data before conversion
+6. **All 14 metadata fields supported**: The library implements all CEA-861.3/ITU-R BT.2100 HDR metadata fields including display primaries, white point, mastering display luminance, and content light levels
 
 ## RP188 Timecode Support
 
@@ -749,11 +863,12 @@ See `timecode_test.py` for a complete working example that outputs SMPTE color b
 
 **HDR output not displaying correctly**
 - Verify your monitor/display supports the selected transfer function (PQ or HLG)
-- **IMPORTANT**: Call `set_hdr_metadata()` BEFORE `setup_output()` - metadata is embedded in each frame
+- **Simplified API**: Specify both `matrix` and `hdr_metadata` in `display_static_frame()` - they're automatically set correctly
+- **Low-level API**: Call `set_hdr_metadata()` BEFORE `setup_output()` - metadata is embedded in each frame
 - Ensure frame data has appropriate transfer function applied before conversion
 - For PQ: Apply SMPTE ST 2084 curve to linear RGB before conversion
 - For HLG: Apply ITU-R BT.2100 HLG curve before conversion
-- Use the matching colorimetry in both `set_hdr_metadata()` and `rgb_*_to_yuv10()` conversion functions
+- Ensure matrix consistency: same value in both metadata and RGB→YUV conversion
 
 ### Testing Your Installation
 

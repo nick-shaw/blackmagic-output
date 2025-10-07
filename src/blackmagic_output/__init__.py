@@ -9,6 +9,8 @@ from .blackmagic_output import (
     BlackmagicOutput,
     DisplayMode,
     PixelFormat,
+    Matrix,
+    Eotf,
     create_test_pattern,
 )
 
@@ -21,7 +23,8 @@ try:
         HdrMetadataCustom,
         Timecode,
         Gamut,
-        Eotf,
+        Eotf as _Eotf,
+        Matrix as _Matrix,
         rgb_to_bgra,
         rgb_uint16_to_yuv10,
         rgb_float_to_yuv10,
@@ -38,6 +41,8 @@ __all__ = [
     "BlackmagicOutput",
     "DisplayMode",
     "PixelFormat",
+    "Matrix",
+    "Eotf",
     "create_test_pattern",
     # Low-level API
     "DeckLinkOutput",
@@ -45,7 +50,6 @@ __all__ = [
     "HdrMetadataCustom",
     "Timecode",
     "Gamut",
-    "Eotf",
     # Conversion utilities
     "rgb_to_bgra",
     "rgb_uint16_to_yuv10",

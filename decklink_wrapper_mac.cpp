@@ -297,10 +297,40 @@ void DeckLinkOutput::setHdrMetadata(Gamut colorimetry, Eotf eotf)
     m_hdrColorimetry = colorimetry;
     m_hdrEotf = eotf;
 
-    if (eotf == Eotf::SDR) {
-        m_hdrCustom = {100.0, 0.0001, 100.0, 50.0};
+    // Set display primaries based on the matrix/colorimetry
+    if (colorimetry == Gamut::Rec2020) {
+        // Rec.2020 primaries
+        m_hdrCustom.displayPrimariesRedX = 0.708;
+        m_hdrCustom.displayPrimariesRedY = 0.292;
+        m_hdrCustom.displayPrimariesGreenX = 0.170;
+        m_hdrCustom.displayPrimariesGreenY = 0.797;
+        m_hdrCustom.displayPrimariesBlueX = 0.131;
+        m_hdrCustom.displayPrimariesBlueY = 0.046;
     } else {
-        m_hdrCustom = {1000.0, 0.0001, 1000.0, 50.0};
+        // Rec.709 primaries (default)
+        m_hdrCustom.displayPrimariesRedX = 0.64;
+        m_hdrCustom.displayPrimariesRedY = 0.33;
+        m_hdrCustom.displayPrimariesGreenX = 0.30;
+        m_hdrCustom.displayPrimariesGreenY = 0.60;
+        m_hdrCustom.displayPrimariesBlueX = 0.15;
+        m_hdrCustom.displayPrimariesBlueY = 0.06;
+    }
+
+    // D65 white point (same for both Rec.709 and Rec.2020)
+    m_hdrCustom.whitePointX = 0.3127;
+    m_hdrCustom.whitePointY = 0.3290;
+
+    // Set luminance values based on transfer function
+    if (eotf == Eotf::SDR) {
+        m_hdrCustom.maxMasteringLuminance = 100.0;
+        m_hdrCustom.minMasteringLuminance = 0.0001;
+        m_hdrCustom.maxContentLightLevel = 100.0;
+        m_hdrCustom.maxFrameAverageLightLevel = 50.0;
+    } else {
+        m_hdrCustom.maxMasteringLuminance = 1000.0;
+        m_hdrCustom.minMasteringLuminance = 0.0001;
+        m_hdrCustom.maxContentLightLevel = 1000.0;
+        m_hdrCustom.maxFrameAverageLightLevel = 50.0;
     }
 }
 
