@@ -21,12 +21,11 @@ def main():
         print("Failed to initialize DeckLink device")
         return
 
-    # Create HDR test frame (10-bit linear light values, normalized 0.0-1.0)
-    # For PQ, these values should be in linear light before PQ encoding
+    # Create HDR test frame (float values, normalized 0.0-1.0)
     width, height = 1920, 1080
     frame = np.ones((height, width, 3), dtype=np.float32)
 
-    # Create a gradient to see the HDR effect
+    # Create a gradient
     for y in range(height):
         intensity = y / height  # 0.0 to 1.0
         frame[y, :, :] = intensity

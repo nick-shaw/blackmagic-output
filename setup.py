@@ -14,11 +14,9 @@ is_windows = system == "Windows"
 is_macos = system == "Darwin"
 is_linux = system == "Linux"
 
-# DeckLink SDK paths - use local downloaded SDK files
-local_sdk_path = os.path.join(os.path.dirname(__file__), "decklink_sdk", "include")
-
-# Platform-specific SDK paths (fallback if local SDK not available)
+# DeckLink SDK paths - platform-specific SDK files included in repo
 if is_windows:
+    local_sdk_path = os.path.join(os.path.dirname(__file__), "decklink_sdk", "Win", "include")
     decklink_include = [
         local_sdk_path,
         "C:/Program Files/Blackmagic Design/DeckLink SDK/Win/include",
@@ -29,6 +27,7 @@ if is_windows:
     extra_link_args = []
 
 elif is_macos:
+    local_sdk_path = os.path.join(os.path.dirname(__file__), "decklink_sdk", "Mac", "include")
     decklink_include = [
         local_sdk_path,
         "/Applications/Blackmagic DeckLink SDK/Mac/include",
@@ -39,11 +38,11 @@ elif is_macos:
     extra_link_args = ["-framework", "CoreFoundation"]
 
 elif is_linux:
+    local_sdk_path = os.path.join(os.path.dirname(__file__), "decklink_sdk", "Linux", "include")
     decklink_include = [
         local_sdk_path,
         "/usr/include/decklink",
-        "/usr/local/include/decklink",
-        "./decklink_sdk/Linux/include"
+        "/usr/local/include/decklink"
     ]
     decklink_libs = ["dl", "pthread"]
     extra_compile_args = ["-std=c++17"]
@@ -74,7 +73,7 @@ ext_modules = [
             "python_bindings.cpp",
             "decklink_wrapper_mac.cpp" if is_macos else "decklink_wrapper.cpp",
             "decklink_hdr_frame.cpp",
-            "decklink_sdk/include/DeckLinkAPIDispatch.cpp",
+            os.path.join(local_sdk_path, "DeckLinkAPIDispatch.cpp"),
         ],
         include_dirs=[
             pybind11.get_include(),

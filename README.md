@@ -2,6 +2,8 @@
 
 A Python library for outputting video frames to Blackmagic DeckLink devices using the official DeckLink SDK. This library provides a simple interface for displaying static frames, solid colors, and dynamic content from NumPy arrays.
 
+Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](https://www.claude.com/product/claude-code)!
+
 ## Features
 
 - **Static Frame Output**: Display static images from NumPy arrays
@@ -26,22 +28,22 @@ A Python library for outputting video frames to Blackmagic DeckLink devices usin
 ### Software Dependencies
 - NumPy >= 1.19.0
 - pybind11 >= 2.6.0
-- Blackmagic DeckLink SDK (free download from Blackmagic Design)
+- Blackmagic DeckLink SDK (v14.1 included for older macOS compatibility)
 
 ## Installation
 
-### 1. Install DeckLink SDK
+### 1. DeckLink SDK
 
-Download and install the DeckLink SDK from [Blackmagic Design Developer](https://www.blackmagicdesign.com/developer/):
+**All Platforms (macOS, Windows, Linux):**
 
-**Windows:**
-- Install to: `C:\\Program Files\\Blackmagic Design\\DeckLink SDK\\`
+No additional download needed - SDK v14.1 headers for all platforms are included in the repository:
+- `decklink_sdk/Mac/include/` - macOS headers
+- `decklink_sdk/Win/include/` - Windows headers
+- `decklink_sdk/Linux/include/` - Linux headers
 
-**macOS:**
-- Install to: `/Applications/Blackmagic DeckLink SDK/`
+The build system automatically uses the correct platform-specific headers.
 
-**Linux:**
-- Extract SDK and ensure headers are in `/usr/include/decklink/` or `/usr/local/include/decklink/`
+**⚠️ Important:** This library is built against SDK v14.1. If you need to download the SDK separately, ensure you get v14.1 from [Blackmagic Design Developer](https://www.blackmagicdesign.com/developer/). Newer versions (v15.x) may cause API compatibility issues and build failures.
 
 ### 2. Build the Library
 
@@ -453,8 +455,7 @@ with BlackmagicOutput() as output:
 import numpy as np
 from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat, Matrix, Eotf
 
-# Create HDR content in linear RGB (0.0-1.0 range)
-# This could be from HDR grading, rendering, or tone mapping
+# Create HDR content in normalised float (0.0-1.0 range)
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
 
 # Example: HDR gradient with extended range
@@ -521,12 +522,11 @@ import numpy as np
 from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat, Matrix, Eotf
 
 # Create HDR10 content with PQ transfer function applied
-# Note: You need to apply PQ encoding to your linear/gamma RGB data first
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
 
 # Fill with PQ-encoded HDR content
-# (Assume apply_pq_transfer() converts linear to PQ curve)
-# frame = apply_pq_transfer(linear_rgb_data)
+# A library such as Colour Science for Python (colour-science.org) is needed for PQ encoding
+# frame = colour.eotf(linear_rgb_data, 'ST 2084')
 
 # Configure for HDR10 (PQ) output using the simplified API
 with BlackmagicOutput() as output:
