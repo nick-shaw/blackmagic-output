@@ -47,7 +47,7 @@ Download and install the DeckLink SDK from [Blackmagic Design Developer](https:/
 
 ```bash
 # Clone or download the library files
-git clone https://github.com/yourusername/blackmagic-output.git
+git clone https://github.com/nick-shaw/blackmagic-output.git
 cd blackmagic-output
 
 # Install Python dependencies
@@ -794,7 +794,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Support
 
-- Check the [Issues](https://github.com/yourusername/blackmagic-output/issues) page for known problems
+- Check the [Issues](https://github.com/nick-shaw/blackmagic-output/issues) page for known problems
 - Review Blackmagic's official DeckLink SDK documentation
 - Ensure your DeckLink device is supported by the SDK version
 
