@@ -28,7 +28,7 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 ### Software Dependencies
 - NumPy >= 1.19.0
 - pybind11 >= 2.6.0
-- Blackmagic DeckLink SDK (v14.1 included for older macOS compatibility)
+- Blackmagic DeckLink SDK (v14.1 headers included - see License section below)
 
 ## Installation
 
@@ -910,6 +910,19 @@ This will show available devices and let you test various output modes.
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+### Blackmagic DeckLink SDK License
+
+This repository includes header files from the Blackmagic DeckLink SDK v14.1. These header files are redistributable under the terms of the Blackmagic DeckLink SDK End User License Agreement (Section 0.1), which specifically exempts the Include folder headers from the more restrictive licensing terms that apply to other parts of the SDK.
+
+**Important notes about the SDK headers:**
+- The header files in `decklink_sdk/{Mac,Win,Linux}/include/` directories are from the Blackmagic DeckLink SDK
+- These headers are required only for **building** the library from source
+- **Runtime usage requires** the Blackmagic Desktop Video software to be installed separately
+- The SDK headers are provided under Blackmagic Design's EULA - see `Blackmagic Design EULA.pdf` for full terms
+- Download the complete SDK and Desktop Video software from: https://www.blackmagicdesign.com/developer
+
+The Blackmagic DeckLink SDK is © Blackmagic Design Pty. Ltd. All rights reserved.
 
 ## Support
 
