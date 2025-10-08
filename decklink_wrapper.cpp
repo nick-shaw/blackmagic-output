@@ -241,40 +241,34 @@ DeckLinkOutput::VideoSettings DeckLinkOutput::getVideoSettings(DisplayMode mode)
     VideoSettings settings;
     settings.mode = mode;
     settings.format = PixelFormat::Format8BitBGRA;
-    
-    switch (mode) {
-        case DisplayMode::HD1080p25:
+
+    // Query the hardware for display mode information dynamically
+    if (m_deckLinkOutput) {
+        IDeckLinkDisplayMode* displayMode = nullptr;
+        if (m_deckLinkOutput->GetDisplayMode(static_cast<BMDDisplayMode>(mode), &displayMode) == S_OK) {
+            settings.width = displayMode->GetWidth();
+            settings.height = displayMode->GetHeight();
+
+            BMDTimeValue frameDuration;
+            BMDTimeScale timeScale;
+            displayMode->GetFrameRate(&frameDuration, &timeScale);
+            settings.framerate = (double)timeScale / (double)frameDuration;
+
+            displayMode->Release();
+        } else {
+            std::cerr << "Warning: Could not get display mode information for mode "
+                      << static_cast<int>(mode) << ", using defaults" << std::endl;
             settings.width = 1920;
             settings.height = 1080;
             settings.framerate = 25.0;
-            break;
-        case DisplayMode::HD1080p30:
-            settings.width = 1920;
-            settings.height = 1080;
-            settings.framerate = 30.0;
-            break;
-        case DisplayMode::HD1080p50:
-            settings.width = 1920;
-            settings.height = 1080;
-            settings.framerate = 50.0;
-            break;
-        case DisplayMode::HD1080p60:
-            settings.width = 1920;
-            settings.height = 1080;
-            settings.framerate = 60.0;
-            break;
-        case DisplayMode::HD720p50:
-            settings.width = 1280;
-            settings.height = 720;
-            settings.framerate = 50.0;
-            break;
-        case DisplayMode::HD720p60:
-            settings.width = 1280;
-            settings.height = 720;
-            settings.framerate = 60.0;
-            break;
+        }
+    } else {
+        std::cerr << "Warning: DeckLink output not initialized, using default settings" << std::endl;
+        settings.width = 1920;
+        settings.height = 1080;
+        settings.framerate = 25.0;
     }
-    
+
     return settings;
 }
 

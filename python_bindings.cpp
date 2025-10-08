@@ -231,12 +231,137 @@ PYBIND11_MODULE(decklink_output, m) {
         .value("YUV10", DeckLinkOutput::PixelFormat::Format10BitYUV);
 
     py::enum_<DeckLinkOutput::DisplayMode>(m, "DisplayMode")
+        // SD Modes
+        .value("NTSC", DeckLinkOutput::DisplayMode::NTSC)
+        .value("NTSC2398", DeckLinkOutput::DisplayMode::NTSC2398)
+        .value("PAL", DeckLinkOutput::DisplayMode::PAL)
+        .value("NTSCp", DeckLinkOutput::DisplayMode::NTSCp)
+        .value("PALp", DeckLinkOutput::DisplayMode::PALp)
+
+        // HD 1080 Progressive
+        .value("HD1080p2398", DeckLinkOutput::DisplayMode::HD1080p2398)
+        .value("HD1080p24", DeckLinkOutput::DisplayMode::HD1080p24)
         .value("HD1080p25", DeckLinkOutput::DisplayMode::HD1080p25)
+        .value("HD1080p2997", DeckLinkOutput::DisplayMode::HD1080p2997)
         .value("HD1080p30", DeckLinkOutput::DisplayMode::HD1080p30)
+        .value("HD1080p4795", DeckLinkOutput::DisplayMode::HD1080p4795)
+        .value("HD1080p48", DeckLinkOutput::DisplayMode::HD1080p48)
         .value("HD1080p50", DeckLinkOutput::DisplayMode::HD1080p50)
+        .value("HD1080p5994", DeckLinkOutput::DisplayMode::HD1080p5994)
         .value("HD1080p60", DeckLinkOutput::DisplayMode::HD1080p60)
+        .value("HD1080p9590", DeckLinkOutput::DisplayMode::HD1080p9590)
+        .value("HD1080p96", DeckLinkOutput::DisplayMode::HD1080p96)
+        .value("HD1080p100", DeckLinkOutput::DisplayMode::HD1080p100)
+        .value("HD1080p11988", DeckLinkOutput::DisplayMode::HD1080p11988)
+        .value("HD1080p120", DeckLinkOutput::DisplayMode::HD1080p120)
+
+        // HD 1080 Interlaced
+        .value("HD1080i50", DeckLinkOutput::DisplayMode::HD1080i50)
+        .value("HD1080i5994", DeckLinkOutput::DisplayMode::HD1080i5994)
+        .value("HD1080i60", DeckLinkOutput::DisplayMode::HD1080i60)
+
+        // HD 720
         .value("HD720p50", DeckLinkOutput::DisplayMode::HD720p50)
-        .value("HD720p60", DeckLinkOutput::DisplayMode::HD720p60);
+        .value("HD720p5994", DeckLinkOutput::DisplayMode::HD720p5994)
+        .value("HD720p60", DeckLinkOutput::DisplayMode::HD720p60)
+
+        // 2K
+        .value("Mode2k2398", DeckLinkOutput::DisplayMode::Mode2k2398)
+        .value("Mode2k24", DeckLinkOutput::DisplayMode::Mode2k24)
+        .value("Mode2k25", DeckLinkOutput::DisplayMode::Mode2k25)
+
+        // 2K DCI
+        .value("Mode2kDCI2398", DeckLinkOutput::DisplayMode::Mode2kDCI2398)
+        .value("Mode2kDCI24", DeckLinkOutput::DisplayMode::Mode2kDCI24)
+        .value("Mode2kDCI25", DeckLinkOutput::DisplayMode::Mode2kDCI25)
+        .value("Mode2kDCI2997", DeckLinkOutput::DisplayMode::Mode2kDCI2997)
+        .value("Mode2kDCI30", DeckLinkOutput::DisplayMode::Mode2kDCI30)
+        .value("Mode2kDCI4795", DeckLinkOutput::DisplayMode::Mode2kDCI4795)
+        .value("Mode2kDCI48", DeckLinkOutput::DisplayMode::Mode2kDCI48)
+        .value("Mode2kDCI50", DeckLinkOutput::DisplayMode::Mode2kDCI50)
+        .value("Mode2kDCI5994", DeckLinkOutput::DisplayMode::Mode2kDCI5994)
+        .value("Mode2kDCI60", DeckLinkOutput::DisplayMode::Mode2kDCI60)
+        .value("Mode2kDCI9590", DeckLinkOutput::DisplayMode::Mode2kDCI9590)
+        .value("Mode2kDCI96", DeckLinkOutput::DisplayMode::Mode2kDCI96)
+        .value("Mode2kDCI100", DeckLinkOutput::DisplayMode::Mode2kDCI100)
+        .value("Mode2kDCI11988", DeckLinkOutput::DisplayMode::Mode2kDCI11988)
+        .value("Mode2kDCI120", DeckLinkOutput::DisplayMode::Mode2kDCI120)
+
+        // 4K UHD
+        .value("Mode4K2160p2398", DeckLinkOutput::DisplayMode::Mode4K2160p2398)
+        .value("Mode4K2160p24", DeckLinkOutput::DisplayMode::Mode4K2160p24)
+        .value("Mode4K2160p25", DeckLinkOutput::DisplayMode::Mode4K2160p25)
+        .value("Mode4K2160p2997", DeckLinkOutput::DisplayMode::Mode4K2160p2997)
+        .value("Mode4K2160p30", DeckLinkOutput::DisplayMode::Mode4K2160p30)
+        .value("Mode4K2160p4795", DeckLinkOutput::DisplayMode::Mode4K2160p4795)
+        .value("Mode4K2160p48", DeckLinkOutput::DisplayMode::Mode4K2160p48)
+        .value("Mode4K2160p50", DeckLinkOutput::DisplayMode::Mode4K2160p50)
+        .value("Mode4K2160p5994", DeckLinkOutput::DisplayMode::Mode4K2160p5994)
+        .value("Mode4K2160p60", DeckLinkOutput::DisplayMode::Mode4K2160p60)
+        .value("Mode4K2160p9590", DeckLinkOutput::DisplayMode::Mode4K2160p9590)
+        .value("Mode4K2160p96", DeckLinkOutput::DisplayMode::Mode4K2160p96)
+        .value("Mode4K2160p100", DeckLinkOutput::DisplayMode::Mode4K2160p100)
+        .value("Mode4K2160p11988", DeckLinkOutput::DisplayMode::Mode4K2160p11988)
+        .value("Mode4K2160p120", DeckLinkOutput::DisplayMode::Mode4K2160p120)
+
+        // 4K DCI
+        .value("Mode4kDCI2398", DeckLinkOutput::DisplayMode::Mode4kDCI2398)
+        .value("Mode4kDCI24", DeckLinkOutput::DisplayMode::Mode4kDCI24)
+        .value("Mode4kDCI25", DeckLinkOutput::DisplayMode::Mode4kDCI25)
+        .value("Mode4kDCI2997", DeckLinkOutput::DisplayMode::Mode4kDCI2997)
+        .value("Mode4kDCI30", DeckLinkOutput::DisplayMode::Mode4kDCI30)
+        .value("Mode4kDCI4795", DeckLinkOutput::DisplayMode::Mode4kDCI4795)
+        .value("Mode4kDCI48", DeckLinkOutput::DisplayMode::Mode4kDCI48)
+        .value("Mode4kDCI50", DeckLinkOutput::DisplayMode::Mode4kDCI50)
+        .value("Mode4kDCI5994", DeckLinkOutput::DisplayMode::Mode4kDCI5994)
+        .value("Mode4kDCI60", DeckLinkOutput::DisplayMode::Mode4kDCI60)
+        .value("Mode4kDCI9590", DeckLinkOutput::DisplayMode::Mode4kDCI9590)
+        .value("Mode4kDCI96", DeckLinkOutput::DisplayMode::Mode4kDCI96)
+        .value("Mode4kDCI100", DeckLinkOutput::DisplayMode::Mode4kDCI100)
+        .value("Mode4kDCI11988", DeckLinkOutput::DisplayMode::Mode4kDCI11988)
+        .value("Mode4kDCI120", DeckLinkOutput::DisplayMode::Mode4kDCI120)
+
+        // 8K UHD
+        .value("Mode8K4320p2398", DeckLinkOutput::DisplayMode::Mode8K4320p2398)
+        .value("Mode8K4320p24", DeckLinkOutput::DisplayMode::Mode8K4320p24)
+        .value("Mode8K4320p25", DeckLinkOutput::DisplayMode::Mode8K4320p25)
+        .value("Mode8K4320p2997", DeckLinkOutput::DisplayMode::Mode8K4320p2997)
+        .value("Mode8K4320p30", DeckLinkOutput::DisplayMode::Mode8K4320p30)
+        .value("Mode8K4320p4795", DeckLinkOutput::DisplayMode::Mode8K4320p4795)
+        .value("Mode8K4320p48", DeckLinkOutput::DisplayMode::Mode8K4320p48)
+        .value("Mode8K4320p50", DeckLinkOutput::DisplayMode::Mode8K4320p50)
+        .value("Mode8K4320p5994", DeckLinkOutput::DisplayMode::Mode8K4320p5994)
+        .value("Mode8K4320p60", DeckLinkOutput::DisplayMode::Mode8K4320p60)
+
+        // 8K DCI
+        .value("Mode8kDCI2398", DeckLinkOutput::DisplayMode::Mode8kDCI2398)
+        .value("Mode8kDCI24", DeckLinkOutput::DisplayMode::Mode8kDCI24)
+        .value("Mode8kDCI25", DeckLinkOutput::DisplayMode::Mode8kDCI25)
+        .value("Mode8kDCI2997", DeckLinkOutput::DisplayMode::Mode8kDCI2997)
+        .value("Mode8kDCI30", DeckLinkOutput::DisplayMode::Mode8kDCI30)
+        .value("Mode8kDCI4795", DeckLinkOutput::DisplayMode::Mode8kDCI4795)
+        .value("Mode8kDCI48", DeckLinkOutput::DisplayMode::Mode8kDCI48)
+        .value("Mode8kDCI50", DeckLinkOutput::DisplayMode::Mode8kDCI50)
+        .value("Mode8kDCI5994", DeckLinkOutput::DisplayMode::Mode8kDCI5994)
+        .value("Mode8kDCI60", DeckLinkOutput::DisplayMode::Mode8kDCI60)
+
+        // PC Modes
+        .value("Mode640x480p60", DeckLinkOutput::DisplayMode::Mode640x480p60)
+        .value("Mode800x600p60", DeckLinkOutput::DisplayMode::Mode800x600p60)
+        .value("Mode1440x900p50", DeckLinkOutput::DisplayMode::Mode1440x900p50)
+        .value("Mode1440x900p60", DeckLinkOutput::DisplayMode::Mode1440x900p60)
+        .value("Mode1440x1080p50", DeckLinkOutput::DisplayMode::Mode1440x1080p50)
+        .value("Mode1440x1080p60", DeckLinkOutput::DisplayMode::Mode1440x1080p60)
+        .value("Mode1600x1200p50", DeckLinkOutput::DisplayMode::Mode1600x1200p50)
+        .value("Mode1600x1200p60", DeckLinkOutput::DisplayMode::Mode1600x1200p60)
+        .value("Mode1920x1200p50", DeckLinkOutput::DisplayMode::Mode1920x1200p50)
+        .value("Mode1920x1200p60", DeckLinkOutput::DisplayMode::Mode1920x1200p60)
+        .value("Mode1920x1440p50", DeckLinkOutput::DisplayMode::Mode1920x1440p50)
+        .value("Mode1920x1440p60", DeckLinkOutput::DisplayMode::Mode1920x1440p60)
+        .value("Mode2560x1440p50", DeckLinkOutput::DisplayMode::Mode2560x1440p50)
+        .value("Mode2560x1440p60", DeckLinkOutput::DisplayMode::Mode2560x1440p60)
+        .value("Mode2560x1600p50", DeckLinkOutput::DisplayMode::Mode2560x1600p50)
+        .value("Mode2560x1600p60", DeckLinkOutput::DisplayMode::Mode2560x1600p60);
 
     auto gamut_enum = py::enum_<DeckLinkOutput::Gamut>(m, "Gamut")
         .value("Rec709", DeckLinkOutput::Gamut::Rec709)

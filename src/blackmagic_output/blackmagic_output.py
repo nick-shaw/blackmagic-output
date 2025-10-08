@@ -40,12 +40,137 @@ class PixelFormat(Enum):
 
 class DisplayMode(Enum):
     """Supported display modes for DeckLink output"""
+    # SD Modes
+    NTSC = _decklink.DisplayMode.NTSC
+    NTSC2398 = _decklink.DisplayMode.NTSC2398
+    PAL = _decklink.DisplayMode.PAL
+    NTSCp = _decklink.DisplayMode.NTSCp
+    PALp = _decklink.DisplayMode.PALp
+
+    # HD 1080 Progressive
+    HD1080p2398 = _decklink.DisplayMode.HD1080p2398
+    HD1080p24 = _decklink.DisplayMode.HD1080p24
     HD1080p25 = _decklink.DisplayMode.HD1080p25
+    HD1080p2997 = _decklink.DisplayMode.HD1080p2997
     HD1080p30 = _decklink.DisplayMode.HD1080p30
+    HD1080p4795 = _decklink.DisplayMode.HD1080p4795
+    HD1080p48 = _decklink.DisplayMode.HD1080p48
     HD1080p50 = _decklink.DisplayMode.HD1080p50
+    HD1080p5994 = _decklink.DisplayMode.HD1080p5994
     HD1080p60 = _decklink.DisplayMode.HD1080p60
+    HD1080p9590 = _decklink.DisplayMode.HD1080p9590
+    HD1080p96 = _decklink.DisplayMode.HD1080p96
+    HD1080p100 = _decklink.DisplayMode.HD1080p100
+    HD1080p11988 = _decklink.DisplayMode.HD1080p11988
+    HD1080p120 = _decklink.DisplayMode.HD1080p120
+
+    # HD 1080 Interlaced
+    HD1080i50 = _decklink.DisplayMode.HD1080i50
+    HD1080i5994 = _decklink.DisplayMode.HD1080i5994
+    HD1080i60 = _decklink.DisplayMode.HD1080i60
+
+    # HD 720
     HD720p50 = _decklink.DisplayMode.HD720p50
+    HD720p5994 = _decklink.DisplayMode.HD720p5994
     HD720p60 = _decklink.DisplayMode.HD720p60
+
+    # 2K
+    Mode2k2398 = _decklink.DisplayMode.Mode2k2398
+    Mode2k24 = _decklink.DisplayMode.Mode2k24
+    Mode2k25 = _decklink.DisplayMode.Mode2k25
+
+    # 2K DCI
+    Mode2kDCI2398 = _decklink.DisplayMode.Mode2kDCI2398
+    Mode2kDCI24 = _decklink.DisplayMode.Mode2kDCI24
+    Mode2kDCI25 = _decklink.DisplayMode.Mode2kDCI25
+    Mode2kDCI2997 = _decklink.DisplayMode.Mode2kDCI2997
+    Mode2kDCI30 = _decklink.DisplayMode.Mode2kDCI30
+    Mode2kDCI4795 = _decklink.DisplayMode.Mode2kDCI4795
+    Mode2kDCI48 = _decklink.DisplayMode.Mode2kDCI48
+    Mode2kDCI50 = _decklink.DisplayMode.Mode2kDCI50
+    Mode2kDCI5994 = _decklink.DisplayMode.Mode2kDCI5994
+    Mode2kDCI60 = _decklink.DisplayMode.Mode2kDCI60
+    Mode2kDCI9590 = _decklink.DisplayMode.Mode2kDCI9590
+    Mode2kDCI96 = _decklink.DisplayMode.Mode2kDCI96
+    Mode2kDCI100 = _decklink.DisplayMode.Mode2kDCI100
+    Mode2kDCI11988 = _decklink.DisplayMode.Mode2kDCI11988
+    Mode2kDCI120 = _decklink.DisplayMode.Mode2kDCI120
+
+    # 4K UHD
+    Mode4K2160p2398 = _decklink.DisplayMode.Mode4K2160p2398
+    Mode4K2160p24 = _decklink.DisplayMode.Mode4K2160p24
+    Mode4K2160p25 = _decklink.DisplayMode.Mode4K2160p25
+    Mode4K2160p2997 = _decklink.DisplayMode.Mode4K2160p2997
+    Mode4K2160p30 = _decklink.DisplayMode.Mode4K2160p30
+    Mode4K2160p4795 = _decklink.DisplayMode.Mode4K2160p4795
+    Mode4K2160p48 = _decklink.DisplayMode.Mode4K2160p48
+    Mode4K2160p50 = _decklink.DisplayMode.Mode4K2160p50
+    Mode4K2160p5994 = _decklink.DisplayMode.Mode4K2160p5994
+    Mode4K2160p60 = _decklink.DisplayMode.Mode4K2160p60
+    Mode4K2160p9590 = _decklink.DisplayMode.Mode4K2160p9590
+    Mode4K2160p96 = _decklink.DisplayMode.Mode4K2160p96
+    Mode4K2160p100 = _decklink.DisplayMode.Mode4K2160p100
+    Mode4K2160p11988 = _decklink.DisplayMode.Mode4K2160p11988
+    Mode4K2160p120 = _decklink.DisplayMode.Mode4K2160p120
+
+    # 4K DCI
+    Mode4kDCI2398 = _decklink.DisplayMode.Mode4kDCI2398
+    Mode4kDCI24 = _decklink.DisplayMode.Mode4kDCI24
+    Mode4kDCI25 = _decklink.DisplayMode.Mode4kDCI25
+    Mode4kDCI2997 = _decklink.DisplayMode.Mode4kDCI2997
+    Mode4kDCI30 = _decklink.DisplayMode.Mode4kDCI30
+    Mode4kDCI4795 = _decklink.DisplayMode.Mode4kDCI4795
+    Mode4kDCI48 = _decklink.DisplayMode.Mode4kDCI48
+    Mode4kDCI50 = _decklink.DisplayMode.Mode4kDCI50
+    Mode4kDCI5994 = _decklink.DisplayMode.Mode4kDCI5994
+    Mode4kDCI60 = _decklink.DisplayMode.Mode4kDCI60
+    Mode4kDCI9590 = _decklink.DisplayMode.Mode4kDCI9590
+    Mode4kDCI96 = _decklink.DisplayMode.Mode4kDCI96
+    Mode4kDCI100 = _decklink.DisplayMode.Mode4kDCI100
+    Mode4kDCI11988 = _decklink.DisplayMode.Mode4kDCI11988
+    Mode4kDCI120 = _decklink.DisplayMode.Mode4kDCI120
+
+    # 8K UHD
+    Mode8K4320p2398 = _decklink.DisplayMode.Mode8K4320p2398
+    Mode8K4320p24 = _decklink.DisplayMode.Mode8K4320p24
+    Mode8K4320p25 = _decklink.DisplayMode.Mode8K4320p25
+    Mode8K4320p2997 = _decklink.DisplayMode.Mode8K4320p2997
+    Mode8K4320p30 = _decklink.DisplayMode.Mode8K4320p30
+    Mode8K4320p4795 = _decklink.DisplayMode.Mode8K4320p4795
+    Mode8K4320p48 = _decklink.DisplayMode.Mode8K4320p48
+    Mode8K4320p50 = _decklink.DisplayMode.Mode8K4320p50
+    Mode8K4320p5994 = _decklink.DisplayMode.Mode8K4320p5994
+    Mode8K4320p60 = _decklink.DisplayMode.Mode8K4320p60
+
+    # 8K DCI
+    Mode8kDCI2398 = _decklink.DisplayMode.Mode8kDCI2398
+    Mode8kDCI24 = _decklink.DisplayMode.Mode8kDCI24
+    Mode8kDCI25 = _decklink.DisplayMode.Mode8kDCI25
+    Mode8kDCI2997 = _decklink.DisplayMode.Mode8kDCI2997
+    Mode8kDCI30 = _decklink.DisplayMode.Mode8kDCI30
+    Mode8kDCI4795 = _decklink.DisplayMode.Mode8kDCI4795
+    Mode8kDCI48 = _decklink.DisplayMode.Mode8kDCI48
+    Mode8kDCI50 = _decklink.DisplayMode.Mode8kDCI50
+    Mode8kDCI5994 = _decklink.DisplayMode.Mode8kDCI5994
+    Mode8kDCI60 = _decklink.DisplayMode.Mode8kDCI60
+
+    # PC Modes
+    Mode640x480p60 = _decklink.DisplayMode.Mode640x480p60
+    Mode800x600p60 = _decklink.DisplayMode.Mode800x600p60
+    Mode1440x900p50 = _decklink.DisplayMode.Mode1440x900p50
+    Mode1440x900p60 = _decklink.DisplayMode.Mode1440x900p60
+    Mode1440x1080p50 = _decklink.DisplayMode.Mode1440x1080p50
+    Mode1440x1080p60 = _decklink.DisplayMode.Mode1440x1080p60
+    Mode1600x1200p50 = _decklink.DisplayMode.Mode1600x1200p50
+    Mode1600x1200p60 = _decklink.DisplayMode.Mode1600x1200p60
+    Mode1920x1200p50 = _decklink.DisplayMode.Mode1920x1200p50
+    Mode1920x1200p60 = _decklink.DisplayMode.Mode1920x1200p60
+    Mode1920x1440p50 = _decklink.DisplayMode.Mode1920x1440p50
+    Mode1920x1440p60 = _decklink.DisplayMode.Mode1920x1440p60
+    Mode2560x1440p50 = _decklink.DisplayMode.Mode2560x1440p50
+    Mode2560x1440p60 = _decklink.DisplayMode.Mode2560x1440p60
+    Mode2560x1600p50 = _decklink.DisplayMode.Mode2560x1600p50
+    Mode2560x1600p60 = _decklink.DisplayMode.Mode2560x1600p60
 
 
 class BlackmagicOutput:
