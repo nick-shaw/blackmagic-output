@@ -317,15 +317,17 @@ class BlackmagicOutput:
         
         return True
 
-    def display_solid_color(self, color: Tuple[int, int, int], 
+    def display_solid_color(self, color: Tuple,
                           display_mode: DisplayMode) -> bool:
         """
         Display a solid color frame continuously.
-        
+
         Args:
-            color: RGB color tuple (r, g, b) with values 0-255
+            color: RGB color tuple (r, g, b) with values:
+                   - 0-255 for int values (uint8)
+                   - 0.0-1.0 for float values (float32)
             display_mode: Video resolution and frame rate
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -337,11 +339,19 @@ class BlackmagicOutput:
             return False
 
         settings = self._current_settings
-        frame_data = _decklink.create_solid_color_frame(
-            settings.width, settings.height, color
-        )
-        
-        return self.display_static_frame(frame_data, display_mode, PixelFormat.BGRA)
+
+        # Check if color values are floats
+        if isinstance(color[0], float):
+            # Create frame as float32 (0.0-1.0 range)
+            frame_data = np.full((settings.height, settings.width, 3),
+                               color, dtype=np.float32)
+            return self.display_static_frame(frame_data, display_mode)
+        else:
+            # Use existing uint8 path
+            frame_data = _decklink.create_solid_color_frame(
+                settings.width, settings.height, color
+            )
+            return self.display_static_frame(frame_data, display_mode, PixelFormat.BGRA)
 
     def update_frame(self, frame_data: np.ndarray) -> bool:
         """

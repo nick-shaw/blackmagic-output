@@ -58,16 +58,16 @@ def example_static_frame():
 def example_solid_colors():
     """Example: Display different solid colors"""
     print("Example 2: Solid Color Output")
-    
+
     colors = [
-        (255, 0, 0),    # Red
-        (0, 255, 0),    # Green
-        (0, 0, 255),    # Blue
-        (255, 255, 0),  # Yellow
-        (255, 0, 255),  # Magenta
-        (0, 255, 255),  # Cyan
-        (255, 255, 255),# White
-        (0, 0, 0),      # Black
+        (1.0, 0.0, 0.0),  # Red
+        (0.0, 1.0, 0.0),  # Green
+        (0.0, 0.0, 1.0),  # Blue
+        (1.0, 1.0, 0.0),  # Yellow
+        (1.0, 0.0, 1.0),  # Magenta
+        (0.0, 1.0, 1.0),  # Cyan
+        (1.0, 1.0, 1.0),  # White
+        (0.0, 0.0, 0.0),  # Black
     ]
     
     with BlackmagicOutput() as output:
