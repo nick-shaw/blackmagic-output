@@ -12,7 +12,8 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 - **Solid Color Output**: Display solid colors for testing and calibration
 - **Dynamic Updates**: Update displayed frames in real-time
 - **Multiple Resolutions**: Support for HD and various display modes
-- **10-bit YCbCr Output**: 10-bit YCbCr 4:2:2 (v210) for high-quality output
+- **10-bit YCbCr Output**: 10-bit YCbCr 4:2:2 (v210) for high-quality output (default for uint16/float data)
+- **Automatic Format Detection**: Automatically uses optimal output format based on input data type
 - **HDR Support**: Rec.2020 colorimetry with PQ and HLG transfer functions
 - **Flexible Color Spaces**: Rec.709 and Rec.2020 matrix support
 - **RP188 Timecode**: Embedded VITC and LTC timecode with auto-increment
@@ -68,8 +69,10 @@ pip install -e .
 
 For examples and additional functionality:
 ```bash
-pip install pillow opencv-python  # For image loading and processing
+pip install imageio pillow  # For image loading with 16-bit TIFF support
 ```
+
+**Note:** While imageio/PIL can load 16-bit TIFF files correctly, 16-bit PNG files are often converted to 8-bit during loading due to PIL limitations. For reliable 16-bit workflows, use TIFF format.
 
 ## Quick Start
 
@@ -117,19 +120,19 @@ Initialize the specified DeckLink device.
 **`get_available_devices() -> List[str]`**
 Get list of available DeckLink device names.
 
-**`setup_output(display_mode, pixel_format=PixelFormat.BGRA) -> bool`**
+**`setup_output(display_mode, pixel_format=PixelFormat.YUV10) -> bool`**
 Setup video output parameters.
 - `display_mode`: Video resolution and frame rate
-- `pixel_format`: Pixel format (default: BGRA)
+- `pixel_format`: Pixel format (default: YUV10)
 - Returns: True if successful
 
-**`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.BGRA, matrix=None, hdr_metadata=None) -> bool`**
+**`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None) -> bool`**
 Display a static frame continuously.
 - `frame_data`: NumPy array with image data:
   - RGB: shape (height, width, 3), dtype uint8/uint16/float32
   - BGRA: shape (height, width, 4), dtype uint8
 - `display_mode`: Video resolution and frame rate
-- `pixel_format`: Pixel format (BGRA, YUV, or YUV10)
+- `pixel_format`: Pixel format (default: YUV10, automatically uses BGRA for uint8 data)
 - `matrix`: Optional RGB to Y'CbCr conversion matrix (`Matrix.Rec709` or `Matrix.Rec2020`). Only used with YUV10 format. Default: Rec709
 - `hdr_metadata`: Optional HDR metadata dict with keys:
   - `'eotf'`: Eotf enum (SDR, PQ, or HLG)
@@ -295,9 +298,9 @@ Create test patterns (from `blackmagic_output` module).
 - `HD720p60`: 1280×720 @ 60fps
 
 **`PixelFormat`**
-- `BGRA`: 8-bit BGRA (recommended for uint8 data)
+- `BGRA`: 8-bit BGRA (automatically used for uint8 data)
 - `YUV`: 8-bit YCbCr 4:2:2
-- `YUV10`: 10-bit YCbCr 4:2:2 (v210) - recommended for high-quality output with float/uint16 data
+- `YUV10`: 10-bit YCbCr 4:2:2 (v210) - default for uint16/float data, provides high-quality output
 
 **`Matrix`** (High-level API)
 - `Rec709`: ITU-R BT.709 RGB to Y'CbCr conversion matrix (standard HD)
@@ -388,16 +391,26 @@ with BlackmagicOutput() as output:
 ### Example 4: Load Image from File
 
 ```python
-from PIL import Image
+import imageio.v3 as iio
 import numpy as np
 from blackmagic_output import BlackmagicOutput, DisplayMode
 
-# Load and resize image
-with Image.open('your_image.jpg') as img:
-    img = img.convert('RGB').resize((1920, 1080))
+# Load image (preserves bit depth for 16-bit TIFFs, etc.)
+# Note: Use TIFF for reliable 16-bit support (PNGs may convert to 8-bit)
+frame = iio.imread('your_image.tif')
+
+# Resize if needed
+if frame.shape[0] != 1080 or frame.shape[1] != 1920:
+    from PIL import Image
+    img = Image.fromarray(frame)
+    img = img.resize((1920, 1080), Image.Resampling.LANCZOS)
     frame = np.array(img)
 
-# Display image
+# Remove alpha channel if present
+if frame.shape[2] == 4:
+    frame = frame[:, :, :3]
+
+# Display image (format auto-detected from dtype)
 with BlackmagicOutput() as output:
     output.initialize()
     output.display_static_frame(frame, DisplayMode.HD1080p25)
@@ -408,7 +421,7 @@ with BlackmagicOutput() as output:
 
 ```python
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
+from blackmagic_output import BlackmagicOutput, DisplayMode
 
 # Create float RGB image (0.0-1.0 range)
 # This could be from color grading, rendering, or HDR processing
@@ -423,10 +436,10 @@ for y in range(1080):
             0.5                 # Blue constant
         ]
 
-# Output as 10-bit YCbCr
+# Output as 10-bit YCbCr (automatically selected for float data)
 with BlackmagicOutput() as output:
     output.initialize()
-    output.display_static_frame(frame, DisplayMode.HD1080p25, PixelFormat.YUV10)
+    output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
 
@@ -434,7 +447,7 @@ with BlackmagicOutput() as output:
 
 ```python
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
+from blackmagic_output import BlackmagicOutput, DisplayMode
 
 # Create uint16 RGB image (0-65535 range)
 # Useful for 10-bit/12-bit/16-bit image processing pipelines
@@ -444,10 +457,10 @@ frame = np.zeros((1080, 1920, 3), dtype=np.uint16)
 for x in range(1920):
     frame[:, x, 0] = int(x / 1920 * 65535)  # Red gradient
 
-# Output as 10-bit YCbCr
+# Output as 10-bit YCbCr (automatically selected for uint16 data)
 with BlackmagicOutput() as output:
     output.initialize()
-    output.display_static_frame(frame, DisplayMode.HD1080p25, PixelFormat.YUV10)
+    output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
 
@@ -455,7 +468,7 @@ with BlackmagicOutput() as output:
 
 ```python
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat, Matrix, Eotf
+from blackmagic_output import BlackmagicOutput, DisplayMode, Matrix, Eotf
 
 # Create HDR content in normalised float (0.0-1.0 range)
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
@@ -474,10 +487,10 @@ with BlackmagicOutput() as output:
     output.initialize()
 
     # Single call with matrix and HDR metadata
+    # YUV10 automatically selected for float data
     output.display_static_frame(
         frame,
         DisplayMode.HD1080p25,
-        pixel_format=PixelFormat.YUV10,
         matrix=Matrix.Rec2020,           # Use Rec.2020 matrix
         hdr_metadata={'eotf': Eotf.HLG}  # HLG with default metadata
     )
@@ -521,7 +534,7 @@ output.cleanup()
 
 ```python
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat, Matrix, Eotf
+from blackmagic_output import BlackmagicOutput, DisplayMode, Matrix, Eotf
 
 # Create HDR10 content with PQ transfer function applied
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
@@ -535,10 +548,10 @@ with BlackmagicOutput() as output:
     output.initialize()
 
     # Single call with Rec.2020 matrix and PQ metadata
+    # YUV10 automatically selected for float data
     output.display_static_frame(
         frame,
         DisplayMode.HD1080p25,
-        pixel_format=PixelFormat.YUV10,
         matrix=Matrix.Rec2020,
         hdr_metadata={'eotf': Eotf.PQ}
     )

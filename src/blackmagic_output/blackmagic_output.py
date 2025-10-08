@@ -91,15 +91,15 @@ class BlackmagicOutput:
         """
         return self._device.get_device_list()
 
-    def setup_output(self, display_mode: DisplayMode, 
-                    pixel_format: PixelFormat = PixelFormat.BGRA) -> bool:
+    def setup_output(self, display_mode: DisplayMode,
+                    pixel_format: PixelFormat = PixelFormat.YUV10) -> bool:
         """
         Setup video output parameters.
-        
+
         Args:
             display_mode: Video resolution and frame rate
-            pixel_format: Pixel format (default: BGRA)
-            
+            pixel_format: Pixel format (default: YUV10)
+
         Returns:
             True if setup successful, False otherwise
         """
@@ -116,7 +116,7 @@ class BlackmagicOutput:
 
     def display_static_frame(self, frame_data: np.ndarray,
                            display_mode: DisplayMode,
-                           pixel_format: PixelFormat = PixelFormat.BGRA,
+                           pixel_format: PixelFormat = PixelFormat.YUV10,
                            matrix: Optional[Matrix] = None,
                            hdr_metadata: Optional[dict] = None) -> bool:
         """
@@ -127,7 +127,7 @@ class BlackmagicOutput:
                        - For RGB: shape should be (height, width, 3)
                        - For BGRA: shape should be (height, width, 4)
             display_mode: Video resolution and frame rate
-            pixel_format: Pixel format (default: BGRA)
+            pixel_format: Pixel format (default: YUV10, auto-detected as BGRA for uint8 data)
             matrix: RGB to Y'CbCr conversion matrix (Rec709 or Rec2020).
                    Only applies when pixel_format is YUV10. Default: Rec709
             hdr_metadata: Optional HDR metadata dict with keys:
@@ -141,6 +141,11 @@ class BlackmagicOutput:
         if not self._initialized:
             if not self.initialize():
                 return False
+
+        # Auto-detect pixel format based on dtype if using default YUV10
+        # uint8 data should use 8-bit BGRA output, not 10-bit YUV
+        if pixel_format == PixelFormat.YUV10 and frame_data.dtype == np.uint8:
+            pixel_format = PixelFormat.BGRA
 
         # Set default matrix if not provided
         if matrix is None:

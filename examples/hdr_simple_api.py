@@ -33,10 +33,10 @@ def main():
     print("Displaying HDR PQ frame with Rec.2020 matrix...")
 
     # Simple API: matrix and HDR metadata in one call
+    # pixel_format defaults to YUV10 for float32 data
     success = output.display_static_frame(
         frame,
         bmo.DisplayMode.HD1080p25,
-        pixel_format=bmo.PixelFormat.YUV10,
         matrix=bmo.Matrix.Rec2020,           # Use Rec.2020 matrix for conversion
         hdr_metadata={'eotf': bmo.Eotf.PQ}   # HDR PQ with default metadata
     )
@@ -87,10 +87,10 @@ def example_with_custom_metadata():
     custom.max_frame_average_light_level = 400.0
 
     # Display with custom metadata
+    # pixel_format defaults to YUV10 for float32 data
     success = output.display_static_frame(
         frame,
         bmo.DisplayMode.HD1080p25,
-        pixel_format=bmo.PixelFormat.YUV10,
         matrix=bmo.Matrix.Rec2020,
         hdr_metadata={
             'eotf': bmo.Eotf.PQ,

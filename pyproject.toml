@@ -38,7 +38,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-examples = ["opencv-python", "pillow>=8.0.0"]
+examples = ["imageio>=2.0.0", "pillow>=8.0.0"]
 dev = ["pytest", "black", "mypy"]
 
 [project.urls]

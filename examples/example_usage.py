@@ -174,45 +174,59 @@ def example_dynamic_updates():
 def example_from_image_file():
     """Example: Load and display image from file"""
     print("Example 5: Display Image from File")
-    
+
     try:
-        from PIL import Image
-        import os
-        
-        # Try to find an image file in current directory
-        image_files = [f for f in os.listdir('.') if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))]
-        
-        if not image_files:
-            print("No image files found in current directory")
-            print("Please place a PNG, JPG, or BMP file in the current directory")
-            return
-        
-        image_path = image_files[0]
-        print(f"Loading image: {image_path}")
-        
-        # Load and resize image
-        with Image.open(image_path) as img:
-            img = img.convert('RGB')  # Ensure RGB format
-            img = img.resize((1920, 1080))  # Resize to HD
-            frame = np.array(img)
-        
-        # Display the image
-        with BlackmagicOutput() as output:
-            if output.initialize():
-                if output.display_static_frame(frame, DisplayMode.HD1080p25):
-                    print(f"Displaying {image_path}. Press Ctrl+C to stop...")
-                    try:
-                        while True:
-                            time.sleep(1)
-                    except KeyboardInterrupt:
-                        print("\nStopping display...")
-                else:
-                    print("Failed to display image")
-            else:
-                print("Failed to initialize device")
-                
+        import imageio.v3 as iio
     except ImportError:
-        print("PIL (Pillow) not available. Install with: pip install pillow")
+        print("imageio not available. Install with: pip install imageio")
+        return
+
+    import os
+
+    # Try to find an image file in current directory
+    # Note: 16-bit PNGs may be converted to 8-bit by PIL/imageio
+    # Use TIFF for reliable 16-bit support
+    image_files = [f for f in os.listdir('.') if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff', '.exr'))]
+
+    if not image_files:
+        print("No image files found in current directory")
+        print("Please place a PNG, JPG, BMP, TIFF, or EXR file in the current directory")
+        return
+
+    image_path = image_files[0]
+    print(f"Loading image: {image_path}")
+
+    # Load image (preserves bit depth)
+    frame = iio.imread(image_path)
+    print(f"Loaded image: dtype={frame.dtype}, shape={frame.shape}")
+
+    # Resize if needed using PIL (preserves dtype via imageio)
+    if frame.shape[0] != 1080 or frame.shape[1] != 1920:
+        from PIL import Image
+        img = Image.fromarray(frame)
+        img = img.resize((1920, 1080), Image.Resampling.LANCZOS)
+        frame = np.array(img)
+        print(f"Resized to 1920x1080")
+
+    # Ensure RGB format (remove alpha if present)
+    if frame.ndim == 3 and frame.shape[2] == 4:
+        frame = frame[:, :, :3]  # Drop alpha channel
+        print("Removed alpha channel")
+
+    # Display the image (format auto-detected based on dtype)
+    with BlackmagicOutput() as output:
+        if output.initialize():
+            if output.display_static_frame(frame, DisplayMode.HD1080p25):
+                print(f"Displaying {image_path} ({frame.dtype}). Press Ctrl+C to stop...")
+                try:
+                    while True:
+                        time.sleep(1)
+                except KeyboardInterrupt:
+                    print("\nStopping display...")
+            else:
+                print("Failed to display image")
+        else:
+            print("Failed to initialize device")
 
 def main():
     """Main function to run examples"""
