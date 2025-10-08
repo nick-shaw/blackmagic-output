@@ -11,7 +11,7 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 - **Static Frame Output**: Display static images from NumPy arrays
 - **Solid Color Output**: Display solid colors for testing and calibration
 - **Dynamic Updates**: Update displayed frames in real-time
-- **Multiple Resolutions**: Support for HD and various display modes
+- **Multiple Resolutions**: Support for all display modes supported by your DeckLink device (SD, HD, 2K, 4K, 8K, and PC modes)
 - **10-bit YCbCr Output**: 10-bit YCbCr 4:2:2 (v210) for high-quality output (default for uint16/float data)
 - **Automatic Format Detection**: Automatically uses optimal output format based on input data type
 - **HDR Support**: Rec.2020 colorimetry with PQ and HLG transfer functions
@@ -290,12 +290,49 @@ Create test patterns (from `blackmagic_output` module).
 ### Enums
 
 **`DisplayMode`**
+
+The library supports all display modes available on your DeckLink device. Display mode settings (resolution, framerate) are queried dynamically from the hardware. Common examples include:
 - `HD1080p25`: 1920×1080 @ 25fps
-- `HD1080p30`: 1920×1080 @ 30fps  
+- `HD1080p30`: 1920×1080 @ 30fps
 - `HD1080p50`: 1920×1080 @ 50fps
 - `HD1080p60`: 1920×1080 @ 60fps
 - `HD720p50`: 1280×720 @ 50fps
 - `HD720p60`: 1280×720 @ 60fps
+
+Additional modes are available including SD (NTSC, PAL), 2K, 4K, 8K, and PC display modes. The complete list of DisplayMode values can be found in `src/blackmagic_output/blackmagic_output.py`.
+
+**Querying Available Display Modes:**
+
+To determine which display modes your specific DeckLink device supports, use the `get_display_mode_info()` method to test each mode:
+
+```python
+from blackmagic_output import BlackmagicOutput, DisplayMode
+
+with BlackmagicOutput() as output:
+    output.initialize()
+
+    # Test a specific display mode
+    try:
+        info = output.get_display_mode_info(DisplayMode.Mode4K2160p25)
+        print(f"4K 25p: {info['width']}x{info['height']} @ {info['framerate']}fps")
+    except Exception as e:
+        print(f"Mode not supported: {e}")
+
+    # Or iterate through modes you're interested in
+    test_modes = [
+        DisplayMode.HD1080p25,
+        DisplayMode.HD1080p50,
+        DisplayMode.Mode4K2160p25,
+        DisplayMode.Mode4K2160p50
+    ]
+
+    for mode in test_modes:
+        try:
+            info = output.get_display_mode_info(mode)
+            print(f"{mode.name}: {info['width']}x{info['height']} @ {info['framerate']}fps")
+        except:
+            print(f"{mode.name}: Not supported")
+```
 
 **`PixelFormat`**
 - `BGRA`: 8-bit BGRA (automatically used for uint8 data)
