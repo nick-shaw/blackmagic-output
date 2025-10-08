@@ -4,13 +4,15 @@ A Python library for outputting video frames to Blackmagic DeckLink devices usin
 
 Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](https://www.claude.com/product/claude-code)!
 
+**⚠️ Note:** The library has only had minimal testing at this time. Please report any issues you encounter.
+
 ## Features
 
 - **Static Frame Output**: Display static images from NumPy arrays
 - **Solid Color Output**: Display solid colors for testing and calibration
 - **Dynamic Updates**: Update displayed frames in real-time
 - **Multiple Resolutions**: Support for HD and various display modes
-- **10-bit YUV Output**: Professional 10-bit YUV 4:2:2 (v210) for high-quality output
+- **10-bit YCbCr Output**: 10-bit YCbCr 4:2:2 (v210) for high-quality output
 - **HDR Support**: Rec.2020 colorimetry with PQ and HLG transfer functions
 - **Flexible Color Spaces**: Rec.709 and Rec.2020 matrix support
 - **RP188 Timecode**: Embedded VITC and LTC timecode with auto-increment
@@ -28,7 +30,7 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 ### Software Dependencies
 - NumPy >= 1.19.0
 - pybind11 >= 2.6.0
-- Blackmagic DeckLink SDK (v14.1 headers included - see License section below)
+- Blackmagic DeckLink SDK (v14.1 headers included - see below)
 
 ## Installation
 
@@ -261,13 +263,13 @@ Convert RGB to BGRA format.
 - Returns: BGRA array (H×W×4), dtype uint8
 
 **`rgb_uint16_to_yuv10(rgb_array, width, height, matrix=Matrix.Rec709) -> np.ndarray`**
-Convert RGB uint16 to 10-bit YUV v210 format.
+Convert RGB uint16 to 10-bit YCbCr v210 format.
 - `rgb_array`: NumPy array (H×W×3), dtype uint16 (0-65535 range)
 - `matrix`: RGB to Y'CbCr conversion matrix (Matrix.Rec709 or Matrix.Rec2020)
 - Returns: Packed v210 array
 
 **`rgb_float_to_yuv10(rgb_array, width, height, matrix=Matrix.Rec709) -> np.ndarray`**
-Convert RGB float to 10-bit YUV v210 format.
+Convert RGB float to 10-bit YCbCr v210 format.
 - `rgb_array`: NumPy array (H×W×3), dtype float32 (0.0-1.0 range)
 - `matrix`: RGB to Y'CbCr conversion matrix (Matrix.Rec709 or Matrix.Rec2020)
 - Returns: Packed v210 array
@@ -294,8 +296,8 @@ Create test patterns (from `blackmagic_output` module).
 
 **`PixelFormat`**
 - `BGRA`: 8-bit BGRA (recommended for uint8 data)
-- `YUV`: 8-bit YUV 4:2:2
-- `YUV10`: 10-bit YUV 4:2:2 (v210) - recommended for high-quality output with float/uint16 data
+- `YUV`: 8-bit YCbCr 4:2:2
+- `YUV10`: 10-bit YCbCr 4:2:2 (v210) - recommended for high-quality output with float/uint16 data
 
 **`Matrix`** (High-level API)
 - `Rec709`: ITU-R BT.709 RGB to Y'CbCr conversion matrix (standard HD)
@@ -306,7 +308,7 @@ Create test patterns (from `blackmagic_output` module).
 - `Rec2020`: ITU-R BT.2020 colorimetry (wide color gamut for HDR)
 
 **`Eotf`**
-- `SDR`: Standard Dynamic Range (Rec.709 transfer function)
+- `SDR`: Standard Dynamic Range (BT.1886 transfer function)
 - `PQ`: Perceptual Quantizer (SMPTE ST 2084, HDR10)
 - `HLG`: Hybrid Log-Gamma (HDR broadcast standard)
 
@@ -402,7 +404,7 @@ with BlackmagicOutput() as output:
     input("Press Enter to stop...")
 ```
 
-### Example 5: 10-bit YUV Output with Float Data
+### Example 5: 10-bit YCbCr Output with Float Data
 
 ```python
 import numpy as np
@@ -421,14 +423,14 @@ for y in range(1080):
             0.5                 # Blue constant
         ]
 
-# Output as 10-bit YUV for maximum quality
+# Output as 10-bit YCbCr
 with BlackmagicOutput() as output:
     output.initialize()
     output.display_static_frame(frame, DisplayMode.HD1080p25, PixelFormat.YUV10)
     input("Press Enter to stop...")
 ```
 
-### Example 6: 10-bit YUV with uint16 Data
+### Example 6: 10-bit YCbCr with uint16 Data
 
 ```python
 import numpy as np
@@ -442,7 +444,7 @@ frame = np.zeros((1080, 1920, 3), dtype=np.uint16)
 for x in range(1920):
     frame[:, x, 0] = int(x / 1920 * 65535)  # Red gradient
 
-# Output as 10-bit YUV
+# Output as 10-bit YCbCr
 with BlackmagicOutput() as output:
     output.initialize()
     output.display_static_frame(frame, DisplayMode.HD1080p25, PixelFormat.YUV10)
@@ -505,7 +507,7 @@ settings = output.get_video_settings(dl.DisplayMode.HD1080p25)
 settings.format = dl.PixelFormat.YUV10
 output.setup_output(settings)
 
-# Convert RGB to YUV using Rec.2020 matrix
+# Convert RGB to YCbCr using Rec.2020 matrix
 yuv_data = dl.rgb_float_to_yuv10(frame, 1920, 1080, dl.Matrix.Rec2020)
 output.set_frame_data(yuv_data)
 
@@ -567,7 +569,7 @@ settings = output.get_video_settings(dl.DisplayMode.HD1080p25)
 settings.format = dl.PixelFormat.YUV10
 output.setup_output(settings)
 
-# Convert to YUV with Rec.2020 matrix
+# Convert to YCbCr with Rec.2020 matrix
 yuv_data = dl.rgb_float_to_yuv10(frame, 1920, 1080, dl.Gamut.Rec2020)
 output.set_frame_data(yuv_data)
 
@@ -717,7 +719,7 @@ All 14 CEA-861.3/ITU-R BT.2100 HDR static metadata fields are supported:
 1. **Simplified API**: With `display_static_frame()`, HDR metadata and matrix are set in a single call
 2. **Low-level API call order**: When using the low-level API, `set_hdr_metadata()` must be called before `setup_output()`
 3. **Frame-level metadata**: Metadata is embedded in every video frame, not set globally
-4. **Matrix consistency**: When using the simplified API, the same `matrix` parameter is used for both metadata and RGB→YUV conversion. With the low-level API, ensure consistency between `set_hdr_metadata()` and conversion functions.
+4. **Matrix consistency**: When using the simplified API, the same `matrix` parameter is used for both metadata and RGB→YCbCr conversion. With the low-level API, ensure consistency between `set_hdr_metadata()` and conversion functions.
 5. **Transfer function**: The library only sets the metadata - you must apply the actual transfer function (PQ/HLG curve) to your RGB data before conversion
 6. **All 14 metadata fields supported**: The library implements all CEA-861.3/ITU-R BT.2100 HDR metadata fields including display primaries, white point, mastering display luminance, and content light levels
 
@@ -872,7 +874,7 @@ See `timecode_test.py` for a complete working example that outputs SMPTE color b
 - Ensure frame data has appropriate transfer function applied before conversion
 - For PQ: Apply SMPTE ST 2084 curve to linear RGB before conversion
 - For HLG: Apply ITU-R BT.2100 HLG curve before conversion
-- Ensure matrix consistency: same value in both metadata and RGB→YUV conversion
+- Ensure matrix consistency: same value in both metadata and RGB→YCbCr conversion
 
 ### Testing Your Installation
 
