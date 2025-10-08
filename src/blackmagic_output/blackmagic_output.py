@@ -485,50 +485,50 @@ class BlackmagicOutput:
 def create_test_pattern(width: int, height: int, pattern: str = 'gradient') -> np.ndarray:
     """
     Create test patterns for display.
-    
+
     Args:
         width: Frame width
         height: Frame height
         pattern: Pattern type ('gradient', 'bars', 'checkerboard')
-        
+
     Returns:
-        RGB frame data as NumPy array
+        RGB frame data as NumPy array (uint16, 0-65535 range)
     """
-    frame = np.zeros((height, width, 3), dtype=np.uint8)
-    
+    frame = np.zeros((height, width, 3), dtype=np.uint16)
+
     if pattern == 'gradient':
         for y in range(height):
             for x in range(width):
                 frame[y, x] = [
-                    int(255 * x / width),      # Red gradient
-                    int(255 * y / height),     # Green gradient
-                    128                        # Blue constant
+                    int(65535 * x / width),      # Red gradient
+                    int(65535 * y / height),     # Green gradient
+                    32768                        # Blue constant
                 ]
-    
+
     elif pattern == 'bars':
         bar_width = width // 8
         colors = [
-            [255, 255, 255],  # White
-            [255, 255, 0],    # Yellow
-            [0, 255, 255],    # Cyan
-            [0, 255, 0],      # Green
-            [255, 0, 255],    # Magenta
-            [255, 0, 0],      # Red
-            [0, 0, 255],      # Blue
-            [0, 0, 0]         # Black
+            [65535, 65535, 65535],  # White
+            [65535, 65535, 0],      # Yellow
+            [0, 65535, 65535],      # Cyan
+            [0, 65535, 0],          # Green
+            [65535, 0, 65535],      # Magenta
+            [65535, 0, 0],          # Red
+            [0, 0, 65535],          # Blue
+            [0, 0, 0]               # Black
         ]
-        
+
         for x in range(width):
             color_idx = min(x // bar_width, 7)
             frame[:, x] = colors[color_idx]
-    
+
     elif pattern == 'checkerboard':
         checker_size = 32
         for y in range(height):
             for x in range(width):
                 if ((x // checker_size) + (y // checker_size)) % 2:
-                    frame[y, x] = [255, 255, 255]  # White
+                    frame[y, x] = [65535, 65535, 65535]  # White
                 else:
-                    frame[y, x] = [0, 0, 0]        # Black
-    
+                    frame[y, x] = [0, 0, 0]              # Black
+
     return frame
