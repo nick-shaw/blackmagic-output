@@ -37,6 +37,7 @@ class PixelFormat(Enum):
     BGRA = _decklink.PixelFormat.BGRA
     YUV10 = _decklink.PixelFormat.YUV10
     RGB10 = _decklink.PixelFormat.RGB10
+    RGB12 = _decklink.PixelFormat.RGB12
 
 
 class DisplayMode(Enum):
@@ -480,6 +481,19 @@ class BlackmagicOutput:
             else:
                 raise ValueError("For RGB10 format, frame data must be uint16 or float dtype")
 
+        elif pixel_format == PixelFormat.RGB12:
+            if frame_data.ndim != 3 or frame_data.shape[2] != 3:
+                raise ValueError("For RGB12 format, frame data must be HxWx3 (RGB)")
+
+            if frame_data.dtype == np.uint16:
+                # RGB uint16 to 12-bit RGB conversion (bit-shift)
+                return _decklink.rgb_uint16_to_rgb12(frame_data, settings.width, settings.height)
+            elif frame_data.dtype in (np.float32, np.float64):
+                # RGB float to 12-bit RGB conversion (full range only)
+                return _decklink.rgb_float_to_rgb12(frame_data.astype(np.float32), settings.width, settings.height)
+            else:
+                raise ValueError("For RGB12 format, frame data must be uint16 or float dtype")
+
         elif pixel_format == PixelFormat.YUV:
             if frame_data.dtype != np.uint8:
                 frame_data = frame_data.astype(np.uint8)
@@ -494,10 +508,10 @@ class BlackmagicOutput:
     def get_display_mode_info(self, display_mode: DisplayMode) -> dict:
         """
         Get information about a display mode.
-        
+
         Args:
             display_mode: Display mode to query
-            
+
         Returns:
             Dictionary with width, height, and framerate information
         """
@@ -506,6 +520,29 @@ class BlackmagicOutput:
             'width': settings.width,
             'height': settings.height,
             'framerate': settings.framerate
+        }
+
+    def get_current_output_info(self) -> dict:
+        """
+        Get information about the current output configuration.
+
+        Returns:
+            Dictionary with current output settings including:
+            - display_mode_name: Human-readable display mode name
+            - pixel_format_name: Human-readable pixel format name
+            - width: Frame width
+            - height: Frame height
+            - framerate: Frame rate
+            - rgb444_mode_enabled: Whether RGB 4:4:4 mode is enabled
+        """
+        info = self._device.get_current_output_info()
+        return {
+            'display_mode_name': info.display_mode_name,
+            'pixel_format_name': info.pixel_format_name,
+            'width': info.width,
+            'height': info.height,
+            'framerate': info.framerate,
+            'rgb444_mode_enabled': info.rgb444_mode_enabled
         }
 
     def __enter__(self):

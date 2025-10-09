@@ -106,9 +106,9 @@ bool DeckLinkOutput::setupOutput(const VideoSettings& settings)
         return false;
     }
 
-    // Configure RGB 4:4:4 mode if using RGB10 format
+    // Configure RGB 4:4:4 mode if using RGB formats
     if (m_deckLinkConfiguration) {
-        if (settings.format == PixelFormat::Format10BitRGB) {
+        if (settings.format == PixelFormat::Format10BitRGB || settings.format == PixelFormat::Format12BitRGB) {
             if (m_deckLinkConfiguration->SetFlag(bmdDeckLinkConfig444SDIVideoOutput, true) != S_OK) {
                 std::cerr << "Warning: Could not set RGB 4:4:4 mode" << std::endl;
             }
@@ -155,6 +155,10 @@ bool DeckLinkOutput::setupOutput(const VideoSettings& settings)
             // bmdFormat10BitRGBXLE: 4 bytes per pixel
             frameSize = settings.width * settings.height * 4;
             break;
+        case PixelFormat::Format12BitRGB:
+            // bmdFormat12BitRGBLE: 36 bits per pixel, 8 pixels in 36 bytes
+            frameSize = ((settings.width + 7) / 8) * 36 * settings.height;
+            break;
         case PixelFormat::Format8BitYUV:
         default:
             frameSize = settings.width * settings.height * 2;
@@ -195,6 +199,10 @@ bool DeckLinkOutput::createFrame(IDeckLinkMutableVideoFrame** frame)
         case PixelFormat::Format10BitRGB:
             // bmdFormat10BitRGBXLE: 4 bytes per pixel
             rowBytes = m_currentSettings.width * 4;
+            break;
+        case PixelFormat::Format12BitRGB:
+            // bmdFormat12BitRGBLE: 36 bits per pixel, 8 pixels in 36 bytes
+            rowBytes = ((m_currentSettings.width + 7) / 8) * 36;
             break;
         case PixelFormat::Format8BitYUV:
         default:
@@ -698,4 +706,76 @@ void DeckLinkOutput::incrementTimecode(Timecode& tc, double framerate)
     if (tc.hours >= 24) {
         tc.hours = 0;
     }
+}
+
+DeckLinkOutput::OutputInfo DeckLinkOutput::getCurrentOutputInfo()
+{
+    OutputInfo info;
+
+    info.displayMode = m_currentSettings.mode;
+    info.pixelFormat = m_currentSettings.format;
+    info.width = m_currentSettings.width;
+    info.height = m_currentSettings.height;
+    info.framerate = m_currentSettings.framerate;
+    info.rgb444ModeEnabled = false;
+
+    // Query RGB 4:4:4 mode status
+    if (m_deckLinkConfiguration) {
+        bool flagValue = false;
+        if (m_deckLinkConfiguration->GetFlag(bmdDeckLinkConfig444SDIVideoOutput, &flagValue) == S_OK) {
+            info.rgb444ModeEnabled = flagValue;
+        }
+    }
+
+    // Get display mode name
+    BMDDisplayMode bmdMode = static_cast<BMDDisplayMode>(m_currentSettings.mode);
+    // Get a human-readable name from the display mode
+    IDeckLinkDisplayModeIterator* displayModeIterator = nullptr;
+    if (m_deckLinkOutput && m_deckLinkOutput->GetDisplayModeIterator(&displayModeIterator) == S_OK) {
+        IDeckLinkDisplayMode* displayMode = nullptr;
+        while (displayModeIterator->Next(&displayMode) == S_OK) {
+            if (displayMode->GetDisplayMode() == bmdMode) {
+                CFStringRef modeName;
+                if (displayMode->GetName(&modeName) == S_OK) {
+                    char buffer[256];
+                    CFStringGetCString(modeName, buffer, sizeof(buffer), kCFStringEncodingUTF8);
+                    info.displayModeName = buffer;
+                    CFRelease(modeName);
+                }
+                displayMode->Release();
+                break;
+            }
+            displayMode->Release();
+        }
+        displayModeIterator->Release();
+    }
+
+    if (info.displayModeName.empty()) {
+        info.displayModeName = "Unknown mode";
+    }
+
+    // Get pixel format name
+    BMDPixelFormat bmdFormat = static_cast<BMDPixelFormat>(m_currentSettings.format);
+    switch (bmdFormat) {
+        case bmdFormat8BitYUV:
+            info.pixelFormatName = "8-bit YUV (2vuy)";
+            break;
+        case bmdFormat8BitBGRA:
+            info.pixelFormatName = "8-bit BGRA";
+            break;
+        case bmdFormat10BitYUV:
+            info.pixelFormatName = "10-bit YUV (v210)";
+            break;
+        case bmdFormat10BitRGBXLE:
+            info.pixelFormatName = "10-bit RGB LE (R10l)";
+            break;
+        case bmdFormat12BitRGBLE:
+            info.pixelFormatName = "12-bit RGB LE (R12L)";
+            break;
+        default:
+            info.pixelFormatName = "Unknown format";
+            break;
+    }
+
+    return info;
 }

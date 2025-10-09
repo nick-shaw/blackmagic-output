@@ -137,7 +137,7 @@ Display a static frame continuously.
 - `hdr_metadata`: Optional HDR metadata dict with keys:
   - `'eotf'`: Eotf enum (SDR, PQ, or HLG)
   - `'custom'`: Optional HdrMetadataCustom object for custom metadata values
-- `video_range`: For RGB10 float inputs only, whether to use video range (64-940) or full range (0-1023). Default: True (video range). Note: Does not apply to YUV10, which always uses video range. uint16 inputs are bit-shifted and ignore this parameter.
+- `video_range`: For RGB10 float inputs only, whether to use video range (64-940) or full range (0-1023). Default: True (video range). Note: Does not apply to YUV10 (always video range) or RGB12 (always full range). uint16 inputs are bit-shifted and ignore this parameter.
 - Returns: True if successful
 
 **`display_solid_color(color, display_mode) -> bool`**
@@ -154,6 +154,10 @@ Update currently displayed frame with new data.
 **`get_display_mode_info(display_mode) -> dict`**
 Get information about a display mode.
 - Returns: Dictionary with 'width', 'height', 'framerate'
+
+**`get_current_output_info() -> dict`**
+Get information about the current output configuration.
+- Returns: Dictionary with 'display_mode_name', 'pixel_format_name', 'width', 'height', 'framerate', 'rgb444_mode_enabled'
 
 **`stop(send_black_frame=False) -> bool`**
 Stop video output.
@@ -362,6 +366,9 @@ with BlackmagicOutput() as output:
   - float input: Configurable range via `video_range` parameter
     - `video_range=True` (default): 0.0-1.0 maps to 64-940 (video range)
     - `video_range=False`: 0.0-1.0 maps to 0-1023 (full range)
+- `RGB12`: 12-bit RGB (bmdFormat12BitRGBLE) - native RGB output with 12-bit precision
+  - uint16 input: Bit-shifted from 16-bit to 12-bit (>> 4)
+  - float input: Full range only - 0.0-1.0 maps to 0-4095
 
 **`Matrix`** (High-level API)
 - `Rec709`: ITU-R BT.709 RGB to Y'CbCr conversion matrix (standard HD)
