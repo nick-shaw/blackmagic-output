@@ -18,7 +18,9 @@ public:
     enum class PixelFormat {
         Format8BitYUV = bmdFormat8BitYUV,
         Format8BitBGRA = bmdFormat8BitBGRA,
-        Format10BitYUV = bmdFormat10BitYUV
+        Format10BitYUV = bmdFormat10BitYUV,
+        Format10BitRGB = bmdFormat10BitRGBXLE,  // Little-endian 10-bit RGB
+        Format12BitRGB = bmdFormat12BitRGBLE    // Little-endian 12-bit RGB
     };
 
     enum class DisplayMode {
@@ -217,11 +219,24 @@ public:
     void setTimecode(const Timecode& tc);
     Timecode getTimecode();
 
+    struct OutputInfo {
+        DisplayMode displayMode;
+        PixelFormat pixelFormat;
+        int width;
+        int height;
+        double framerate;
+        bool rgb444ModeEnabled;
+        std::string displayModeName;
+        std::string pixelFormatName;
+    };
+    OutputInfo getCurrentOutputInfo();
+
 private:
     class OutputCallback;
 
     IDeckLink* m_deckLink;
     IDeckLinkOutput* m_deckLinkOutput;
+    IDeckLinkConfiguration* m_deckLinkConfiguration;
     IDeckLinkDisplayModeIterator* m_displayModeIterator;
     std::unique_ptr<OutputCallback> m_outputCallback;
 
