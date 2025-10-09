@@ -12,7 +12,8 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 - **Solid Color Output**: Display solid colors for testing and calibration
 - **Dynamic Updates**: Update displayed frames in real-time
 - **Multiple Resolutions**: Support for all display modes supported by your DeckLink device (SD, HD, 2K, 4K, 8K, and PC modes)
-- **10-bit YCbCr Output**: 10-bit YCbCr 4:2:2 (v210) for high-quality output (default for uint16/float data)
+- **10-bit Y'CbCr Output**: 10-bit Y'CbCr 4:2:2 (v210) (default for uint16/float data)
+- **10 and 12-bit R'G'B' output**: 10 and 12-bit R'G'B' 4:4:4
 - **Automatic Format Detection**: Automatically uses optimal output format based on input data type
 - **HDR Support**: Rec.2020 colorimetry with PQ and HLG transfer functions
 - **Flexible Color Spaces**: Rec.709 and Rec.2020 matrix support
@@ -80,7 +81,7 @@ pip install imageio pillow  # For image loading with 16-bit TIFF support
 import numpy as np
 from blackmagic_output import BlackmagicOutput, DisplayMode
 
-# Create a simple test image (1080p RGB)
+# Create a simple test image (1080p R'G'B')
 frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
 frame[:, :] = [255, 0, 0]  # Red frame
 
@@ -133,7 +134,7 @@ Display a static frame continuously.
   - BGRA: shape (height, width, 4), dtype uint8
 - `display_mode`: Video resolution and frame rate
 - `pixel_format`: Pixel format (default: YUV10, automatically uses BGRA for uint8 data)
-- `matrix`: Optional RGB to Y'CbCr conversion matrix (`Matrix.Rec709` or `Matrix.Rec2020`). Only used with YUV10 format. Default: Rec709
+- `matrix`: Optional R'G'B' to Y'CbCr conversion matrix (`Matrix.Rec709` or `Matrix.Rec2020`). Only used with YUV10 format. Default: Rec709
 - `hdr_metadata`: Optional HDR metadata dict with keys:
   - `'eotf'`: Eotf enum (SDR, PQ, or HLG)
   - `'custom'`: Optional HdrMetadataCustom object for custom metadata values
@@ -142,7 +143,7 @@ Display a static frame continuously.
 
 **`display_solid_color(color, display_mode) -> bool`**
 Display a solid color.
-- `color`: RGB tuple (r, g, b) with values 0-255 or 0.0-1.0
+- `color`: R'G'B' tuple (r, g, b) with values 0-255 or 0.0-1.0
 - `display_mode`: Video resolution and frame rate
 - Returns: True if successful
 
@@ -185,7 +186,7 @@ Create test patterns for display testing and calibration.
 - `pattern`: Pattern type - `'gradient'`, `'bars'`, or `'checkerboard'`
 - `grad_start`: Starting value for gradient pattern (default: 0.0, use <0.0 for sub-black)
 - `grad_end`: Ending value for gradient pattern (default: 1.0, use >1.0 for super-white)
-- Returns: RGB array (H×W×3), dtype float32
+- Returns: R'G'B' array (H×W×3), dtype float32
 
 ### Low-Level API: DeckLinkOutput Class
 
@@ -277,36 +278,36 @@ class Timecode:
 ### Utility Functions
 
 **`rgb_to_bgra(rgb_array, width, height) -> np.ndarray`**
-Convert RGB to BGRA format.
+Convert R'G'B' to BGRA format.
 - `rgb_array`: NumPy array (H×W×3), dtype uint8
 - Returns: BGRA array (H×W×4), dtype uint8
 
 **`rgb_uint16_to_yuv10(rgb_array, width, height, matrix=Matrix.Rec709) -> np.ndarray`**
-Convert RGB uint16 to 10-bit YCbCr v210 format.
+Convert R'G'B' uint16 to 10-bit Y'CbCr v210 format.
 - `rgb_array`: NumPy array (H×W×3), dtype uint16 (0-65535 range)
-- `matrix`: RGB to Y'CbCr conversion matrix (Matrix.Rec709 or Matrix.Rec2020)
+- `matrix`: R'G'B' to Y'CbCr conversion matrix (Matrix.Rec709 or Matrix.Rec2020)
 - Returns: Packed v210 array
 
 **`rgb_float_to_yuv10(rgb_array, width, height, matrix=Matrix.Rec709) -> np.ndarray`**
-Convert RGB float to 10-bit YCbCr v210 format.
+Convert R'G'B' float to 10-bit Y'CbCr v210 format.
 - `rgb_array`: NumPy array (H×W×3), dtype float32 (0.0-1.0 range)
-- `matrix`: RGB to Y'CbCr conversion matrix (Matrix.Rec709 or Matrix.Rec2020)
+- `matrix`: R'G'B' to Y'CbCr conversion matrix (Matrix.Rec709 or Matrix.Rec2020)
 - Returns: Packed v210 array (always video range: Y: 64-940, UV: 64-960)
 
 **`rgb_uint16_to_rgb10(rgb_array, width, height) -> np.ndarray`**
-Convert RGB uint16 to 10-bit RGB (bmdFormat10BitRGBXLE) format.
+Convert R'G'B' uint16 to 10-bit R'G'B' (bmdFormat10BitRGBXLE) format.
 - `rgb_array`: NumPy array (H×W×3), dtype uint16 (0-65535 range)
-- Returns: Packed 10-bit RGB array (bit-shifted from 16-bit to 10-bit)
+- Returns: Packed 10-bit R'G'B' array (bit-shifted from 16-bit to 10-bit)
 
 **`rgb_float_to_rgb10(rgb_array, width, height, video_range=True) -> np.ndarray`**
-Convert RGB float to 10-bit RGB (bmdFormat10BitRGBXLE) format.
+Convert R'G'B' float to 10-bit R'G'B' (bmdFormat10BitRGBXLE) format.
 - `rgb_array`: NumPy array (H×W×3), dtype float32 (0.0-1.0 range)
 - `video_range`: If True, maps 0.0-1.0 to 64-940 (video range). If False, maps 0.0-1.0 to 0-1023 (full range). Default: True
-- Returns: Packed 10-bit RGB array
+- Returns: Packed 10-bit R'G'B' array
 
 **`create_solid_color_frame(width, height, color) -> np.ndarray`**
 Create a solid color frame in BGRA format.
-- `color`: RGB tuple (r, g, b) with values 0-255
+- `color`: R'G'B' tuple (r, g, b) with values 0-255
 - Returns: BGRA array (H×W×4), dtype uint8
 
 ### Enums
@@ -358,21 +359,21 @@ with BlackmagicOutput() as output:
 
 **`PixelFormat`**
 - `BGRA`: 8-bit BGRA (automatically used for uint8 data)
-- `YUV`: 8-bit YCbCr 4:2:2
-- `YUV10`: 10-bit YCbCr 4:2:2 (v210) - default for uint16/float data, provides high-quality output
+- `YUV`: 8-bit Y'CbCr 4:2:2
+- `YUV10`: 10-bit Y'CbCr 4:2:2 (v210) - default for uint16/float data, provides high-quality output
   - Always uses video range: Y: 64-940, UV: 64-960
-- `RGB10`: 10-bit RGB (bmdFormat10BitRGBXLE) - native RGB output without YCbCr conversion
+- `RGB10`: 10-bit R'G'B' (bmdFormat10BitRGBXLE) - native R'G'B' output without Y'CbCr conversion
   - uint16 input: Bit-shifted from 16-bit to 10-bit (>> 6)
   - float input: Configurable range via `video_range` parameter
     - `video_range=True` (default): 0.0-1.0 maps to 64-940 (video range)
     - `video_range=False`: 0.0-1.0 maps to 0-1023 (full range)
-- `RGB12`: 12-bit RGB (bmdFormat12BitRGBLE) - native RGB output with 12-bit precision
+- `RGB12`: 12-bit R'G'B' (bmdFormat12BitRGBLE) - native R'G'B' output with 12-bit precision
   - uint16 input: Bit-shifted from 16-bit to 12-bit (>> 4)
   - float input: Full range only - 0.0-1.0 maps to 0-4095
 
 **`Matrix`** (High-level API)
-- `Rec709`: ITU-R BT.709 RGB to Y'CbCr conversion matrix (standard HD)
-- `Rec2020`: ITU-R BT.2020 RGB to Y'CbCr conversion matrix (wide color gamut for HDR)
+- `Rec709`: ITU-R BT.709 R'G'B' to Y'CbCr conversion matrix (standard HD)
+- `Rec2020`: ITU-R BT.2020 R'G'B' to Y'CbCr conversion matrix (wide color gamut for HDR)
 
 **`Gamut`** (Low-level API, same values as Matrix)
 - `Rec709`: ITU-R BT.709 colorimetry (standard HD)
@@ -478,13 +479,13 @@ with BlackmagicOutput() as output:
     input("Press Enter to stop...")
 ```
 
-### Example 5: 10-bit YCbCr Output with Float Data
+### Example 5: 10-bit Y'CbCr Output with Float Data
 
 ```python
 import numpy as np
 from blackmagic_output import BlackmagicOutput, DisplayMode
 
-# Create float RGB image (0.0-1.0 range)
+# Create float R'G'B' image (0.0-1.0 range)
 # This could be from color grading, rendering, or HDR processing
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
 
@@ -497,20 +498,20 @@ for y in range(1080):
             0.5                 # Blue constant
         ]
 
-# Output as 10-bit YCbCr (automatically selected for float data)
+# Output as 10-bit Y'CbCr (automatically selected for float data)
 with BlackmagicOutput() as output:
     output.initialize()
     output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
 
-### Example 6: 10-bit YCbCr with uint16 Data
+### Example 6: 10-bit Y'CbCr with uint16 Data
 
 ```python
 import numpy as np
 from blackmagic_output import BlackmagicOutput, DisplayMode
 
-# Create uint16 RGB image (0-65535 range)
+# Create uint16 R'G'B' image (0-65535 range)
 # Useful for 10-bit/12-bit/16-bit image processing pipelines
 frame = np.zeros((1080, 1920, 3), dtype=np.uint16)
 
@@ -518,47 +519,47 @@ frame = np.zeros((1080, 1920, 3), dtype=np.uint16)
 for x in range(1920):
     frame[:, x, 0] = int(x / 1920 * 65535)  # Red gradient
 
-# Output as 10-bit YCbCr (automatically selected for uint16 data)
+# Output as 10-bit Y'CbCr (automatically selected for uint16 data)
 with BlackmagicOutput() as output:
     output.initialize()
     output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
 
-### Example 6a: 10-bit RGB with uint16 Data
+### Example 6a: 10-bit R'G'B' with uint16 Data
 
 ```python
 import numpy as np
 from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
 
-# Create uint16 RGB image (0-65535 range)
+# Create uint16 R'G'B' image (0-65535 range)
 frame = np.zeros((1080, 1920, 3), dtype=np.uint16)
 
 # Full range gradient
 for x in range(1920):
     frame[:, x, 0] = int(x / 1920 * 65535)  # Red gradient
 
-# Output as 10-bit RGB (bit-shifted from 16-bit to 10-bit)
+# Output as 10-bit R'G'B' (bit-shifted from 16-bit to 10-bit)
 with BlackmagicOutput() as output:
     output.initialize()
     output.display_static_frame(frame, DisplayMode.HD1080p25, PixelFormat.RGB10)
     input("Press Enter to stop...")
 ```
 
-### Example 6b: 10-bit RGB with Float Data (Video Range)
+### Example 6b: 10-bit R'G'B' with Float Data (Video Range)
 
 ```python
 import numpy as np
 from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
 
-# Create float RGB image (0.0-1.0 range)
+# Create float R'G'B' image (0.0-1.0 range)
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
 
 # Gradient
 for x in range(1920):
     frame[:, x, 0] = x / 1920  # Red gradient
 
-# Output as 10-bit RGB with video range (0.0-1.0 maps to 64-940)
+# Output as 10-bit R'G'B' with video range (0.0-1.0 maps to 64-940)
 with BlackmagicOutput() as output:
     output.initialize()
     output.display_static_frame(
@@ -570,20 +571,20 @@ with BlackmagicOutput() as output:
     input("Press Enter to stop...")
 ```
 
-### Example 6c: 10-bit RGB with Float Data (Full Range)
+### Example 6c: 10-bit R'G'B' with Float Data (Full Range)
 
 ```python
 import numpy as np
 from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
 
-# Create float RGB image (0.0-1.0 range)
+# Create float R'G'B' image (0.0-1.0 range)
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
 
 # Gradient
 for x in range(1920):
     frame[:, x, 0] = x / 1920  # Red gradient
 
-# Output as 10-bit RGB with full range (0.0-1.0 maps to 0-1023)
+# Output as 10-bit R'G'B' with full range (0.0-1.0 maps to 0-1023)
 with BlackmagicOutput() as output:
     output.initialize()
     output.display_static_frame(
@@ -651,7 +652,7 @@ settings = output.get_video_settings(dl.DisplayMode.HD1080p25)
 settings.format = dl.PixelFormat.YUV10
 output.setup_output(settings)
 
-# Convert RGB to YCbCr using Rec.2020 matrix
+# Convert R'G'B' to Y'CbCr using Rec.2020 matrix
 yuv_data = dl.rgb_float_to_yuv10(frame, 1920, 1080, dl.Matrix.Rec2020)
 output.set_frame_data(yuv_data)
 
@@ -713,7 +714,7 @@ settings = output.get_video_settings(dl.DisplayMode.HD1080p25)
 settings.format = dl.PixelFormat.YUV10
 output.setup_output(settings)
 
-# Convert to YCbCr with Rec.2020 matrix
+# Convert to Y'CbCr with Rec.2020 matrix
 yuv_data = dl.rgb_float_to_yuv10(frame, 1920, 1080, dl.Gamut.Rec2020)
 output.set_frame_data(yuv_data)
 
@@ -863,7 +864,7 @@ All 14 CEA-861.3/ITU-R BT.2100 HDR static metadata fields are supported:
 1. **Simplified API**: With `display_static_frame()`, HDR metadata and matrix are set in a single call
 2. **Low-level API call order**: When using the low-level API, `set_hdr_metadata()` must be called before `setup_output()`
 3. **Frame-level metadata**: Metadata is embedded in every video frame, not set globally
-4. **Matrix consistency**: When using the simplified API, the same `matrix` parameter is used for both metadata and RGB→YCbCr conversion. With the low-level API, ensure consistency between `set_hdr_metadata()` and conversion functions.
+4. **Matrix consistency**: When using the simplified API, the same `matrix` parameter is used for both metadata and R'G'B' →Y'CbCr conversion. With the low-level API, ensure consistency between `set_hdr_metadata()` and conversion functions.
 5. **Transfer function**: The library only sets the metadata - you must apply the actual transfer function (PQ/HLG curve) to your RGB data before conversion
 6. **All 14 metadata fields supported**: The library implements all CEA-861.3/ITU-R BT.2100 HDR metadata fields including display primaries, white point, mastering display luminance, and content light levels
 
@@ -1018,7 +1019,7 @@ See `timecode_test.py` for a complete working example that outputs SMPTE color b
 - Ensure frame data has appropriate transfer function applied before conversion
 - For PQ: Apply SMPTE ST 2084 curve to linear RGB before conversion
 - For HLG: Apply ITU-R BT.2100 HLG curve before conversion
-- Ensure matrix consistency: same value in both metadata and RGB→YCbCr conversion
+- Ensure matrix consistency: same value in both metadata and R'G'B' →Y'CbCr conversion
 
 ### Testing Your Installation
 
