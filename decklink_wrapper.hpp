@@ -18,7 +18,8 @@ public:
     enum class PixelFormat {
         Format8BitYUV = bmdFormat8BitYUV,
         Format8BitBGRA = bmdFormat8BitBGRA,
-        Format10BitYUV = bmdFormat10BitYUV
+        Format10BitYUV = bmdFormat10BitYUV,
+        Format10BitRGB = bmdFormat10BitRGBXLE  // Little-endian 10-bit RGB
     };
 
     enum class DisplayMode {
@@ -222,6 +223,7 @@ private:
 
     IDeckLink* m_deckLink;
     IDeckLinkOutput* m_deckLinkOutput;
+    IDeckLinkConfiguration* m_deckLinkConfiguration;
     IDeckLinkDisplayModeIterator* m_displayModeIterator;
     std::unique_ptr<OutputCallback> m_outputCallback;
 

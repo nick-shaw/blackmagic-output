@@ -221,6 +221,103 @@ py::array_t<uint8_t> rgb_float_to_yuv10(py::array_t<float> rgb_array, int width,
     return result;
 }
 
+// Helper function to convert RGB uint16 array to 10-bit RGB r210 format
+py::array_t<uint8_t> rgb_uint16_to_rgb10(py::array_t<uint16_t> rgb_array, int width, int height) {
+    auto buf = rgb_array.request();
+
+    if (buf.ndim != 3 || buf.shape[2] != 3) {
+        throw std::runtime_error("Input array must be HxWx3 RGB format");
+    }
+
+    if (buf.shape[0] != height || buf.shape[1] != width) {
+        throw std::runtime_error("Array dimensions don't match specified width/height");
+    }
+
+    // bmdFormat10BitRGBXLE: 4 bytes per pixel (32-bit words)
+    int row_bytes = width * 4;
+    auto result = py::array_t<uint8_t>(height * row_bytes);
+    auto res_buf = result.request();
+
+    const uint8_t* src_base = static_cast<const uint8_t*>(buf.ptr);
+    uint32_t* dst = static_cast<uint32_t*>(res_buf.ptr);
+
+    // Get strides in bytes
+    ssize_t stride_y = buf.strides[0];
+    ssize_t stride_x = buf.strides[1];
+
+    for (int y = 0; y < height; y++) {
+        uint32_t* row_dst = dst + (y * row_bytes / 4);
+        for (int x = 0; x < width; x++) {
+            const uint16_t* pixel = reinterpret_cast<const uint16_t*>(
+                src_base + y * stride_y + x * stride_x);
+
+            // Convert 16-bit to 10-bit by right-shifting 6 bits
+            uint16_t r10 = pixel[0] >> 6;
+            uint16_t g10 = pixel[1] >> 6;
+            uint16_t b10 = pixel[2] >> 6;
+
+            // Pack as bmdFormat10BitRGBXLE (little-endian 10-bit RGB)
+            // 32-bit word: R[9:0] at bits 31:22, G[9:0] at bits 21:12, B[9:0] at bits 11:2, padding at bits 1:0
+            row_dst[x] = (r10 << 22) | (g10 << 12) | (b10 << 2);
+        }
+    }
+
+    return result;
+}
+
+// Helper function to convert RGB float array to 10-bit RGB r210 format
+py::array_t<uint8_t> rgb_float_to_rgb10(py::array_t<float> rgb_array, int width, int height, bool video_range = true) {
+    auto buf = rgb_array.request();
+
+    if (buf.ndim != 3 || buf.shape[2] != 3) {
+        throw std::runtime_error("Input array must be HxWx3 RGB format");
+    }
+
+    if (buf.shape[0] != height || buf.shape[1] != width) {
+        throw std::runtime_error("Array dimensions don't match specified width/height");
+    }
+
+    // bmdFormat10BitRGBXLE: 4 bytes per pixel (32-bit words)
+    int row_bytes = width * 4;
+    auto result = py::array_t<uint8_t>(height * row_bytes);
+    auto res_buf = result.request();
+
+    const uint8_t* src_base = static_cast<const uint8_t*>(buf.ptr);
+    uint32_t* dst = static_cast<uint32_t*>(res_buf.ptr);
+
+    // Get strides in bytes
+    ssize_t stride_y = buf.strides[0];
+    ssize_t stride_x = buf.strides[1];
+
+    // Video range: 0.0-1.0 maps to 64-940 (10-bit)
+    // Full range: 0.0-1.0 maps to 0-1023 (10-bit)
+    float scale = video_range ? 876.0f : 1023.0f;
+    float offset = video_range ? 64.0f : 0.0f;
+
+    for (int y = 0; y < height; y++) {
+        uint32_t* row_dst = dst + (y * row_bytes / 4);
+        for (int x = 0; x < width; x++) {
+            const float* pixel = reinterpret_cast<const float*>(
+                src_base + y * stride_y + x * stride_x);
+
+            // Convert float (0.0-1.0) to 10-bit with clamping
+            int r10 = (int)(pixel[0] * scale + offset);
+            int g10 = (int)(pixel[1] * scale + offset);
+            int b10 = (int)(pixel[2] * scale + offset);
+
+            // Clamp to valid range
+            r10 = r10 < 0 ? 0 : (r10 > 1023 ? 1023 : r10);
+            g10 = g10 < 0 ? 0 : (g10 > 1023 ? 1023 : g10);
+            b10 = b10 < 0 ? 0 : (b10 > 1023 ? 1023 : b10);
+
+            // Pack as bmdFormat10BitRGBXLE (little-endian 10-bit RGB)
+            row_dst[x] = (r10 << 22) | (g10 << 12) | (b10 << 2);
+        }
+    }
+
+    return result;
+}
+
 PYBIND11_MODULE(decklink_output, m) {
     m.doc() = "Python bindings for Blackmagic DeckLink video output";
 
@@ -228,7 +325,8 @@ PYBIND11_MODULE(decklink_output, m) {
     py::enum_<DeckLinkOutput::PixelFormat>(m, "PixelFormat")
         .value("YUV", DeckLinkOutput::PixelFormat::Format8BitYUV)
         .value("BGRA", DeckLinkOutput::PixelFormat::Format8BitBGRA)
-        .value("YUV10", DeckLinkOutput::PixelFormat::Format10BitYUV);
+        .value("YUV10", DeckLinkOutput::PixelFormat::Format10BitYUV)
+        .value("RGB10", DeckLinkOutput::PixelFormat::Format10BitRGB);
 
     py::enum_<DeckLinkOutput::DisplayMode>(m, "DisplayMode")
         // SD Modes
@@ -457,6 +555,15 @@ PYBIND11_MODULE(decklink_output, m) {
           "Convert RGB float numpy array to 10-bit YUV v210 format",
           py::arg("rgb_array"), py::arg("width"), py::arg("height"),
           py::arg("matrix") = DeckLinkOutput::Gamut::Rec709);
+
+    m.def("rgb_uint16_to_rgb10", &rgb_uint16_to_rgb10,
+          "Convert RGB uint16 numpy array to 10-bit RGB r210 format (bit-shift from 16-bit to 10-bit)",
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"));
+
+    m.def("rgb_float_to_rgb10", &rgb_float_to_rgb10,
+          "Convert RGB float numpy array to 10-bit RGB r210 format",
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"),
+          py::arg("video_range") = true);
 
     // Helper function to create solid color frame
     m.def("create_solid_color_frame", [](int width, int height, py::tuple color) -> py::array_t<uint8_t> {

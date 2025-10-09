@@ -126,7 +126,7 @@ Setup video output parameters.
 - `pixel_format`: Pixel format (default: YUV10)
 - Returns: True if successful
 
-**`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None) -> bool`**
+**`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, video_range=True) -> bool`**
 Display a static frame continuously.
 - `frame_data`: NumPy array with image data:
   - RGB: shape (height, width, 3), dtype uint8/uint16/float32
@@ -137,6 +137,7 @@ Display a static frame continuously.
 - `hdr_metadata`: Optional HDR metadata dict with keys:
   - `'eotf'`: Eotf enum (SDR, PQ, or HLG)
   - `'custom'`: Optional HdrMetadataCustom object for custom metadata values
+- `video_range`: For RGB10 float inputs only, whether to use video range (64-940) or full range (0-1023). Default: True (video range). Note: Does not apply to YUV10, which always uses video range. uint16 inputs are bit-shifted and ignore this parameter.
 - Returns: True if successful
 
 **`display_solid_color(color, display_mode) -> bool`**
@@ -286,7 +287,18 @@ Convert RGB uint16 to 10-bit YCbCr v210 format.
 Convert RGB float to 10-bit YCbCr v210 format.
 - `rgb_array`: NumPy array (H×W×3), dtype float32 (0.0-1.0 range)
 - `matrix`: RGB to Y'CbCr conversion matrix (Matrix.Rec709 or Matrix.Rec2020)
-- Returns: Packed v210 array
+- Returns: Packed v210 array (always video range: Y: 64-940, UV: 64-960)
+
+**`rgb_uint16_to_rgb10(rgb_array, width, height) -> np.ndarray`**
+Convert RGB uint16 to 10-bit RGB (bmdFormat10BitRGBXLE) format.
+- `rgb_array`: NumPy array (H×W×3), dtype uint16 (0-65535 range)
+- Returns: Packed 10-bit RGB array (bit-shifted from 16-bit to 10-bit)
+
+**`rgb_float_to_rgb10(rgb_array, width, height, video_range=True) -> np.ndarray`**
+Convert RGB float to 10-bit RGB (bmdFormat10BitRGBXLE) format.
+- `rgb_array`: NumPy array (H×W×3), dtype float32 (0.0-1.0 range)
+- `video_range`: If True, maps 0.0-1.0 to 64-940 (video range). If False, maps 0.0-1.0 to 0-1023 (full range). Default: True
+- Returns: Packed 10-bit RGB array
 
 **`create_solid_color_frame(width, height, color) -> np.ndarray`**
 Create a solid color frame in BGRA format.
@@ -344,6 +356,12 @@ with BlackmagicOutput() as output:
 - `BGRA`: 8-bit BGRA (automatically used for uint8 data)
 - `YUV`: 8-bit YCbCr 4:2:2
 - `YUV10`: 10-bit YCbCr 4:2:2 (v210) - default for uint16/float data, provides high-quality output
+  - Always uses video range: Y: 64-940, UV: 64-960
+- `RGB10`: 10-bit RGB (bmdFormat10BitRGBXLE) - native RGB output without YCbCr conversion
+  - uint16 input: Bit-shifted from 16-bit to 10-bit (>> 6)
+  - float input: Configurable range via `video_range` parameter
+    - `video_range=True` (default): 0.0-1.0 maps to 64-940 (video range)
+    - `video_range=False`: 0.0-1.0 maps to 0-1023 (full range)
 
 **`Matrix`** (High-level API)
 - `Rec709`: ITU-R BT.709 RGB to Y'CbCr conversion matrix (standard HD)
@@ -497,6 +515,76 @@ for x in range(1920):
 with BlackmagicOutput() as output:
     output.initialize()
     output.display_static_frame(frame, DisplayMode.HD1080p25)
+    input("Press Enter to stop...")
+```
+
+### Example 6a: 10-bit RGB with uint16 Data
+
+```python
+import numpy as np
+from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
+
+# Create uint16 RGB image (0-65535 range)
+frame = np.zeros((1080, 1920, 3), dtype=np.uint16)
+
+# Full range gradient
+for x in range(1920):
+    frame[:, x, 0] = int(x / 1920 * 65535)  # Red gradient
+
+# Output as 10-bit RGB (bit-shifted from 16-bit to 10-bit)
+with BlackmagicOutput() as output:
+    output.initialize()
+    output.display_static_frame(frame, DisplayMode.HD1080p25, PixelFormat.RGB10)
+    input("Press Enter to stop...")
+```
+
+### Example 6b: 10-bit RGB with Float Data (Video Range)
+
+```python
+import numpy as np
+from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
+
+# Create float RGB image (0.0-1.0 range)
+frame = np.zeros((1080, 1920, 3), dtype=np.float32)
+
+# Gradient
+for x in range(1920):
+    frame[:, x, 0] = x / 1920  # Red gradient
+
+# Output as 10-bit RGB with video range (0.0-1.0 maps to 64-940)
+with BlackmagicOutput() as output:
+    output.initialize()
+    output.display_static_frame(
+        frame,
+        DisplayMode.HD1080p25,
+        PixelFormat.RGB10,
+        video_range=True  # Default: video range
+    )
+    input("Press Enter to stop...")
+```
+
+### Example 6c: 10-bit RGB with Float Data (Full Range)
+
+```python
+import numpy as np
+from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
+
+# Create float RGB image (0.0-1.0 range)
+frame = np.zeros((1080, 1920, 3), dtype=np.float32)
+
+# Gradient
+for x in range(1920):
+    frame[:, x, 0] = x / 1920  # Red gradient
+
+# Output as 10-bit RGB with full range (0.0-1.0 maps to 0-1023)
+with BlackmagicOutput() as output:
+    output.initialize()
+    output.display_static_frame(
+        frame,
+        DisplayMode.HD1080p25,
+        PixelFormat.RGB10,
+        video_range=False  # Full range
+    )
     input("Press Enter to stop...")
 ```
 

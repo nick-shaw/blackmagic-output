@@ -7,6 +7,7 @@
 DeckLinkOutput::DeckLinkOutput()
     : m_deckLink(nullptr)
     , m_deckLinkOutput(nullptr)
+    , m_deckLinkConfiguration(nullptr)
     , m_displayModeIterator(nullptr)
     , m_outputCallback(nullptr)
     , m_outputRunning(false)
@@ -57,8 +58,14 @@ bool DeckLinkOutput::initialize(int deviceIndex)
         return false;
     }
 
+    // Get configuration interface
+    if (m_deckLink->QueryInterface(IID_IDeckLinkConfiguration, (void**)&m_deckLinkConfiguration) != S_OK) {
+        std::cerr << "Could not get IDeckLinkConfiguration interface" << std::endl;
+        return false;
+    }
+
     m_outputCallback = std::make_unique<OutputCallback>(this);
-    
+
     return true;
 }
 
@@ -99,6 +106,20 @@ bool DeckLinkOutput::setupOutput(const VideoSettings& settings)
         return false;
     }
 
+    // Configure RGB 4:4:4 mode if using RGB10 format
+    if (m_deckLinkConfiguration) {
+        if (settings.format == PixelFormat::Format10BitRGB) {
+            if (m_deckLinkConfiguration->SetFlag(bmdDeckLinkConfig444SDIVideoOutput, true) != S_OK) {
+                std::cerr << "Warning: Could not set RGB 4:4:4 mode" << std::endl;
+            }
+        } else {
+            // Set YCbCr 4:2:2 mode for non-RGB formats
+            if (m_deckLinkConfiguration->SetFlag(bmdDeckLinkConfig444SDIVideoOutput, false) != S_OK) {
+                std::cerr << "Warning: Could not set YCbCr 4:2:2 mode" << std::endl;
+            }
+        }
+    }
+
     // Enable video output only if not already enabled
     if (!m_outputEnabled) {
         BMDVideoOutputFlags outputFlags = bmdVideoOutputFlagDefault;
@@ -129,6 +150,10 @@ bool DeckLinkOutput::setupOutput(const VideoSettings& settings)
         case PixelFormat::Format10BitYUV:
             // v210 format: 6 pixels in 4 32-bit words (16 bytes)
             frameSize = ((settings.width + 5) / 6) * 16 * settings.height;
+            break;
+        case PixelFormat::Format10BitRGB:
+            // bmdFormat10BitRGBXLE: 4 bytes per pixel
+            frameSize = settings.width * settings.height * 4;
             break;
         case PixelFormat::Format8BitYUV:
         default:
@@ -166,6 +191,10 @@ bool DeckLinkOutput::createFrame(IDeckLinkMutableVideoFrame** frame)
         case PixelFormat::Format10BitYUV:
             // v210 format: 6 pixels in 4 32-bit words (16 bytes)
             rowBytes = ((m_currentSettings.width + 5) / 6) * 16;
+            break;
+        case PixelFormat::Format10BitRGB:
+            // bmdFormat10BitRGBXLE: 4 bytes per pixel
+            rowBytes = m_currentSettings.width * 4;
             break;
         case PixelFormat::Format8BitYUV:
         default:
@@ -338,6 +367,11 @@ bool DeckLinkOutput::stopOutput(bool sendBlackFrame)
 void DeckLinkOutput::cleanup()
 {
     stopOutput();
+
+    if (m_deckLinkConfiguration) {
+        m_deckLinkConfiguration->Release();
+        m_deckLinkConfiguration = nullptr;
+    }
 
     if (m_deckLinkOutput) {
         m_deckLinkOutput->Release();
