@@ -141,7 +141,7 @@ Display a static frame continuously.
 
 **`display_solid_color(color, display_mode) -> bool`**
 Display a solid color.
-- `color`: RGB tuple (r, g, b) with values 0-255
+- `color`: RGB tuple (r, g, b) with values 0-255 or 0.0-1.0
 - `display_mode`: Video resolution and frame rate
 - Returns: True if successful
 
@@ -170,6 +170,17 @@ with BlackmagicOutput() as output:
     # ... use output ...
 # Automatic cleanup
 ```
+
+#### Utility Functions
+
+**`create_test_pattern(width, height, pattern='gradient', grad_start=0.0, grad_end=1.0) -> np.ndarray`**
+Create test patterns for display testing and calibration.
+- `width`: Frame width in pixels
+- `height`: Frame height in pixels
+- `pattern`: Pattern type - `'gradient'`, `'bars'`, or `'checkerboard'`
+- `grad_start`: Starting value for gradient pattern (default: 0.0, use <0.0 for sub-black)
+- `grad_end`: Ending value for gradient pattern (default: 1.0, use >1.0 for super-white)
+- Returns: RGB array (H×W×3), dtype float32
 
 ### Low-Level API: DeckLinkOutput Class
 
@@ -282,11 +293,6 @@ Create a solid color frame in BGRA format.
 - `color`: RGB tuple (r, g, b) with values 0-255
 - Returns: BGRA array (H×W×4), dtype uint8
 
-**`create_test_pattern(width, height, pattern='gradient') -> np.ndarray`**
-Create test patterns (from `blackmagic_output` module).
-- `pattern`: 'gradient', 'bars', or 'checkerboard'
-- Returns: RGB array (H×W×3), dtype uint8
-
 ### Enums
 
 **`DisplayMode`**
@@ -351,13 +357,6 @@ with BlackmagicOutput() as output:
 - `SDR`: Standard Dynamic Range (BT.1886 transfer function)
 - `PQ`: Perceptual Quantizer (SMPTE ST 2084, HDR10)
 - `HLG`: Hybrid Log-Gamma (HDR broadcast standard)
-
-### Utility Functions
-
-**`create_test_pattern(width, height, pattern='gradient') -> np.ndarray`**
-Create test patterns for display.
-- `pattern`: 'gradient', 'bars', or 'checkerboard'
-- Returns: RGB frame data
 
 ## Examples
 

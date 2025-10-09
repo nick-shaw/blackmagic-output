@@ -492,7 +492,7 @@ class BlackmagicOutput:
 
 
 # Convenience functions
-def create_test_pattern(width: int, height: int, pattern: str = 'gradient') -> np.ndarray:
+def create_test_pattern(width: int, height: int, pattern: str = 'gradient', grad_start=0.0, grad_end = 1.0) -> np.ndarray:
     """
     Create test patterns for display.
 
@@ -500,36 +500,40 @@ def create_test_pattern(width: int, height: int, pattern: str = 'gradient') -> n
         width: Frame width
         height: Frame height
         pattern: Pattern type ('gradient', 'bars', 'checkerboard')
+        grad_start: Optional float start value (default 0.0)
+        grad_end: Optional float end value (default 1.0)
 
     Returns:
-        RGB frame data as NumPy array (uint16, 0-65535 range)
+        RGB frame data as NumPy array (float32, start-end range)
     """
-    frame = np.zeros((height, width, 3), dtype=np.uint16)
+    frame = np.zeros((height, width, 3), dtype=np.float32)
 
     if pattern == 'gradient':
         for y in range(height):
             for x in range(width):
                 frame[y, x] = [
-                    int(65535 * x / width),      # Red gradient
-                    int(65535 * y / height),     # Green gradient
-                    32768                        # Blue constant
+                    grad_start + (grad_end - grad_start) * x / width,      # Red gradient
+                    grad_start + (grad_end - grad_start) * x / width,      # Green gradient
+                    grad_start + (grad_end - grad_start) * x / width       # Blue gradient
                 ]
 
     elif pattern == 'bars':
         bar_width = width // 8
         colors = [
-            [65535, 65535, 65535],  # White
-            [65535, 65535, 0],      # Yellow
-            [0, 65535, 65535],      # Cyan
-            [0, 65535, 0],          # Green
-            [65535, 0, 65535],      # Magenta
-            [65535, 0, 0],          # Red
-            [0, 0, 65535],          # Blue
-            [0, 0, 0]               # Black
+            [1.0, 1.0, 1.0],      # White
+            [1.0, 1.0, 0.0],      # Yellow
+            [0.0, 1.0, 1.0],      # Cyan
+            [0.0, 1.0, 0.0],      # Green
+            [1.0, 0.0, 1.0],      # Magenta
+            [1.0, 0.0, 0.0],      # Red
+            [0.0, 0.0, 1.0],      # Blue
+            [0.0, 0.0, 0.0]       # Black
         ]
 
         for x in range(width):
             color_idx = min(x // bar_width, 7)
+            if color_idx * bar_width == x:
+                print(color_idx, colors[color_idx])
             frame[:, x] = colors[color_idx]
 
     elif pattern == 'checkerboard':
@@ -537,8 +541,8 @@ def create_test_pattern(width: int, height: int, pattern: str = 'gradient') -> n
         for y in range(height):
             for x in range(width):
                 if ((x // checker_size) + (y // checker_size)) % 2:
-                    frame[y, x] = [65535, 65535, 65535]  # White
+                    frame[y, x] = [1.0, 1.0, 1.0]      # White
                 else:
-                    frame[y, x] = [0, 0, 0]              # Black
+                    frame[y, x] = [0.0, 0.0, 0.0]      # Black
 
     return frame
