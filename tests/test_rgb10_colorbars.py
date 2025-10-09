@@ -90,9 +90,9 @@ def create_colorbars_uint16(width, height):
     return frame_uint16
 
 
-def test_rgb10_video_range():
-    """Test RGB10 output with float data in video range (64-940)"""
-    print("Test 1: RGB10 Color Bars - Float Input, Video Range (64-940)")
+def test_rgb10_narrow_range():
+    """Test RGB10 output with float data in narrow range (64-940)"""
+    print("Test 1: RGB10 Color Bars - Float Input, Narrow Range (64-940)")
     print("=" * 70)
 
     with BlackmagicOutput() as output:
@@ -119,13 +119,13 @@ def test_rgb10_video_range():
         frame = create_colorbars_float(width, height)
         print(f"Frame: dtype={frame.dtype}, shape={frame.shape}, range=[{frame.min():.3f}, {frame.max():.3f}]")
 
-        # Display with RGB10 video range
-        print("Displaying with RGB10 pixel format (video range: 0.0-1.0 → 64-940)...")
+        # Display with RGB10 narrow range
+        print("Displaying with RGB10 pixel format (narrow range: 0.0-1.0 → 64-940)...")
         if output.display_static_frame(
             frame,
             DisplayMode.HD1080p25,
             PixelFormat.RGB10,
-            video_range=True
+            narrow_range=True
         ):
             print("✓ Color bars displayed successfully")
             print("  Press Ctrl+C to continue to next test...")
@@ -165,7 +165,7 @@ def test_rgb10_full_range():
             frame,
             DisplayMode.HD1080p25,
             PixelFormat.RGB10,
-            video_range=False
+            narrow_range=False
         ):
             print("✓ Color bars displayed successfully")
             print("  Press Ctrl+C to continue to next test...")
@@ -237,12 +237,12 @@ def test_rgb10_comparison():
         frame = create_colorbars_float(width, height)
 
         # Display with RGB10
-        print("\nDisplaying with RGB10 (video range)...")
+        print("\nDisplaying with RGB10 (narrow range)...")
         if output.display_static_frame(
             frame,
             DisplayMode.HD1080p25,
             PixelFormat.RGB10,
-            video_range=True
+            narrow_range=True
         ):
             print("✓ RGB10 displayed - Press Ctrl+C to switch to YUV10...")
             try:
@@ -255,7 +255,7 @@ def test_rgb10_comparison():
             return False
 
         # Display with YUV10
-        print("\nDisplaying with YUV10 (video range, Rec.709)...")
+        print("\nDisplaying with YUV10 (narrow range, Rec.709)...")
         if output.display_static_frame(
             frame,
             DisplayMode.HD1080p25,
@@ -281,7 +281,7 @@ def main():
     print()
 
     tests = [
-        ("RGB10 - Float Input, Video Range", test_rgb10_video_range),
+        ("RGB10 - Float Input, Narrow Range", test_rgb10_narrow_range),
         ("RGB10 - Float Input, Full Range", test_rgb10_full_range),
         ("RGB10 - uint16 Input (bit-shifted)", test_rgb10_uint16),
         ("RGB10 vs YUV10 Comparison", test_rgb10_comparison),

@@ -4,7 +4,7 @@ A Python library for outputting video frames to Blackmagic DeckLink devices usin
 
 Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](https://www.claude.com/product/claude-code)!
 
-**⚠️ Note:** The library has only had minimal testing at this time. Please report any issues you encounter.
+**⚠️ Note:** The library has only had minimal testing at this time. Please report any issues you encounter. I am particularly interested in feedback from Linux and Windows users.
 
 ## Features
 
@@ -18,9 +18,7 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 - **HDR Support**: Rec.2020 colorimetry with PQ and HLG transfer functions
 - **Flexible Color Spaces**: Rec.709 and Rec.2020 matrix support
 - **RP188 Timecode**: Embedded VITC and LTC timecode with auto-increment
-- **Cross-Platform**: Works on Windows, macOS, and Linux
-- **Pythonic API**: Simple, intuitive Python interface
-- **High Performance**: C++ backend with Python bindings
+- **Cross-Platform**: Works on Windows, macOS, and Linux (in theory - only macOS build tested so far)
 
 ## Requirements
 
@@ -96,7 +94,7 @@ with BlackmagicOutput() as output:
     # Display static frame at 1080p25
     output.display_static_frame(frame, DisplayMode.HD1080p25)
     
-    # Keep displaying (Ctrl+C to stop)
+    # Keep displaying (Enter to stop)
     input("Press Enter to stop...")
 ```
 
@@ -130,7 +128,7 @@ Setup video output parameters.
 - `pixel_format`: Pixel format (default: YUV10)
 - Returns: True if successful
 
-**`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, video_range=True) -> bool`**
+**`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, narrow_range=True) -> bool`**
 Display a static frame continuously.
 - `frame_data`: NumPy array with image data:
   - RGB: shape (height, width, 3), dtype uint8/uint16/float32
@@ -141,7 +139,7 @@ Display a static frame continuously.
 - `hdr_metadata`: Optional HDR metadata dict with keys:
   - `'eotf'`: Eotf enum (SDR, PQ, or HLG)
   - `'custom'`: Optional HdrMetadataCustom object for custom metadata values
-- `video_range`: For RGB10 float inputs only, whether to use video range (64-940) or full range (0-1023). Default: True (video range). Note: Does not apply to YUV10 (always video range) or RGB12 (always full range). uint16 inputs are bit-shifted and ignore this parameter.
+- `narrow_range`: For float input with RGB10 output only, whether to use narrow range (64-940) or full range (0-1023). Default: True (narrow range). Note: Does not apply to YUV10 (always narrow range) or RGB12 (always full range). uint16 inputs are bit-shifted and ignore this parameter.
 - Returns: True if successful
 
 **`display_solid_color(color, display_mode) -> bool`**
@@ -187,8 +185,8 @@ Create test patterns for display testing and calibration.
 - `width`: Frame width in pixels
 - `height`: Frame height in pixels
 - `pattern`: Pattern type - `'gradient'`, `'bars'`, or `'checkerboard'`
-- `grad_start`: Starting value for gradient pattern (default: 0.0, use <0.0 for sub-black)
-- `grad_end`: Ending value for gradient pattern (default: 1.0, use >1.0 for super-white)
+- `grad_start`: Float starting value for gradient pattern (default: 0.0, use <0.0 for sub-black)
+- `grad_end`: Float ending value for gradient pattern (default: 1.0, use >1.0 for super-white)
 - Returns: R'G'B' array (H×W×3), dtype float32
 
 ### Low-Level API: DeckLinkOutput Class
@@ -245,7 +243,7 @@ class VideoSettings:
     height: int            # Frame height in pixels
     framerate: float       # Frame rate (e.g., 25.0, 29.97, 60.0)
     colorimetry: Gamut     # Color space (Rec709/Rec2020)
-    eotf: Eotf            # Transfer function (SDR/PQ/HLG)
+    eotf: Eotf             # Transfer function (SDR/PQ/HLG)
 ```
 
 **`HdrMetadataCustom`**
@@ -281,7 +279,7 @@ class Timecode:
 ### Utility Functions
 
 **`rgb_to_bgra(rgb_array, width, height) -> np.ndarray`**
-Convert R'G'B' to BGRA format.
+Convert RGB to BGRA format.
 - `rgb_array`: NumPy array (H×W×3), dtype uint8
 - Returns: BGRA array (H×W×4), dtype uint8
 
@@ -302,10 +300,10 @@ Convert R'G'B' uint16 to 10-bit R'G'B' (bmdFormat10BitRGBXLE) format.
 - `rgb_array`: NumPy array (H×W×3), dtype uint16 (0-65535 range)
 - Returns: Packed 10-bit R'G'B' array (bit-shifted from 16-bit to 10-bit)
 
-**`rgb_float_to_rgb10(rgb_array, width, height, video_range=True) -> np.ndarray`**
+**`rgb_float_to_rgb10(rgb_array, width, height, narrow_range=True) -> np.ndarray`**
 Convert R'G'B' float to 10-bit R'G'B' (bmdFormat10BitRGBXLE) format.
 - `rgb_array`: NumPy array (H×W×3), dtype float32 (0.0-1.0 range)
-- `video_range`: If True, maps 0.0-1.0 to 64-940 (video range). If False, maps 0.0-1.0 to 0-1023 (full range). Default: True
+- `narrow_range`: If True, maps 0.0-1.0 to 64-940 (narrow range). If False, maps 0.0-1.0 to 0-1023 (full range). Default: True
 - Returns: Packed 10-bit R'G'B' array
 
 **`create_solid_color_frame(width, height, color) -> np.ndarray`**
@@ -364,12 +362,12 @@ with BlackmagicOutput() as output:
 - `BGRA`: 8-bit BGRA (automatically used for uint8 data)
 - `YUV`: 8-bit Y'CbCr 4:2:2
 - `YUV10`: 10-bit Y'CbCr 4:2:2 (v210) - default for uint16/float data, provides high-quality output
-  - Always uses video range: Y: 64-940, UV: 64-960
+  - Always uses narrow range: Y: 64-940, UV: 64-960
 - `RGB10`: 10-bit R'G'B' (bmdFormat10BitRGBXLE) - native R'G'B' output without Y'CbCr conversion
   - uint16 input: Bit-shifted from 16-bit to 10-bit (>> 6)
-  - float input: Configurable range via `video_range` parameter
-    - `video_range=True` (default): 0.0-1.0 maps to 64-940 (video range)
-    - `video_range=False`: 0.0-1.0 maps to 0-1023 (full range)
+  - float input: Configurable range via `narrow_range` parameter
+    - `narrow_range=True` (default): 0.0-1.0 maps to 64-940 (narrow range)
+    - `narrow_range=False`: 0.0-1.0 maps to 0-1023 (full range)
 - `RGB12`: 12-bit R'G'B' (bmdFormat12BitRGBLE) - native R'G'B' output with 12-bit precision
   - uint16 input: Bit-shifted from 16-bit to 12-bit (>> 4)
   - float input: Full range only - 0.0-1.0 maps to 0-4095
@@ -549,7 +547,7 @@ with BlackmagicOutput() as output:
     input("Press Enter to stop...")
 ```
 
-### Example 6b: 10-bit R'G'B' with Float Data (Video Range)
+### Example 6b: 10-bit R'G'B' with Float Data (Narrow Range)
 
 ```python
 import numpy as np
@@ -562,14 +560,14 @@ frame = np.zeros((1080, 1920, 3), dtype=np.float32)
 for x in range(1920):
     frame[:, x, 0] = x / 1920  # Red gradient
 
-# Output as 10-bit R'G'B' with video range (0.0-1.0 maps to 64-940)
+# Output as 10-bit R'G'B' with narrow range (0.0-1.0 maps to 64-940)
 with BlackmagicOutput() as output:
     output.initialize()
     output.display_static_frame(
         frame,
         DisplayMode.HD1080p25,
         PixelFormat.RGB10,
-        video_range=True  # Default: video range
+        narrow_range=True  # Default: narrow range
     )
     input("Press Enter to stop...")
 ```
@@ -594,7 +592,7 @@ with BlackmagicOutput() as output:
         frame,
         DisplayMode.HD1080p25,
         PixelFormat.RGB10,
-        video_range=False  # Full range
+        narrow_range=False  # Full range
     )
     input("Press Enter to stop...")
 ```

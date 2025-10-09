@@ -193,7 +193,7 @@ class BlackmagicOutput:
         self._output_started = False
         self._current_settings = None
         self._current_matrix = Matrix.Rec709
-        self._current_video_range = True
+        self._current_narrow_range = True
 
     def initialize(self, device_index: int = 0) -> bool:
         """
@@ -247,7 +247,7 @@ class BlackmagicOutput:
                            pixel_format: PixelFormat = PixelFormat.YUV10,
                            matrix: Optional[Matrix] = None,
                            hdr_metadata: Optional[dict] = None,
-                           video_range: bool = True) -> bool:
+                           narrow_range: bool = True) -> bool:
         """
         Display a static frame continuously.
 
@@ -263,8 +263,8 @@ class BlackmagicOutput:
                          - 'eotf': Eotf enum value (SDR, PQ, or HLG)
                          - 'custom': Optional HdrMetadataCustom object
                          If only eotf is provided, default metadata values are used.
-            video_range: For RGB10 and YUV10 float inputs, whether to use video range (64-940 for 10-bit)
-                        or full range (0-1023 for 10-bit). Default: True (video range)
+            narrow_range: For RGB10 and YUV10 float inputs, whether to use narrow range (64-940 for 10-bit)
+                        or full range (0-1023 for 10-bit). Default: True (narrow range)
                         Note: uint16 inputs are bit-shifted and ignore this parameter.
 
         Returns:
@@ -283,9 +283,9 @@ class BlackmagicOutput:
         if matrix is None:
             matrix = Matrix.Rec709
 
-        # Store matrix and video_range for use in update_frame
+        # Store matrix and narrow_range for use in update_frame
         self._current_matrix = matrix
-        self._current_video_range = video_range
+        self._current_narrow_range = narrow_range
 
         # Handle HDR metadata if provided
         if hdr_metadata is not None:
@@ -310,7 +310,7 @@ class BlackmagicOutput:
                 return False
 
         # Convert frame data if necessary
-        processed_frame = self._prepare_frame_data(frame_data, pixel_format, matrix, video_range)
+        processed_frame = self._prepare_frame_data(frame_data, pixel_format, matrix, narrow_range)
 
         # Set frame data
         if not self._device.set_frame_data(processed_frame):
@@ -384,7 +384,7 @@ class BlackmagicOutput:
         else:
             pixel_format = PixelFormat.YUV
 
-        processed_frame = self._prepare_frame_data(frame_data, pixel_format, self._current_matrix, self._current_video_range)
+        processed_frame = self._prepare_frame_data(frame_data, pixel_format, self._current_matrix, self._current_narrow_range)
 
         return self._device.set_frame_data(processed_frame)
 
@@ -419,7 +419,7 @@ class BlackmagicOutput:
     def _prepare_frame_data(self, frame_data: np.ndarray,
                           pixel_format: PixelFormat,
                           matrix: Matrix = Matrix.Rec709,
-                          video_range: bool = True) -> np.ndarray:
+                          narrow_range: bool = True) -> np.ndarray:
         """
         Prepare frame data for output, converting format if necessary.
 
@@ -477,7 +477,7 @@ class BlackmagicOutput:
                 return _decklink.rgb_uint16_to_rgb10(frame_data, settings.width, settings.height)
             elif frame_data.dtype in (np.float32, np.float64):
                 # RGB float to 10-bit RGB r210 conversion
-                return _decklink.rgb_float_to_rgb10(frame_data.astype(np.float32), settings.width, settings.height, video_range)
+                return _decklink.rgb_float_to_rgb10(frame_data.astype(np.float32), settings.width, settings.height, narrow_range)
             else:
                 raise ValueError("For RGB10 format, frame data must be uint16 or float dtype")
 

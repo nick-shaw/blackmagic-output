@@ -266,7 +266,7 @@ py::array_t<uint8_t> rgb_uint16_to_rgb10(py::array_t<uint16_t> rgb_array, int wi
 }
 
 // Helper function to convert RGB float array to 10-bit RGB r210 format
-py::array_t<uint8_t> rgb_float_to_rgb10(py::array_t<float> rgb_array, int width, int height, bool video_range = true) {
+py::array_t<uint8_t> rgb_float_to_rgb10(py::array_t<float> rgb_array, int width, int height, bool narrow_range = true) {
     auto buf = rgb_array.request();
 
     if (buf.ndim != 3 || buf.shape[2] != 3) {
@@ -289,10 +289,10 @@ py::array_t<uint8_t> rgb_float_to_rgb10(py::array_t<float> rgb_array, int width,
     ssize_t stride_y = buf.strides[0];
     ssize_t stride_x = buf.strides[1];
 
-    // Video range: 0.0-1.0 maps to 64-940 (10-bit)
+    // Narrow range: 0.0-1.0 maps to 64-940 (10-bit)
     // Full range: 0.0-1.0 maps to 0-1023 (10-bit)
-    float scale = video_range ? 876.0f : 1023.0f;
-    float offset = video_range ? 64.0f : 0.0f;
+    float scale = narrow_range ? 876.0f : 1023.0f;
+    float offset = narrow_range ? 64.0f : 0.0f;
 
     for (int y = 0; y < height; y++) {
         uint32_t* row_dst = dst + (y * row_bytes / 4);
@@ -715,7 +715,7 @@ PYBIND11_MODULE(decklink_output, m) {
     m.def("rgb_float_to_rgb10", &rgb_float_to_rgb10,
           "Convert RGB float numpy array to 10-bit RGB r210 format",
           py::arg("rgb_array"), py::arg("width"), py::arg("height"),
-          py::arg("video_range") = true);
+          py::arg("narrow_range") = true);
 
     m.def("rgb_uint16_to_rgb12", &rgb_uint16_to_rgb12,
           "Convert RGB uint16 numpy array to 12-bit RGB format",

@@ -31,7 +31,7 @@ def create_simple_colorbars(width, height):
     return frame
 
 
-def test_output_info(pixel_format, video_range=None):
+def test_output_info(pixel_format, narrow_range=None):
     """Test querying output info for a given pixel format."""
 
     with BlackmagicOutput() as output:
@@ -52,7 +52,7 @@ def test_output_info(pixel_format, video_range=None):
         frame = create_simple_colorbars(width, height)
 
         # Display with specified pixel format
-        kwargs = {'video_range': video_range} if video_range is not None else {}
+        kwargs = {'narrow_range': narrow_range} if narrow_range is not None else {}
         if output.display_static_frame(
             frame,
             DisplayMode.HD1080p25,
@@ -90,7 +90,7 @@ def main():
 
     tests = [
         ("YUV10", PixelFormat.YUV10, None),
-        ("RGB10 (video range)", PixelFormat.RGB10, True),
+        ("RGB10 (narrow range)", PixelFormat.RGB10, True),
         ("RGB10 (full range)", PixelFormat.RGB10, False),
         ("RGB12", PixelFormat.RGB12, None),
     ]
@@ -99,9 +99,9 @@ def main():
     print("and query the current output configuration.\n")
 
     try:
-        for name, pixel_format, video_range in tests:
+        for name, pixel_format, narrow_range in tests:
             print(f"Testing {name}...")
-            if not test_output_info(pixel_format, video_range):
+            if not test_output_info(pixel_format, narrow_range):
                 print(f"✗ Failed to test {name}")
             print()
 
