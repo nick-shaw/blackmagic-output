@@ -64,6 +64,9 @@ python setup.py build_ext --inplace
 
 # Optional: Install in development mode
 pip install -e .
+
+# If upgrading from a previous development version, force reinstall:
+# pip install --force-reinstall -e .
 ```
 
 ### 3. Install Optional Dependencies

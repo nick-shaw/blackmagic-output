@@ -750,5 +750,5 @@ PYBIND11_MODULE(decklink_output, m) {
     }, "Create solid color frame in BGRA format");
 
     // Version info
-    m.attr("__version__") = "1.0.0";
+    m.attr("__version__") = "0.9.0-beta";
 }

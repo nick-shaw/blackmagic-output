@@ -595,8 +595,6 @@ def create_test_pattern(width: int, height: int, pattern: str = 'gradient', grad
 
         for x in range(width):
             color_idx = min(x // bar_width, 7)
-            if color_idx * bar_width == x:
-                print(color_idx, colors[color_idx])
             frame[:, x] = colors[color_idx]
 
     elif pattern == 'checkerboard':
