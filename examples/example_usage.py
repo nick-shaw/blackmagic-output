@@ -166,7 +166,7 @@ def example_dynamic_updates():
                     break
                 
                 frame_count += 1
-                time.sleep(1/25)  # 25 fps update rate
+                time.sleep(1/25)  # Limit update rate (actual rate will be lower due to processing overhead)
                 
         except KeyboardInterrupt:
             print("\nStopping animation...")

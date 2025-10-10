@@ -14,11 +14,10 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 - **Multiple Resolutions**: Support for all display modes supported by your DeckLink device (SD, HD, 2K, 4K, 8K, and PC modes)
 - **10-bit Y'CbCr Output**: 10-bit Y'CbCr 4:2:2 (v210) (default for uint16/float data)
 - **10 and 12-bit R'G'B' output**: 10 and 12-bit R'G'B' 4:4:4
-- **Automatic Format Detection**: Automatically uses optimal output format based on input data type
 - **HDR Support**: Rec.2020 colorimetry with PQ and HLG transfer functions
-- **Flexible Color Spaces**: Rec.709 and Rec.2020 matrix support
+- **Y'CbCr matrix control**: Rec.709 and Rec.2020 matrix support
 - **RP188 Timecode**: Embedded VITC and LTC timecode with auto-increment
-- **Cross-Platform**: Works on Windows, macOS, and Linux (in theory - only macOS build tested so far)
+- **Cross-Platform**: Works on Windows, macOS, and Linux (this is in theory – only macOS build tested so far)
 
 ## Requirements
 
@@ -45,7 +44,7 @@ No additional download needed - SDK v14.1 headers for all platforms are included
 
 The build system automatically uses the correct platform-specific headers.
 
-**⚠️ Important:** This library is built against SDK v14.1. If you need to download the SDK separately, ensure you get v14.1 from [Blackmagic Design Developer](https://www.blackmagicdesign.com/developer/). Newer versions (v15.x) may cause API compatibility issues and build failures.
+**⚠️ Important:** This library is built against SDK v14.1. If you need to download the SDK separately, ensure you get v14.1 from the [Blackmagic Design developer site](https://www.blackmagicdesign.com/developer/). Newer versions (v15.0+) may cause API compatibility issues and build failures.
 
 ### 2. Build the Library
 
@@ -361,7 +360,7 @@ with BlackmagicOutput() as output:
 **`PixelFormat`**
 - `BGRA`: 8-bit BGRA (automatically used for uint8 data)
 - `YUV`: 8-bit Y'CbCr 4:2:2
-- `YUV10`: 10-bit Y'CbCr 4:2:2 (v210) - default for uint16/float data, provides high-quality output
+- `YUV10`: 10-bit Y'CbCr 4:2:2 (v210) - default for uint16/float data
   - Always uses narrow range: Y: 64-940, UV: 64-960
 - `RGB10`: 10-bit R'G'B' (bmdFormat10BitRGBXLE) - native R'G'B' output without Y'CbCr conversion
   - uint16 input: Bit-shifted from 16-bit to 10-bit (>> 6)
@@ -446,9 +445,9 @@ with BlackmagicOutput() as output:
         frame.fill(0)
         offset = i * 10
         frame[:, offset:offset+100] = [255, 255, 255]  # White bar
-        
+
         output.update_frame(frame)
-        time.sleep(1/25)  # 25 fps
+        time.sleep(1/25)  # Limit update rate (actual rate will be lower due to processing overhead)
 ```
 
 ### Example 4: Load Image from File
@@ -487,7 +486,6 @@ import numpy as np
 from blackmagic_output import BlackmagicOutput, DisplayMode
 
 # Create float R'G'B' image (0.0-1.0 range)
-# This could be from color grading, rendering, or HDR processing
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
 
 # Example: gradient in float space
@@ -739,7 +737,7 @@ HDR metadata is embedded into each video frame using the DeckLink SDK's `IDeckLi
 - **Mastering Display Info**: Default values for max/min luminance
 - **Content Light Levels**: Max content light level and max frame average
 
-### Default Metadata Values:
+### Default HDR Metadata Values (PQ only):
 
 **When using Matrix.Rec709:**
 ```
@@ -759,21 +757,8 @@ Display Primaries: Rec.2020 (ITU-R BT.2020)
 White Point: D65 (0.3127, 0.3290)
 ```
 
-**Luminance values by EOTF:**
+**Luminance values:**
 ```python
-# SDR (Eotf.SDR)
-Max Mastering Luminance: 100 nits
-Min Mastering Luminance: 0.0001 nits
-Max Content Light Level: 100 nits
-Max Frame Average Light Level: 50 nits
-
-# HLG (Eotf.HLG)
-Max Mastering Luminance: 1000 nits
-Min Mastering Luminance: 0.0001 nits
-Max Content Light Level: 1000 nits
-Max Frame Average Light Level: 50 nits
-
-# PQ (Eotf.PQ)
 Max Mastering Luminance: 1000 nits
 Min Mastering Luminance: 0.0001 nits
 Max Content Light Level: 1000 nits
@@ -984,7 +969,7 @@ The library automatically handles drop-frame rules:
 
 ### Complete Example: Color Bars with Time-of-Day Timecode
 
-See `timecode_test.py` for a complete working example that outputs SMPTE color bars with frame-accurate time-of-day timecode and jam sync.
+See `timecode_example.py` for a complete working example that outputs SMPTE color bars with frame-accurate time-of-day timecode and jam sync.
 
 ## Troubleshooting
 
@@ -1014,12 +999,8 @@ See `timecode_test.py` for a complete working example that outputs SMPTE color b
 - Log out and back in for group changes to take effect
 
 **HDR output not displaying correctly**
-- Verify your monitor/display supports the selected transfer function (PQ or HLG)
 - **Simplified API**: Specify both `matrix` and `hdr_metadata` in `display_static_frame()` - they're automatically set correctly
 - **Low-level API**: Call `set_hdr_metadata()` BEFORE `setup_output()` - metadata is embedded in each frame
-- Ensure frame data has appropriate transfer function applied before conversion
-- For PQ: Apply SMPTE ST 2084 curve to linear RGB before conversion
-- For HLG: Apply ITU-R BT.2100 HLG curve before conversion
 - Ensure matrix consistency: same value in both metadata and R'G'B' →Y'CbCr conversion
 
 ### Testing Your Installation
@@ -1081,5 +1062,5 @@ The Blackmagic DeckLink SDK is © Blackmagic Design Pty. Ltd. All rights reserve
 ## Acknowledgments
 
 - Blackmagic Design for the DeckLink SDK
-- pybind11 project for excellent C++/Python bindings
+- pybind11 project for the C++/Python bindings
 - Contributors and testers
