@@ -68,8 +68,9 @@ def main():
     yuv_data = decklink_output.rgb_float_to_yuv10(bars, settings.width, settings.height)
     output.set_frame_data(yuv_data)
 
-    if not output.start_output():
-        print("Failed to start output")
+    # Display the first frame to start output
+    if not output.display_frame():
+        print("Failed to display frame")
         return
 
     print("Output running. Jam syncing timecode...")
@@ -88,12 +89,16 @@ def main():
     output.set_timecode(tc)
     print(f"Jam synced to: {tc}")
     print("Press Ctrl+C to stop...")
+    print()  # New line for the updating timecode display
 
     try:
+        frame_time = 1.0 / frames_per_second
         while True:
-            time.sleep(1)
+            # Display frame to update timecode
+            output.display_frame()
             current_tc = output.get_timecode()
             print(f"Current timecode: {current_tc}", end='\r')
+            time.sleep(frame_time)
     except KeyboardInterrupt:
         print("\nStopping...")
 

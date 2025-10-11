@@ -121,6 +121,17 @@ Initialize the specified DeckLink device.
 **`get_available_devices() -> List[str]`**
 Get list of available DeckLink device names.
 
+**`is_display_mode_supported(display_mode) -> bool`**
+Check if a display mode is supported by the hardware.
+- `display_mode`: Display mode to check
+- Returns: True if supported by hardware
+
+**`is_pixel_format_supported(display_mode, pixel_format) -> bool`**
+Check if a pixel format is supported for a given display mode.
+- `display_mode`: Display mode to check
+- `pixel_format`: Pixel format to check
+- Returns: True if the mode/format combination is supported
+
 **`setup_output(display_mode, pixel_format=PixelFormat.YUV10) -> bool`**
 Setup video output parameters.
 - `display_mode`: Video resolution and frame rate
@@ -203,14 +214,20 @@ Get list of available DeckLink devices.
 **`get_video_settings(display_mode) -> VideoSettings`**
 Get video settings object for a display mode.
 
+**`is_display_mode_supported(display_mode) -> bool`**
+Check if a display mode is supported by the hardware.
+
+**`is_pixel_format_supported(display_mode, pixel_format) -> bool`**
+Check if a pixel format is supported for a given display mode.
+
 **`setup_output(settings: VideoSettings) -> bool`**
 Setup output with detailed settings.
 
 **`set_frame_data(data: np.ndarray) -> bool`**
 Set frame data from NumPy array (must be in correct format).
 
-**`start_output() -> bool`**
-Start scheduled video output.
+**`display_frame() -> bool`**
+Display the current frame synchronously. Call this after `set_frame_data()` to update the display.
 
 **`stop_output(send_black_frame=False) -> bool`**
 Stop video output.
@@ -326,22 +343,15 @@ Additional modes are available including SD (NTSC, PAL), 2K, 4K, 8K, and PC disp
 
 **Querying Available Display Modes:**
 
-To determine which display modes your specific DeckLink device supports, use the `get_display_mode_info()` method to test each mode:
+To determine which display modes your specific DeckLink device supports, use the `is_display_mode_supported()` and `is_pixel_format_supported()` methods:
 
 ```python
-from blackmagic_output import BlackmagicOutput, DisplayMode
+from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
 
 with BlackmagicOutput() as output:
     output.initialize()
 
-    # Test a specific display mode
-    try:
-        info = output.get_display_mode_info(DisplayMode.Mode4K2160p25)
-        print(f"4K 25p: {info['width']}x{info['height']} @ {info['framerate']}fps")
-    except Exception as e:
-        print(f"Mode not supported: {e}")
-
-    # Or iterate through modes you're interested in
+    # Test specific display modes
     test_modes = [
         DisplayMode.HD1080p25,
         DisplayMode.HD1080p50,
@@ -349,12 +359,21 @@ with BlackmagicOutput() as output:
         DisplayMode.Mode4K2160p50
     ]
 
+    print("Supported display modes:")
     for mode in test_modes:
-        try:
+        if output.is_display_mode_supported(mode):
             info = output.get_display_mode_info(mode)
-            print(f"{mode.name}: {info['width']}x{info['height']} @ {info['framerate']}fps")
-        except:
-            print(f"{mode.name}: Not supported")
+            print(f"✓ {mode.name}: {info['width']}x{info['height']} @ {info['framerate']}fps")
+        else:
+            print(f"✗ {mode.name}: Not supported")
+
+    # Test pixel format support for a specific mode
+    print("\nPixel formats supported for HD1080p25:")
+    test_formats = [PixelFormat.YUV10, PixelFormat.RGB10, PixelFormat.RGB12]
+    for fmt in test_formats:
+        supported = output.is_pixel_format_supported(DisplayMode.HD1080p25, fmt)
+        status = "✓" if supported else "✗"
+        print(f"{status} {fmt.name}")
 ```
 
 **`PixelFormat`**
@@ -655,7 +674,8 @@ output.setup_output(settings)
 yuv_data = dl.rgb_float_to_yuv10(frame, 1920, 1080, dl.Matrix.Rec2020)
 output.set_frame_data(yuv_data)
 
-output.start_output()
+# Display the frame
+output.display_frame()
 input("Press Enter to stop...")
 output.stop_output()
 output.cleanup()
@@ -717,7 +737,8 @@ output.setup_output(settings)
 yuv_data = dl.rgb_float_to_yuv10(frame, 1920, 1080, dl.Gamut.Rec2020)
 output.set_frame_data(yuv_data)
 
-output.start_output()
+# Display the frame
+output.display_frame()
 input("Press Enter to stop...")
 output.stop_output()
 output.cleanup()
@@ -916,7 +937,7 @@ output.set_timecode(tc)
 output.setup_output(settings)
 
 # ... set frame data ...
-output.start_output()
+output.display_frame()  # Display first frame with timecode
 
 # Jam sync for better accuracy (optional)
 time.sleep(0.1)  # Let output stabilize
@@ -926,15 +947,20 @@ tc.hours = now.hour
 tc.minutes = now.minute
 tc.seconds = now.second
 tc.frames = frame_number
-output.set_timecode(tc)  # Re-sync while running
+output.set_timecode(tc)  # Re-sync
+
+# Keep updating frames to advance timecode
+while True:
+    output.display_frame()
+    time.sleep(1.0 / settings.framerate)
 ```
 
 ### Timecode Features
 
-- **Auto-increment**: Timecode automatically increments each frame based on the video framerate
+- **Auto-increment**: Timecode automatically increments with each `display_frame()` call based on the video framerate
 - **Drop-frame support**: Properly handles 29.97fps and 59.94fps drop-frame timecode
 - **Multiple formats**: Embeds timecode in both RP188 VITC1 and RP188 LTC formats
-- **Runtime updates**: Timecode can be updated while output is running for jam sync
+- **Runtime updates**: Timecode can be updated between frames using `set_timecode()` for jam sync
 - **Reading timecode**: Use `get_timecode()` to read the current timecode value
 
 ### Timecode Structure

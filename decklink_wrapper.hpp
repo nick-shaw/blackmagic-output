@@ -184,7 +184,7 @@ public:
     bool initialize(int deviceIndex = 0);
     bool setupOutput(const VideoSettings& settings);
     bool setFrameData(const uint8_t* data, size_t dataSize);
-    bool startOutput();
+    bool displayFrame();  // Display the current frame synchronously
     bool stopOutput(bool sendBlackFrame = false);
     void cleanup();
 
@@ -213,6 +213,8 @@ public:
 
     std::vector<std::string> getDeviceList();
     VideoSettings getVideoSettings(DisplayMode mode);
+    bool isDisplayModeSupported(DisplayMode mode);
+    bool isPixelFormatSupported(DisplayMode mode, PixelFormat format);
     void setHdrMetadata(Gamut colorimetry, Eotf eotf);
     void setHdrMetadataCustom(Gamut colorimetry, Eotf eotf, const HdrMetadataCustom& custom);
 
@@ -232,23 +234,17 @@ public:
     OutputInfo getCurrentOutputInfo();
 
 private:
-    class OutputCallback;
-
     IDeckLink* m_deckLink;
     IDeckLinkOutput* m_deckLinkOutput;
     IDeckLinkConfiguration* m_deckLinkConfiguration;
-    IDeckLinkDisplayModeIterator* m_displayModeIterator;
-    std::unique_ptr<OutputCallback> m_outputCallback;
 
     VideoSettings m_currentSettings;
     std::vector<uint8_t> m_frameBuffer;
     std::mutex m_frameBufferMutex;
-    std::atomic<bool> m_outputRunning;
     std::atomic<bool> m_outputEnabled;
 
     BMDTimeValue m_frameDuration;
     BMDTimeScale m_timeScale;
-    unsigned long m_totalFramesScheduled;
 
     bool m_useHdrMetadata;
     Gamut m_hdrColorimetry;
@@ -262,24 +258,4 @@ private:
     bool createFrame(IDeckLinkMutableVideoFrame** frame);
     IDeckLinkVideoFrame* createHdrFrame(IDeckLinkMutableVideoFrame* frame);
     void incrementTimecode(Timecode& tc, double framerate);
-};
-
-class DeckLinkOutput::OutputCallback : public IDeckLinkVideoOutputCallback {
-public:
-    OutputCallback(DeckLinkOutput* parent);
-    virtual ~OutputCallback();
-
-    virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, LPVOID* ppv);
-    virtual ULONG STDMETHODCALLTYPE AddRef();
-    virtual ULONG STDMETHODCALLTYPE Release();
-    
-    virtual HRESULT STDMETHODCALLTYPE ScheduledFrameCompleted(
-        IDeckLinkVideoFrame* completedFrame,
-        BMDOutputFrameCompletionResult result);
-    
-    virtual HRESULT STDMETHODCALLTYPE ScheduledPlaybackHasStopped();
-
-private:
-    std::atomic<ULONG> m_refCount;
-    DeckLinkOutput* m_parent;
 };

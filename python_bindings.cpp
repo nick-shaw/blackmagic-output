@@ -678,12 +678,18 @@ PYBIND11_MODULE(decklink_output, m) {
             auto [ptr, size] = numpy_to_raw(data);
             return self.setFrameData(ptr, size);
         }, "Set frame data from numpy array")
-        .def("start_output", &DeckLinkOutput::startOutput, "Start video output")
+        .def("display_frame", &DeckLinkOutput::displayFrame, "Display the current frame synchronously")
         .def("stop_output", &DeckLinkOutput::stopOutput, "Stop video output",
              py::arg("send_black_frame") = false)
         .def("cleanup", &DeckLinkOutput::cleanup, "Cleanup resources")
         .def("get_device_list", &DeckLinkOutput::getDeviceList, "Get list of available devices")
         .def("get_video_settings", &DeckLinkOutput::getVideoSettings, "Get video settings for display mode")
+        .def("is_display_mode_supported", &DeckLinkOutput::isDisplayModeSupported,
+             "Check if display mode is supported by hardware",
+             py::arg("mode"))
+        .def("is_pixel_format_supported", &DeckLinkOutput::isPixelFormatSupported,
+             "Check if pixel format is supported for given display mode",
+             py::arg("mode"), py::arg("format"))
         .def("set_hdr_metadata", &DeckLinkOutput::setHdrMetadata, "Set HDR metadata with default values",
              py::arg("colorimetry"), py::arg("eotf"))
         .def("set_hdr_metadata_custom", &DeckLinkOutput::setHdrMetadataCustom, "Set HDR metadata with custom values",

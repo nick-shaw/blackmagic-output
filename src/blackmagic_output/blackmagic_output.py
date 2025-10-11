@@ -219,6 +219,38 @@ class BlackmagicOutput:
         """
         return self._device.get_device_list()
 
+    def is_display_mode_supported(self, display_mode: DisplayMode) -> bool:
+        """
+        Check if a display mode is supported by the hardware.
+
+        Args:
+            display_mode: Display mode to check
+
+        Returns:
+            True if supported, False otherwise
+        """
+        if not self._initialized:
+            raise RuntimeError("Device not initialized. Call initialize() first.")
+
+        return self._device.is_display_mode_supported(display_mode.value)
+
+    def is_pixel_format_supported(self, display_mode: DisplayMode,
+                                  pixel_format: PixelFormat) -> bool:
+        """
+        Check if a pixel format is supported for a given display mode.
+
+        Args:
+            display_mode: Display mode to check
+            pixel_format: Pixel format to check
+
+        Returns:
+            True if supported, False otherwise
+        """
+        if not self._initialized:
+            raise RuntimeError("Device not initialized. Call initialize() first.")
+
+        return self._device.is_pixel_format_supported(display_mode.value, pixel_format.value)
+
     def setup_output(self, display_mode: DisplayMode,
                     pixel_format: PixelFormat = PixelFormat.YUV10) -> bool:
         """
@@ -233,10 +265,10 @@ class BlackmagicOutput:
         """
         if not self._initialized:
             raise RuntimeError("Device not initialized. Call initialize() first.")
-        
+
         settings = self._device.get_video_settings(display_mode.value)
         settings.format = pixel_format.value
-        
+
         if self._device.setup_output(settings):
             self._current_settings = settings
             return True
@@ -316,14 +348,12 @@ class BlackmagicOutput:
         if not self._device.set_frame_data(processed_frame):
             return False
 
-        # Start output if not already started
-        if not self._output_started:
-            if self._device.start_output():
-                self._output_started = True
-                return True
-            return False
-        
-        return True
+        # Display the frame synchronously
+        if self._device.display_frame():
+            self._output_started = True
+            return True
+
+        return False
 
     def display_solid_color(self, color: Tuple,
                           display_mode: DisplayMode) -> bool:
@@ -386,7 +416,10 @@ class BlackmagicOutput:
 
         processed_frame = self._prepare_frame_data(frame_data, pixel_format, self._current_matrix, self._current_narrow_range)
 
-        return self._device.set_frame_data(processed_frame)
+        if not self._device.set_frame_data(processed_frame):
+            return False
+
+        return self._device.display_frame()
 
     def stop(self, send_black_frame: bool = False) -> bool:
         """
