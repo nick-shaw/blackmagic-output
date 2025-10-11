@@ -215,7 +215,7 @@ def test_rgb12_comparison():
             frame,
             DisplayMode.HD1080p25,
             PixelFormat.RGB10,
-            video_range=False
+            narrow_range=False
         ):
             print("✓ RGB10 displayed - Press Ctrl+C to switch to YUV10...")
             try:
@@ -228,7 +228,7 @@ def test_rgb12_comparison():
             return False
 
         # Display with YUV10
-        print("\nDisplaying with YUV10 (video range, Rec.709)...")
+        print("\nDisplaying with YUV10 (narrow range, Rec.709)...")
         if output.display_static_frame(
             frame,
             DisplayMode.HD1080p25,
