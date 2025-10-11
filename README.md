@@ -4,7 +4,7 @@ A Python library for outputting video frames to Blackmagic DeckLink devices usin
 
 Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](https://www.claude.com/product/claude-code)!
 
-**⚠️ Note:** The library has only had minimal testing at this time. Please report any issues you encounter. I am particularly interested in feedback from Linux and Windows users.
+**⚠️ Note:** The library has only had minimal testing at this time, and is under ongoing development. Please report any issues you encounter. I am particularly interested in feedback from Linux and Windows users.
 
 ## Features
 
