@@ -16,7 +16,7 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 - **10 and 12-bit R'G'B' output**: 10 and 12-bit R'G'B' 4:4:4
 - **HDR Support**: Rec.2020 colorimetry with PQ and HLG transfer functions
 - **Y'CbCr matrix control**: Rec.709 and Rec.2020 matrix support
-- **RP188 Timecode**: Embedded VITC and LTC timecode with auto-increment
+- **RP188 Timecode**: Embedded VITC and LTC timecode
 - **Cross-Platform**: Works on Windows, macOS, and Linux (this is in theory – only macOS build tested so far)
 
 ## Requirements
@@ -957,7 +957,7 @@ while True:
 
 ### Timecode Features
 
-- **Auto-increment**: Timecode automatically increments with each `display_frame()` call based on the video framerate
+- **Frame-by-frame increment**: Timecode increments with each `display_frame()` call based on the video framerate. To maintain real-time timecode, call `display_frame()` at the appropriate frame rate (e.g., 25 times per second for 25fps video)
 - **Drop-frame support**: Properly handles 29.97fps and 59.94fps drop-frame timecode
 - **Multiple formats**: Embeds timecode in both RP188 VITC1 and RP188 LTC formats
 - **Runtime updates**: Timecode can be updated between frames using `set_timecode()` for jam sync
@@ -995,7 +995,7 @@ The library automatically handles drop-frame rules:
 
 ### Complete Example: Color Bars with Time-of-Day Timecode
 
-See `timecode_example.py` for a complete working example that outputs SMPTE color bars with frame-accurate time-of-day timecode and jam sync.
+See `timecode_example.py` for a complete working example that outputs color bars with frame-accurate time-of-day timecode and jam sync.
 
 ## Troubleshooting
 

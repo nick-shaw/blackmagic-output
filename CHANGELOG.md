@@ -1,0 +1,44 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.10.0-beta] - 2025-01-11
+
+### Changed
+- **BREAKING**: Replaced asynchronous scheduled playback with synchronous frame display
+- **BREAKING**: Removed `start_output()` method from low-level API
+- **BREAKING**: Timecode now increments per `display_frame()` call instead of automatically in the background
+- Display mode switching is now instant with no delays or black screens
+- Simplified internal implementation by removing ~200 lines of callback and scheduling code
+
+### Added
+- New `display_frame()` method for synchronous frame display in low-level API
+- Support for instant display mode switching without stopping/restarting output
+
+### Fixed
+- Display mode switching now works correctly without black screens or delays
+- Eliminated timing issues related to asynchronous hardware operations
+
+### Notes
+- For timecode to advance in real-time, applications must call `display_frame()` at the appropriate frame rate (e.g., 25 times per second for 25fps video)
+- High-level `display_static_frame()` API remains unchanged and handles this automatically
+
+## [0.9.0-beta] - 2025-01-10
+
+### Added
+- 12-bit RGB support
+- 10-bit RGB output
+- Hardware capability checking methods: `is_display_mode_supported()` and `is_pixel_format_supported()`
+
+### Changed
+- Renamed `video_range` parameter to `narrow_range` throughout the API
+
+### Fixed
+- HDR metadata now correctly omits luminance values for HLG (only sets for PQ)
+
+## Earlier versions
+
+See git history for changes prior to 0.9.0-beta.
