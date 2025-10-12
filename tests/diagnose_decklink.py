@@ -7,6 +7,7 @@ This script helps diagnose DeckLink device availability and capabilities.
 
 import numpy as np
 from blackmagic_output import BlackmagicOutput, PixelFormat, DisplayMode
+import decklink_output
 
 def test_device_detection():
     """Test basic device detection and listing."""
@@ -61,24 +62,27 @@ def test_device_initialization():
             print("   This device may not support video output")
 
 def test_output_setup():
-    """Test output setup with different pixel formats."""
+    """Test output setup with different pixel formats using low-level API."""
     print("\n=== Output Setup Test ===")
 
-    output = BlackmagicOutput()
-    if not output.initialize():
+    # Use low-level API for setup testing without displaying
+    output = decklink_output.DeckLinkOutput()
+    if not output.initialize(0):
         print("Could not initialize any device for output test")
         return
 
     formats_to_test = [
-        (PixelFormat.BGRA, "8-bit BGRA"),
-        (PixelFormat.YUV, "8-bit YUV"),
-        (PixelFormat.YUV10, "10-bit YUV (v210)")
+        (decklink_output.PixelFormat.BGRA, "8-bit BGRA"),
+        (decklink_output.PixelFormat.YUV, "8-bit YUV"),
+        (decklink_output.PixelFormat.YUV10, "10-bit YUV (v210)")
     ]
 
     for pixel_format, format_name in formats_to_test:
         print(f"\nTesting {format_name}:")
         try:
-            success = output.setup_output(DisplayMode.HD1080p25, pixel_format)
+            settings = output.get_video_settings(decklink_output.DisplayMode.HD1080p25)
+            settings.format = pixel_format
+            success = output.setup_output(settings)
             if success:
                 print(f"{format_name} setup successful")
             else:

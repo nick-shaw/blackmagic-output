@@ -125,12 +125,6 @@ Check if a pixel format is supported for a given display mode.
 - `pixel_format`: Pixel format to check
 - Returns: True if the mode/format combination is supported
 
-**`setup_output(display_mode, pixel_format=PixelFormat.YUV10) -> bool`**
-Setup video output parameters.
-- `display_mode`: Video resolution and frame rate
-- `pixel_format`: Pixel format (default: YUV10)
-- Returns: True if successful
-
 **`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, narrow_range=True) -> bool`**
 Display a static frame continuously.
 - `frame_data`: NumPy array with image data:

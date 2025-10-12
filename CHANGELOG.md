@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0-beta] - 2025-01-12
+
+### Removed
+- **BREAKING**: Removed `setup_output()` method from high-level API (`BlackmagicOutput`)
+  - The method had no practical use case - `display_static_frame()` and `display_solid_color()` handle setup automatically
+  - For applications that need to setup output without displaying (e.g., testing), use the low-level API (`decklink_output.DeckLinkOutput`)
+  - Tests updated to use low-level API for setup-only operations
+
 ## [0.11.0-beta] - 2025-01-12
 
 ### Removed

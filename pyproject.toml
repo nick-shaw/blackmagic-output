@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "blackmagic-output"
-version = "0.11.0-beta"
+version = "0.12.0-beta"
 description = "Python library for outputting video frames to Blackmagic DeckLink devices"
 readme = "README.md"
 requires-python = ">=3.7"

@@ -251,29 +251,6 @@ class BlackmagicOutput:
 
         return self._device.is_pixel_format_supported(display_mode.value, pixel_format.value)
 
-    def setup_output(self, display_mode: DisplayMode,
-                    pixel_format: PixelFormat = PixelFormat.YUV10) -> bool:
-        """
-        Setup video output parameters.
-
-        Args:
-            display_mode: Video resolution and frame rate
-            pixel_format: Pixel format (default: YUV10)
-
-        Returns:
-            True if setup successful, False otherwise
-        """
-        if not self._initialized:
-            raise RuntimeError("Device not initialized. Call initialize() first.")
-
-        settings = self._device.get_video_settings(display_mode.value)
-        settings.format = pixel_format.value
-
-        if self._device.setup_output(settings):
-            self._current_settings = settings
-            return True
-        return False
-
     def display_static_frame(self, frame_data: np.ndarray,
                            display_mode: DisplayMode,
                            pixel_format: PixelFormat = PixelFormat.YUV10,
@@ -339,8 +316,12 @@ class BlackmagicOutput:
             self._current_settings.mode != display_mode.value or
             self._current_settings.format != pixel_format.value or
             not self._output_started):
-            if not self.setup_output(display_mode, pixel_format):
+            settings = self._device.get_video_settings(display_mode.value)
+            settings.format = pixel_format.value
+
+            if not self._device.setup_output(settings):
                 return False
+            self._current_settings = settings
 
         # Convert frame data if necessary
         processed_frame = self._prepare_frame_data(frame_data, pixel_format, matrix, narrow_range)
@@ -374,10 +355,13 @@ class BlackmagicOutput:
             if not self.initialize():
                 return False
 
-        if not self.setup_output(display_mode):
-            return False
+        # Setup output with default YUV10 format
+        settings = self._device.get_video_settings(display_mode.value)
+        settings.format = PixelFormat.YUV10.value
 
-        settings = self._current_settings
+        if not self._device.setup_output(settings):
+            return False
+        self._current_settings = settings
 
         # Check if color values are floats
         if isinstance(color[0], float):
