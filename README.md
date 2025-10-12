@@ -128,22 +128,46 @@ Check if a pixel format is supported for a given display mode.
 **`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, narrow_range=True) -> bool`**
 Display a static frame continuously.
 - `frame_data`: NumPy array with image data:
-  - RGB: shape (height, width, 3), dtype uint8/uint16/float32
+  - RGB: shape (height, width, 3), dtype uint8/uint16/float32/float64
   - BGRA: shape (height, width, 4), dtype uint8
 - `display_mode`: Video resolution and frame rate
 - `pixel_format`: Pixel format (default: YUV10, automatically uses BGRA for uint8 data)
-- `matrix`: Optional R'G'B' to Y'CbCr conversion matrix (`Matrix.Rec709` or `Matrix.Rec2020`). Only used with YUV10 format. Default: Rec709
+- `matrix`: Optional R'G'B' to Y'CbCr conversion matrix (`Matrix.Rec601`, `Matrix.Rec709` or `Matrix.Rec2020`). Only used with YUV10 format. Default: Rec709
 - `hdr_metadata`: Optional HDR metadata dict with keys:
   - `'eotf'`: Eotf enum (SDR, PQ, or HLG)
   - `'custom'`: Optional HdrMetadataCustom object for custom metadata values
-- `narrow_range`: For float input with RGB10 output only, whether to use narrow range (64-940) or full range (0-1023). Default: True (narrow range). Note: Does not apply to YUV10 (always narrow range) or RGB12 (always full range). uint16 inputs are bit-shifted and ignore this parameter.
+- `narrow_range`: Controls range interpretation (see below)
 - Returns: True if successful
 
-**`display_solid_color(color, display_mode) -> bool`**
-Display a solid color.
-- `color`: R'G'B' tuple (r, g, b) with values 0-255 or 0.0-1.0
+**Understanding `narrow_range` in `display_static_frame`:**
+The `narrow_range` parameter interpretation depends on data type and pixel format:
+- **uint16 with YUV10**: If True, values are narrow range (64-940 scaled to 16-bit, allowing super-white >940 and sub-black <64). If False, values are full range (0-1023 scaled to 16-bit), converted to narrow range for YUV10 output.
+- **uint16 with RGB10**: Informative only - indicates whether input is narrow (64-940<<6) or full (0-1023<<6) range. Values are bit-shifted to 10-bit output without conversion. Warning issued about lack of range signaling.
+- **uint16 with RGB12**: No effect (always full range). Warning issued if True.
+- **float with YUV10**: No effect (always narrow range). Warning issued if False.
+- **float with RGB10**: If True, converts to narrow range (64-940). If False, converts to full range (0-1023).
+- **float with RGB12**: No effect (always full range).
+
+**`display_solid_color(color, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, narrow_range=True) -> bool`**
+Display a solid color continuously.
+- `color`: R'G'B' tuple (r, g, b) with values:
+  - Integer values (0-1023): Interpreted as 10-bit values
+  - Float values (0.0-1.0): Interpreted as normalized full range values
 - `display_mode`: Video resolution and frame rate
+- `pixel_format`: Pixel format (default: YUV10)
+- `matrix`: RGB to Y'CbCr conversion matrix (Rec601, Rec709 or Rec2020). Only applies when pixel_format is YUV10
+- `hdr_metadata`: Optional HDR metadata dict with 'eotf' (and optional 'custom') keys
+- `narrow_range`: Controls range interpretation (see below)
 - Returns: True if successful
+
+**Understanding `narrow_range` in `display_solid_color`:**
+The `narrow_range` parameter interpretation depends on input type and pixel format:
+- **Integer with YUV10**: If True, values are narrow range (64-940), allowing super-white (>940) and sub-black (<64). Converted to float then to narrow range YUV10 output. If False, values are full range (0-1023), converted to float then to narrow range YUV10 output.
+- **Integer with RGB10**: Informative only - indicates whether values represent narrow (64-940) or full (0-1023) range. Values are output without range conversion. Warning issued about lack of range signaling.
+- **Integer with RGB12**: Warning issued if True (RGB12 always full range).
+- **Float with YUV10**: Always converted to narrow range (64-940 for Y, 64-960 for CbCr). Parameter has no effect (warning if False).
+- **Float with RGB10**: If True, converts to narrow range (64-940). If False, converts to full range (0-1023).
+- **Float with RGB12**: Always full range (0-4095). Parameter has no effect (warning if True).
 
 **`update_frame(frame_data) -> bool`**
 Update currently displayed frame with new data.
