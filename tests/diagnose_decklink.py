@@ -73,7 +73,6 @@ def test_output_setup():
 
     formats_to_test = [
         (decklink_output.PixelFormat.BGRA, "8-bit BGRA"),
-        (decklink_output.PixelFormat.YUV, "8-bit YUV"),
         (decklink_output.PixelFormat.YUV10, "10-bit YUV (v210)")
     ]
 

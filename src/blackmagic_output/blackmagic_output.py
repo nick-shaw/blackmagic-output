@@ -34,7 +34,6 @@ class Eotf(Enum):
 
 class PixelFormat(Enum):
     """Supported pixel formats for DeckLink output"""
-    YUV = _decklink.PixelFormat.YUV
     BGRA = _decklink.PixelFormat.BGRA
     YUV10 = _decklink.PixelFormat.YUV10
     RGB10 = _decklink.PixelFormat.RGB10
@@ -461,8 +460,10 @@ class BlackmagicOutput:
             pixel_format = PixelFormat.YUV10
         elif self._current_settings.format == _decklink.PixelFormat.RGB10:
             pixel_format = PixelFormat.RGB10
+        elif self._current_settings.format == _decklink.PixelFormat.RGB12:
+            pixel_format = PixelFormat.RGB12
         else:
-            pixel_format = PixelFormat.YUV
+            raise RuntimeError(f"Unsupported pixel format in current settings: {self._current_settings.format}")
 
         processed_frame = self._prepare_frame_data(frame_data, pixel_format, self._current_matrix, self._current_narrow_range)
 
@@ -607,14 +608,8 @@ class BlackmagicOutput:
             else:
                 raise ValueError("For RGB12 format, frame data must be uint16 or float dtype")
 
-        elif pixel_format == PixelFormat.YUV:
-            if frame_data.dtype != np.uint8:
-                frame_data = frame_data.astype(np.uint8)
-
-            # For YUV format, expect packed YUV422 data
-            if frame_data.ndim != 3 or frame_data.shape[2] != 2:
-                raise ValueError("For YUV format, frame data must be HxWx2 (packed YUV422)")
-            return frame_data
+        else:
+            raise ValueError(f"Unsupported pixel format: {pixel_format}")
 
         return frame_data
 
