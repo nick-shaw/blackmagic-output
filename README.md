@@ -146,7 +146,7 @@ The `narrow_range` parameter interpretation depends on data type and pixel forma
 - **uint16 with RGB12**: No effect (always full range). Warning issued if True.
 - **float with YUV10**: No effect (always narrow range). Warning issued if False.
 - **float with RGB10**: If True, converts to narrow range (64-940). If False, converts to full range (0-1023).
-- **float with RGB12**: No effect (always full range).
+- **float with RGB12**: Always converted to full range (0-4095). Parameter has no effect (warning if True).
 
 **`display_solid_color(color, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, narrow_range=True) -> bool`**
 Display a solid color continuously.
@@ -167,7 +167,7 @@ The `narrow_range` parameter interpretation depends on input type and pixel form
 - **Integer with RGB12**: Warning issued if True (RGB12 always full range).
 - **Float with YUV10**: Always converted to narrow range (64-940 for Y, 64-960 for CbCr). Parameter has no effect (warning if False).
 - **Float with RGB10**: If True, converts to narrow range (64-940). If False, converts to full range (0-1023).
-- **Float with RGB12**: Always full range (0-4095). Parameter has no effect (warning if True).
+- **Float with RGB12**: Always converted to full range (0-4095). Parameter has no effect (warning if True).
 
 **`update_frame(frame_data) -> bool`**
 Update currently displayed frame with new data.
