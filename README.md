@@ -236,7 +236,7 @@ class VideoSettings:
     width: int             # Frame width in pixels
     height: int            # Frame height in pixels
     framerate: float       # Frame rate (e.g., 25.0, 29.97, 60.0)
-    colorimetry: Gamut     # Y'CbCr matrix (Rec709/Rec2020)
+    colorimetry: Gamut     # Y'CbCr matrix (Rec601/Rec709/Rec2020)
     eotf: Eotf             # Transfer function (SDR/PQ/HLG)
 ```
 

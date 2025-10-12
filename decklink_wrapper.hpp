@@ -158,6 +158,7 @@ public:
     };
 
     enum class Gamut {
+        Rec601,
         Rec709,
         Rec2020
     };

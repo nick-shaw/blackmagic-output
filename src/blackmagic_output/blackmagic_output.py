@@ -20,6 +20,7 @@ except ImportError:
 
 class Matrix(Enum):
     """RGB to Y'CbCr conversion matrix"""
+    Rec601 = _decklink.Gamut.Rec601
     Rec709 = _decklink.Gamut.Rec709
     Rec2020 = _decklink.Gamut.Rec2020
 
