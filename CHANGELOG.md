@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0-beta] - 2025-01-12
+
+### Removed
+- **BREAKING**: Removed timecode support entirely
+  - Removed `set_timecode()` and `get_timecode()` methods from low-level API
+  - Removed `Timecode` class
+  - Removed `timecode_example.py` example
+  - Rationale: Timecode requires real-time scheduled playback to be accurate. The current API only supports manual frame display (not scheduled playback), making timecode unreliable as it simply increments per `display_frame()` call rather than tracking actual elapsed time. Since the library is designed for manual frame display use cases (video routing, still frames, test patterns), timecode support is unnecessary complexity.
+
 ## [0.10.0-beta] - 2025-01-11
 
 ### Changed

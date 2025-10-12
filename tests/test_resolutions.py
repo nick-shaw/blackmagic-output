@@ -63,7 +63,7 @@ for mode in test_modes:
         if output.display_static_frame(frame, mode):
             time.sleep(1.0)  # Let hardware settle after mode change
             print("✓ OK")
-            time.sleep(5)  # Display for 5 seconds
+            time.sleep(3)  # Display for 3 seconds
 
             # Fully stop and cleanup before next resolution
             output.stop()

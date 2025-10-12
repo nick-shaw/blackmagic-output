@@ -628,22 +628,6 @@ PYBIND11_MODULE(decklink_output, m) {
         .def_readwrite("max_content_light_level", &DeckLinkOutput::HdrMetadataCustom::maxContentLightLevel)
         .def_readwrite("max_frame_average_light_level", &DeckLinkOutput::HdrMetadataCustom::maxFrameAverageLightLevel);
 
-    // Timecode struct
-    py::class_<DeckLinkOutput::Timecode>(m, "Timecode")
-        .def(py::init<>())
-        .def_readwrite("hours", &DeckLinkOutput::Timecode::hours)
-        .def_readwrite("minutes", &DeckLinkOutput::Timecode::minutes)
-        .def_readwrite("seconds", &DeckLinkOutput::Timecode::seconds)
-        .def_readwrite("frames", &DeckLinkOutput::Timecode::frames)
-        .def_readwrite("drop_frame", &DeckLinkOutput::Timecode::dropFrame)
-        .def("__repr__", [](const DeckLinkOutput::Timecode& tc) {
-            char buf[32];
-            snprintf(buf, sizeof(buf), "%02d:%02d:%02d%c%02d",
-                tc.hours, tc.minutes, tc.seconds,
-                tc.dropFrame ? ';' : ':', tc.frames);
-            return std::string(buf);
-        });
-
     // VideoSettings struct
     py::class_<DeckLinkOutput::VideoSettings>(m, "VideoSettings")
         .def(py::init<>())
@@ -693,9 +677,6 @@ PYBIND11_MODULE(decklink_output, m) {
              py::arg("colorimetry"), py::arg("eotf"))
         .def("set_hdr_metadata_custom", &DeckLinkOutput::setHdrMetadataCustom, "Set HDR metadata with custom values",
              py::arg("colorimetry"), py::arg("eotf"), py::arg("custom"))
-        .def("set_timecode", &DeckLinkOutput::setTimecode, "Set initial timecode value (auto-increments each frame)",
-             py::arg("timecode"))
-        .def("get_timecode", &DeckLinkOutput::getTimecode, "Get current timecode value")
         .def("get_current_output_info", &DeckLinkOutput::getCurrentOutputInfo, "Get current output configuration info");
 
     // Utility functions
@@ -755,5 +736,5 @@ PYBIND11_MODULE(decklink_output, m) {
     }, "Create solid color frame in BGRA format");
 
     // Version info
-    m.attr("__version__") = "0.9.0-beta";
+    m.attr("__version__") = "0.11.0-beta";
 }

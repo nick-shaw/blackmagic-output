@@ -14,7 +14,6 @@ DeckLinkOutput::DeckLinkOutput()
     , m_useHdrMetadata(false)
     , m_hdrColorimetry(Gamut::Rec709)
     , m_hdrEotf(Eotf::SDR)
-    , m_useTimecode(false)
 {
 }
 
@@ -122,13 +121,8 @@ bool DeckLinkOutput::setupOutput(const VideoSettings& settings)
 
     // Enable video output only if not already enabled
     if (!m_outputEnabled) {
-        BMDVideoOutputFlags outputFlags = bmdVideoOutputFlagDefault;
-        if (m_useTimecode) {
-            outputFlags |= bmdVideoOutputRP188;
-        }
-
         if (m_deckLinkOutput->EnableVideoOutput(static_cast<BMDDisplayMode>(settings.mode),
-                                               outputFlags) != S_OK) {
+                                               bmdVideoOutputFlagDefault) != S_OK) {
             std::cerr << "Could not enable video output" << std::endl;
             return false;
         }
@@ -242,33 +236,6 @@ bool DeckLinkOutput::displayFrame()
     if (m_useHdrMetadata) {
         frame = createHdrFrame(mutableFrame);
         mutableFrame->Release();
-    }
-
-    // Set timecode if enabled
-    if (m_useTimecode) {
-        std::lock_guard<std::mutex> lock(m_timecodeMutex);
-
-        mutableFrame->SetTimecode(bmdTimecodeVITC, nullptr);
-        mutableFrame->SetTimecode(bmdTimecodeRP188VITC1, nullptr);
-        mutableFrame->SetTimecode(bmdTimecodeRP188VITC2, nullptr);
-        mutableFrame->SetTimecode(bmdTimecodeRP188LTC, nullptr);
-
-        BMDTimecodeFlags flags = m_currentTimecode.dropFrame ? bmdTimecodeIsDropFrame : bmdTimecodeFlagDefault;
-
-        HRESULT tcResult = mutableFrame->SetTimecodeFromComponents(
-            bmdTimecodeRP188VITC1,
-            m_currentTimecode.hours,
-            m_currentTimecode.minutes,
-            m_currentTimecode.seconds,
-            m_currentTimecode.frames,
-            flags
-        );
-
-        if (tcResult != S_OK) {
-            std::cerr << "Failed to set RP188 VITC1 timecode: " << std::hex << tcResult << std::dec << std::endl;
-        }
-
-        incrementTimecode(m_currentTimecode, m_currentSettings.framerate);
     }
 
     // Display frame synchronously
@@ -509,68 +476,6 @@ bool DeckLinkOutput::isPixelFormatSupported(DisplayMode mode, PixelFormat format
     return (result == S_OK && supported);
 }
 
-void DeckLinkOutput::setTimecode(const Timecode& tc)
-{
-    std::lock_guard<std::mutex> lock(m_timecodeMutex);
-    m_currentTimecode = tc;
-    m_useTimecode = true;
-}
-
-DeckLinkOutput::Timecode DeckLinkOutput::getTimecode()
-{
-    std::lock_guard<std::mutex> lock(m_timecodeMutex);
-    return m_currentTimecode;
-}
-
-void DeckLinkOutput::incrementTimecode(Timecode& tc, double framerate)
-{
-    tc.frames++;
-
-    int framesPerSecond = static_cast<int>(framerate + 0.5);
-
-    if (tc.dropFrame && (framerate > 29.0 && framerate < 31.0)) {
-        if (tc.frames >= 30) {
-            tc.frames = 0;
-            tc.seconds++;
-
-            if (tc.seconds % 60 == 0 && tc.seconds != 0) {
-                if (tc.seconds % 600 != 0) {
-                    tc.frames = 2;
-                }
-            }
-        }
-    } else if (tc.dropFrame && (framerate > 59.0 && framerate < 61.0)) {
-        if (tc.frames >= 60) {
-            tc.frames = 0;
-            tc.seconds++;
-
-            if (tc.seconds % 60 == 0 && tc.seconds != 0) {
-                if (tc.seconds % 600 != 0) {
-                    tc.frames = 4;
-                }
-            }
-        }
-    } else {
-        if (tc.frames >= framesPerSecond) {
-            tc.frames = 0;
-            tc.seconds++;
-        }
-    }
-
-    if (tc.seconds >= 60) {
-        tc.seconds = 0;
-        tc.minutes++;
-    }
-
-    if (tc.minutes >= 60) {
-        tc.minutes = 0;
-        tc.hours++;
-    }
-
-    if (tc.hours >= 24) {
-        tc.hours = 0;
-    }
-}
 
 DeckLinkOutput::OutputInfo DeckLinkOutput::getCurrentOutputInfo()
 {

@@ -203,23 +203,12 @@ public:
         double maxFrameAverageLightLevel = 50.0;
     };
 
-    struct Timecode {
-        uint8_t hours = 0;
-        uint8_t minutes = 0;
-        uint8_t seconds = 0;
-        uint8_t frames = 0;
-        bool dropFrame = false;
-    };
-
     std::vector<std::string> getDeviceList();
     VideoSettings getVideoSettings(DisplayMode mode);
     bool isDisplayModeSupported(DisplayMode mode);
     bool isPixelFormatSupported(DisplayMode mode, PixelFormat format);
     void setHdrMetadata(Gamut colorimetry, Eotf eotf);
     void setHdrMetadataCustom(Gamut colorimetry, Eotf eotf, const HdrMetadataCustom& custom);
-
-    void setTimecode(const Timecode& tc);
-    Timecode getTimecode();
 
     struct OutputInfo {
         DisplayMode displayMode;
@@ -251,11 +240,6 @@ private:
     Eotf m_hdrEotf;
     HdrMetadataCustom m_hdrCustom;
 
-    bool m_useTimecode;
-    Timecode m_currentTimecode;
-    std::mutex m_timecodeMutex;
-
     bool createFrame(IDeckLinkMutableVideoFrame** frame);
     IDeckLinkVideoFrame* createHdrFrame(IDeckLinkMutableVideoFrame* frame);
-    void incrementTimecode(Timecode& tc, double framerate);
 };

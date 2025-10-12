@@ -16,7 +16,6 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 - **10 and 12-bit R'G'B' output**: 10 and 12-bit R'G'B' 4:4:4
 - **HDR Support**: Rec.2020 colorimetry with PQ and HLG transfer functions
 - **Y'CbCr matrix control**: Rec.709 and Rec.2020 matrix support
-- **RP188 Timecode**: Embedded VITC and LTC timecode
 - **Cross-Platform**: Works on Windows, macOS, and Linux (this is in theory – only macOS build tested so far)
 
 ## Requirements
@@ -96,7 +95,7 @@ with BlackmagicOutput() as output:
 The library provides two APIs:
 
 1. **High-level Python wrapper** (`blackmagic_output.BlackmagicOutput`) - Convenient API for simple use cases
-2. **Low-level direct access** (`decklink_output.DeckLinkOutput`) - Full control for advanced features (HDR, timecode)
+2. **Low-level direct access** (`decklink_output.DeckLinkOutput`) - Full control for advanced features (HDR)
 
 ### High-Level API: BlackmagicOutput Class
 
@@ -193,7 +192,7 @@ Create test patterns for display testing and calibration.
 
 ### Low-Level API: DeckLinkOutput Class
 
-Direct C++ API for advanced features including HDR and timecode.
+Direct C++ API for advanced features including HDR.
 
 #### Methods
 
@@ -233,12 +232,6 @@ Set HDR metadata with default values. Must be called before `setup_output()`.
 **`set_hdr_metadata_custom(colorimetry: Gamut, eotf: Eotf, custom: HdrMetadataCustom)`**
 Set HDR metadata with custom values. Must be called before `setup_output()`.
 
-**`set_timecode(tc: Timecode)`**
-Set timecode value (enables timecode output). Must be called before `setup_output()`.
-
-**`get_timecode() -> Timecode`**
-Get current timecode value.
-
 ### Data Structures
 
 **`VideoSettings`**
@@ -271,16 +264,6 @@ class HdrMetadataCustom:
     min_mastering_luminance: float
     max_content_light_level: float
     max_frame_average_light_level: float
-```
-
-**`Timecode`**
-```python
-class Timecode:
-    hours: int         # 0-23
-    minutes: int       # 0-59
-    seconds: int       # 0-59
-    frames: int        # 0-(framerate-1)
-    drop_frame: bool   # True for drop-frame timecode
 ```
 
 ### Utility Functions
@@ -865,128 +848,6 @@ All 14 CEA-861.3/ITU-R BT.2100 HDR static metadata fields are supported:
 4. **Matrix consistency**: When using the simplified API, the same `matrix` parameter is used for both metadata and R'G'B' →Y'CbCr conversion. With the low-level API, ensure consistency between `set_hdr_metadata()` and conversion functions.
 5. **Transfer function**: The library only sets the metadata - you must apply the actual transfer function (PQ/HLG curve) to your RGB data before conversion
 6. **All 14 metadata fields supported**: The library implements all CEA-861.3/ITU-R BT.2100 HDR metadata fields including display primaries, white point, mastering display luminance, and content light levels
-
-## RP188 Timecode Support
-
-The library supports embedding RP188 timecode in the output video signal. Timecode is automatically incremented each frame and embedded in both VITC1 and LTC formats.
-
-### Basic Timecode Usage
-
-```python
-import decklink_output as dl
-from datetime import datetime
-
-output = dl.DeckLinkOutput()
-output.initialize()
-
-# Create timecode from system clock
-now = datetime.now()
-tc = dl.Timecode()
-tc.hours = now.hour
-tc.minutes = now.minute
-tc.seconds = now.second
-tc.frames = 0
-tc.drop_frame = False
-
-# IMPORTANT: Set timecode BEFORE setup_output()
-output.set_timecode(tc)
-
-# Setup and start output
-settings = output.get_video_settings(dl.DisplayMode.HD1080p25)
-settings.format = dl.PixelFormat.YUV10
-output.setup_output(settings)
-
-# ... set frame data and start output ...
-```
-
-### Frame-Accurate Time-of-Day Timecode
-
-For frame-accurate synchronization to the system clock:
-
-```python
-import decklink_output as dl
-from datetime import datetime
-
-output = dl.DeckLinkOutput()
-output.initialize()
-
-settings = output.get_video_settings(dl.DisplayMode.HD1080p25)
-settings.format = dl.PixelFormat.YUV10
-
-# Calculate frame number from microseconds
-now = datetime.now()
-frame_number = int((now.microsecond / 1000000.0) * settings.framerate)
-
-tc = dl.Timecode()
-tc.hours = now.hour
-tc.minutes = now.minute
-tc.seconds = now.second
-tc.frames = frame_number
-tc.drop_frame = False
-
-output.set_timecode(tc)
-output.setup_output(settings)
-
-# ... set frame data ...
-output.display_frame()  # Display first frame with timecode
-
-# Jam sync for better accuracy (optional)
-time.sleep(0.1)  # Let output stabilize
-now = datetime.now()
-frame_number = int((now.microsecond / 1000000.0) * settings.framerate)
-tc.hours = now.hour
-tc.minutes = now.minute
-tc.seconds = now.second
-tc.frames = frame_number
-output.set_timecode(tc)  # Re-sync
-
-# Keep updating frames to advance timecode
-while True:
-    output.display_frame()
-    time.sleep(1.0 / settings.framerate)
-```
-
-### Timecode Features
-
-- **Frame-by-frame increment**: Timecode increments with each `display_frame()` call based on the video framerate. To maintain real-time timecode, call `display_frame()` at the appropriate frame rate (e.g., 25 times per second for 25fps video)
-- **Drop-frame support**: Properly handles 29.97fps and 59.94fps drop-frame timecode
-- **Multiple formats**: Embeds timecode in both RP188 VITC1 and RP188 LTC formats
-- **Runtime updates**: Timecode can be updated between frames using `set_timecode()` for jam sync
-- **Reading timecode**: Use `get_timecode()` to read the current timecode value
-
-### Timecode Structure
-
-```python
-class Timecode:
-    hours: int        # 0-23
-    minutes: int      # 0-59
-    seconds: int      # 0-59
-    frames: int       # 0-(framerate-1)
-    drop_frame: bool  # True for drop-frame timecode
-```
-
-### Drop-Frame Timecode
-
-For 29.97fps and 59.94fps video:
-
-```python
-tc = dl.Timecode()
-tc.hours = 10
-tc.minutes = 0
-tc.seconds = 0
-tc.frames = 0
-tc.drop_frame = True  # Enable drop-frame
-
-output.set_timecode(tc)
-```
-
-The library automatically handles drop-frame rules:
-- Skips frames 0 and 1 at the start of each minute (except every 10th minute)
-- For 59.94fps, skips frames 0-3 instead of 0-1
-
-### Complete Example: Color Bars with Time-of-Day Timecode
-
-See `timecode_example.py` for a complete working example that outputs color bars with frame-accurate time-of-day timecode and jam sync.
 
 ## Troubleshooting
 
