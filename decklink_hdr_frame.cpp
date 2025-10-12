@@ -79,7 +79,13 @@ HRESULT DeckLinkHdrVideoFrame::GetInt(BMDDeckLinkFrameMetadataID metadataID, int
             break;
 
         case bmdDeckLinkFrameMetadataColorspace:
-            *value = m_metadata.colorimetry == DeckLinkOutput::Gamut::Rec709 ? bmdColorspaceRec709 : bmdColorspaceRec2020;
+            if (m_metadata.colorimetry == DeckLinkOutput::Gamut::Rec601) {
+                *value = bmdColorspaceRec601;
+            } else if (m_metadata.colorimetry == DeckLinkOutput::Gamut::Rec709) {
+                *value = bmdColorspaceRec709;
+            } else {
+                *value = bmdColorspaceRec2020;
+            }
             break;
 
         default:

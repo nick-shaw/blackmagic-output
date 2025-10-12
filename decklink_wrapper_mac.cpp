@@ -8,17 +8,12 @@ DeckLinkOutput::DeckLinkOutput()
     : m_deckLink(nullptr)
     , m_deckLinkOutput(nullptr)
     , m_deckLinkConfiguration(nullptr)
-    , m_displayModeIterator(nullptr)
-    , m_outputCallback(nullptr)
-    , m_outputRunning(false)
     , m_outputEnabled(false)
     , m_frameDuration(0)
     , m_timeScale(0)
-    , m_totalFramesScheduled(0)
     , m_useHdrMetadata(false)
     , m_hdrColorimetry(Gamut::Rec709)
     , m_hdrEotf(Eotf::SDR)
-    , m_useTimecode(false)
 {
 }
 
@@ -63,8 +58,6 @@ bool DeckLinkOutput::initialize(int deviceIndex)
         std::cerr << "Could not get IDeckLinkConfiguration interface" << std::endl;
         return false;
     }
-
-    m_outputCallback = std::make_unique<OutputCallback>(this);
 
     return true;
 }
@@ -120,25 +113,20 @@ bool DeckLinkOutput::setupOutput(const VideoSettings& settings)
         }
     }
 
+    // If already enabled with a different mode, disable first
+    if (m_outputEnabled && m_currentSettings.mode != settings.mode) {
+        m_deckLinkOutput->DisableVideoOutput();
+        m_outputEnabled = false;
+    }
+
     // Enable video output only if not already enabled
     if (!m_outputEnabled) {
-        BMDVideoOutputFlags outputFlags = bmdVideoOutputFlagDefault;
-        if (m_useTimecode) {
-            outputFlags |= bmdVideoOutputRP188;
-        }
-
         if (m_deckLinkOutput->EnableVideoOutput(static_cast<BMDDisplayMode>(settings.mode),
-                                               outputFlags) != S_OK) {
+                                               bmdVideoOutputFlagDefault) != S_OK) {
             std::cerr << "Could not enable video output" << std::endl;
             return false;
         }
         m_outputEnabled = true;
-
-        // Set callback
-        if (m_deckLinkOutput->SetScheduledFrameCompletionCallback(m_outputCallback.get()) != S_OK) {
-            std::cerr << "Could not set frame completion callback" << std::endl;
-            return false;
-        }
     }
 
     // Calculate frame buffer size
@@ -228,143 +216,43 @@ bool DeckLinkOutput::createFrame(IDeckLinkMutableVideoFrame** frame)
     return true;
 }
 
-bool DeckLinkOutput::startOutput()
+bool DeckLinkOutput::displayFrame()
 {
     if (!m_deckLinkOutput) {
         std::cerr << "DeckLink output not initialized" << std::endl;
         return false;
     }
 
-    // Create initial frames
-    for (int i = 0; i < 3; i++) {
-        IDeckLinkMutableVideoFrame* mutableFrame = nullptr;
-        if (!createFrame(&mutableFrame)) {
-            std::cerr << "Could not create frame" << std::endl;
-            return false;
-        }
-
-        IDeckLinkVideoFrame* frame = mutableFrame;
-        if (m_useHdrMetadata) {
-            frame = createHdrFrame(mutableFrame);
-            mutableFrame->Release();
-        }
-
-        BMDTimeValue streamTime = (BMDTimeValue)m_totalFramesScheduled * m_frameDuration;
-
-        if (m_useTimecode) {
-            std::lock_guard<std::mutex> lock(m_timecodeMutex);
-
-            mutableFrame->SetTimecode(bmdTimecodeVITC, nullptr);
-            mutableFrame->SetTimecode(bmdTimecodeRP188VITC1, nullptr);
-            mutableFrame->SetTimecode(bmdTimecodeRP188VITC2, nullptr);
-            mutableFrame->SetTimecode(bmdTimecodeRP188LTC, nullptr);
-
-            BMDTimecodeFlags flags = m_currentTimecode.dropFrame ? bmdTimecodeIsDropFrame : bmdTimecodeFlagDefault;
-
-            HRESULT tcResult = mutableFrame->SetTimecodeFromComponents(
-                bmdTimecodeRP188VITC1,
-                m_currentTimecode.hours,
-                m_currentTimecode.minutes,
-                m_currentTimecode.seconds,
-                m_currentTimecode.frames,
-                flags
-            );
-
-            if (tcResult != S_OK) {
-                std::cerr << "Failed to set RP188 VITC1 timecode: " << std::hex << tcResult << std::dec << std::endl;
-            }
-
-            incrementTimecode(m_currentTimecode, m_currentSettings.framerate);
-        }
-
-        HRESULT scheduleResult = m_deckLinkOutput->ScheduleVideoFrame(frame, streamTime, m_frameDuration, m_timeScale);
-
-        if (scheduleResult != S_OK) {
-            std::cerr << "Could not schedule video frame" << std::endl;
-            frame->Release();
-            return false;
-        }
-
-        m_totalFramesScheduled++;
-        frame->Release();
-    }
-
-    if (m_deckLinkOutput->StartScheduledPlayback(0, m_timeScale, 1.0) != S_OK) {
-        std::cerr << "Could not start scheduled playback" << std::endl;
+    // Create frame with current buffer data
+    IDeckLinkMutableVideoFrame* mutableFrame = nullptr;
+    if (!createFrame(&mutableFrame)) {
+        std::cerr << "Could not create frame" << std::endl;
         return false;
     }
 
-    m_outputRunning = true;
+    IDeckLinkVideoFrame* frame = mutableFrame;
+
+    // Wrap with HDR metadata if needed
+    if (m_useHdrMetadata) {
+        frame = createHdrFrame(mutableFrame);
+        mutableFrame->Release();
+    }
+
+    // Display frame synchronously
+    HRESULT result = m_deckLinkOutput->DisplayVideoFrameSync(frame);
+    frame->Release();
+
+    if (result != S_OK) {
+        std::cerr << "Could not display video frame" << std::endl;
+        return false;
+    }
+
     return true;
 }
 
-bool DeckLinkOutput::stopOutput(bool sendBlackFrame)
+bool DeckLinkOutput::stopOutput()
 {
-    if (sendBlackFrame && m_outputRunning && m_deckLinkOutput) {
-        // Create a black frame to clear the output before stopping
-        IDeckLinkMutableVideoFrame* blackFrame = nullptr;
-        if (createFrame(&blackFrame)) {
-            // Fill with black (0,0,0 in video levels)
-            void* frameBytes = nullptr;
-            blackFrame->GetBytes(&frameBytes);
-            if (frameBytes) {
-                long rowBytes = blackFrame->GetRowBytes();
-                long height = blackFrame->GetHeight();
-
-                // Fill frame with black based on pixel format
-                if (m_currentSettings.format == PixelFormat::Format8BitBGRA) {
-                    // BGRA: fill with 0,0,0,255
-                    uint8_t* pixels = static_cast<uint8_t*>(frameBytes);
-                    for (long i = 0; i < height * rowBytes / 4; i++) {
-                        pixels[i * 4 + 0] = 0;   // B
-                        pixels[i * 4 + 1] = 0;   // G
-                        pixels[i * 4 + 2] = 0;   // R
-                        pixels[i * 4 + 3] = 255; // A
-                    }
-                } else if (m_currentSettings.format == PixelFormat::Format10BitYUV) {
-                    // YUV10 v210: black is Y=64, U=512, V=512 in 10-bit
-                    uint32_t* pixels = static_cast<uint32_t*>(frameBytes);
-                    long numDwords = height * rowBytes / 4;
-                    for (long i = 0; i < numDwords; i += 4) {
-                        // v210 packing: U Y V in each DWORD
-                        pixels[i + 0] = (512 << 0) | (64 << 10) | (512 << 20); // U0 Y0 V0
-                        pixels[i + 1] = (64 << 0)  | (512 << 10) | (64 << 20); // Y1 U1 Y2
-                        pixels[i + 2] = (512 << 0) | (64 << 10) | (512 << 20); // V1 Y3 U2
-                        pixels[i + 3] = (64 << 0)  | (512 << 10) | (64 << 20); // Y4 V2 Y5
-                    }
-                } else {
-                    // YUV422: black is Y=16, U=128, V=128
-                    memset(frameBytes, 16, height * rowBytes);
-                }
-            }
-
-            // Wrap in HDR metadata if needed
-            IDeckLinkVideoFrame* frameToSchedule = blackFrame;
-            if (m_useHdrMetadata) {
-                frameToSchedule = createHdrFrame(blackFrame);
-                blackFrame->Release();
-            }
-
-            // Schedule the black frame
-            BMDTimeValue streamTime = (BMDTimeValue)m_totalFramesScheduled * m_frameDuration;
-            m_deckLinkOutput->ScheduleVideoFrame(frameToSchedule, streamTime, m_frameDuration, m_timeScale);
-            m_totalFramesScheduled++;
-            frameToSchedule->Release();
-
-            // Give it a moment to display the black frame
-            usleep(40000); // 40ms delay (almost 2 frames at 25fps)
-        }
-    }
-
-    if (m_outputRunning && m_deckLinkOutput) {
-        // Stop scheduled playback at the current time to ensure clean stop
-        BMDTimeValue actualStopTime = 0;
-        m_deckLinkOutput->StopScheduledPlayback(0, &actualStopTime, m_timeScale);
-        m_outputRunning = false;
-    }
-
     if (m_outputEnabled && m_deckLinkOutput) {
-        // Disable video output - this should stop the output signal
         m_deckLinkOutput->DisableVideoOutput();
         m_outputEnabled = false;
     }
@@ -548,176 +436,46 @@ DeckLinkOutput::VideoSettings DeckLinkOutput::getVideoSettings(DisplayMode mode)
     return settings;
 }
 
-// OutputCallback implementation
-DeckLinkOutput::OutputCallback::OutputCallback(DeckLinkOutput* parent)
-    : m_refCount(1)
-    , m_parent(parent)
+bool DeckLinkOutput::isDisplayModeSupported(DisplayMode mode)
 {
-}
-
-DeckLinkOutput::OutputCallback::~OutputCallback()
-{
-}
-
-HRESULT DeckLinkOutput::OutputCallback::QueryInterface(REFIID iid, LPVOID* ppv)
-{
-    if (ppv == nullptr)
-        return E_INVALIDARG;
-
-    *ppv = nullptr;
-
-    CFUUIDBytes iunknown = CFUUIDGetUUIDBytes(IUnknownUUID);
-    
-    if (memcmp(&iid, &iunknown, sizeof(REFIID)) == 0) {
-        *ppv = static_cast<IUnknown*>(this);
-    } else if (memcmp(&iid, &IID_IDeckLinkVideoOutputCallback, sizeof(REFIID)) == 0) {
-        *ppv = static_cast<IDeckLinkVideoOutputCallback*>(this);
-    } else {
-        return E_NOINTERFACE;
+    if (!m_deckLinkOutput) {
+        return false;
     }
 
-    AddRef();
-    return S_OK;
-}
+    IDeckLinkDisplayMode* displayMode = nullptr;
+    HRESULT result = m_deckLinkOutput->GetDisplayMode(static_cast<BMDDisplayMode>(mode), &displayMode);
 
-ULONG DeckLinkOutput::OutputCallback::AddRef()
-{
-    return ++m_refCount;
-}
-
-ULONG DeckLinkOutput::OutputCallback::Release()
-{
-    ULONG refCount = --m_refCount;
-    if (refCount == 0) {
-        delete this;
-    }
-    return refCount;
-}
-
-HRESULT DeckLinkOutput::OutputCallback::ScheduledFrameCompleted(
-    IDeckLinkVideoFrame* completedFrame,
-    BMDOutputFrameCompletionResult result)
-{
-    if (m_parent->m_outputRunning) {
-        IDeckLinkMutableVideoFrame* mutableFrame = nullptr;
-        if (m_parent->createFrame(&mutableFrame)) {
-            if (m_parent->m_useTimecode) {
-                std::lock_guard<std::mutex> lock(m_parent->m_timecodeMutex);
-
-                mutableFrame->SetTimecode(bmdTimecodeVITC, nullptr);
-                mutableFrame->SetTimecode(bmdTimecodeRP188VITC1, nullptr);
-                mutableFrame->SetTimecode(bmdTimecodeRP188VITC2, nullptr);
-                mutableFrame->SetTimecode(bmdTimecodeRP188LTC, nullptr);
-
-                BMDTimecodeFlags flags = m_parent->m_currentTimecode.dropFrame ? bmdTimecodeIsDropFrame : bmdTimecodeFlagDefault;
-
-                HRESULT tcResult = mutableFrame->SetTimecodeFromComponents(
-                    bmdTimecodeRP188VITC1,
-                    m_parent->m_currentTimecode.hours,
-                    m_parent->m_currentTimecode.minutes,
-                    m_parent->m_currentTimecode.seconds,
-                    m_parent->m_currentTimecode.frames,
-                    flags
-                );
-
-                if (tcResult != S_OK) {
-                    std::cerr << "Failed to set RP188 VITC1 timecode in callback: " << std::hex << tcResult << std::dec << std::endl;
-                }
-
-                m_parent->incrementTimecode(m_parent->m_currentTimecode, m_parent->m_currentSettings.framerate);
-            }
-
-            IDeckLinkVideoFrame* frame = mutableFrame;
-            if (m_parent->m_useHdrMetadata) {
-                frame = m_parent->createHdrFrame(mutableFrame);
-                mutableFrame->Release();
-            }
-
-            BMDTimeValue streamTime = (BMDTimeValue)m_parent->m_totalFramesScheduled * m_parent->m_frameDuration;
-
-            m_parent->m_deckLinkOutput->ScheduleVideoFrame(
-                frame,
-                streamTime,
-                m_parent->m_frameDuration,
-                m_parent->m_timeScale
-            );
-
-            m_parent->m_totalFramesScheduled++;
-            frame->Release();
-        }
+    if (result == S_OK && displayMode != nullptr) {
+        displayMode->Release();
+        return true;
     }
 
-    return S_OK;
+    return false;
 }
 
-HRESULT DeckLinkOutput::OutputCallback::ScheduledPlaybackHasStopped()
+bool DeckLinkOutput::isPixelFormatSupported(DisplayMode mode, PixelFormat format)
 {
-    m_parent->m_outputRunning = false;
-    return S_OK;
-}
-
-void DeckLinkOutput::setTimecode(const Timecode& tc)
-{
-    std::lock_guard<std::mutex> lock(m_timecodeMutex);
-    m_currentTimecode = tc;
-    m_useTimecode = true;
-}
-
-DeckLinkOutput::Timecode DeckLinkOutput::getTimecode()
-{
-    std::lock_guard<std::mutex> lock(m_timecodeMutex);
-    return m_currentTimecode;
-}
-
-void DeckLinkOutput::incrementTimecode(Timecode& tc, double framerate)
-{
-    tc.frames++;
-
-    int framesPerSecond = static_cast<int>(framerate + 0.5);
-
-    if (tc.dropFrame && (framerate > 29.0 && framerate < 31.0)) {
-        if (tc.frames >= 30) {
-            tc.frames = 0;
-            tc.seconds++;
-
-            if (tc.seconds % 60 == 0 && tc.seconds != 0) {
-                if (tc.seconds % 600 != 0) {
-                    tc.frames = 2;
-                }
-            }
-        }
-    } else if (tc.dropFrame && (framerate > 59.0 && framerate < 61.0)) {
-        if (tc.frames >= 60) {
-            tc.frames = 0;
-            tc.seconds++;
-
-            if (tc.seconds % 60 == 0 && tc.seconds != 0) {
-                if (tc.seconds % 600 != 0) {
-                    tc.frames = 4;
-                }
-            }
-        }
-    } else {
-        if (tc.frames >= framesPerSecond) {
-            tc.frames = 0;
-            tc.seconds++;
-        }
+    if (!m_deckLinkOutput) {
+        return false;
     }
 
-    if (tc.seconds >= 60) {
-        tc.seconds = 0;
-        tc.minutes++;
-    }
+    // Check if the mode/format combination is supported
+    bool supported = false;
+    BMDDisplayMode actualMode;
 
-    if (tc.minutes >= 60) {
-        tc.minutes = 0;
-        tc.hours++;
-    }
+    HRESULT result = m_deckLinkOutput->DoesSupportVideoMode(
+        bmdVideoConnectionUnspecified,
+        static_cast<BMDDisplayMode>(mode),
+        static_cast<BMDPixelFormat>(format),
+        bmdNoVideoOutputConversion,
+        bmdSupportedVideoModeDefault,
+        &actualMode,
+        &supported
+    );
 
-    if (tc.hours >= 24) {
-        tc.hours = 0;
-    }
+    return (result == S_OK && supported);
 }
+
 
 DeckLinkOutput::OutputInfo DeckLinkOutput::getCurrentOutputInfo()
 {

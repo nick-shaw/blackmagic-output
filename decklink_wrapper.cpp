@@ -187,9 +187,9 @@ bool DeckLinkOutput::startOutput()
 
 bool DeckLinkOutput::stopOutput()
 {
-    if (m_outputRunning && m_deckLinkOutput) {
-        m_deckLinkOutput->StopScheduledPlayback(0, nullptr, m_timeScale);
-        m_outputRunning = false;
+    if (m_outputEnabled && m_deckLinkOutput) {
+        m_deckLinkOutput->DisableVideoOutput();
+        m_outputEnabled = false;
     }
     return true;
 }

@@ -158,6 +158,7 @@ public:
     };
 
     enum class Gamut {
+        Rec601,
         Rec709,
         Rec2020
     };
@@ -184,8 +185,8 @@ public:
     bool initialize(int deviceIndex = 0);
     bool setupOutput(const VideoSettings& settings);
     bool setFrameData(const uint8_t* data, size_t dataSize);
-    bool startOutput();
-    bool stopOutput(bool sendBlackFrame = false);
+    bool displayFrame();  // Display the current frame synchronously
+    bool stopOutput();
     void cleanup();
 
     struct HdrMetadataCustom {
@@ -203,21 +204,12 @@ public:
         double maxFrameAverageLightLevel = 50.0;
     };
 
-    struct Timecode {
-        uint8_t hours = 0;
-        uint8_t minutes = 0;
-        uint8_t seconds = 0;
-        uint8_t frames = 0;
-        bool dropFrame = false;
-    };
-
     std::vector<std::string> getDeviceList();
     VideoSettings getVideoSettings(DisplayMode mode);
+    bool isDisplayModeSupported(DisplayMode mode);
+    bool isPixelFormatSupported(DisplayMode mode, PixelFormat format);
     void setHdrMetadata(Gamut colorimetry, Eotf eotf);
     void setHdrMetadataCustom(Gamut colorimetry, Eotf eotf, const HdrMetadataCustom& custom);
-
-    void setTimecode(const Timecode& tc);
-    Timecode getTimecode();
 
     struct OutputInfo {
         DisplayMode displayMode;
@@ -232,54 +224,23 @@ public:
     OutputInfo getCurrentOutputInfo();
 
 private:
-    class OutputCallback;
-
     IDeckLink* m_deckLink;
     IDeckLinkOutput* m_deckLinkOutput;
     IDeckLinkConfiguration* m_deckLinkConfiguration;
-    IDeckLinkDisplayModeIterator* m_displayModeIterator;
-    std::unique_ptr<OutputCallback> m_outputCallback;
 
     VideoSettings m_currentSettings;
     std::vector<uint8_t> m_frameBuffer;
     std::mutex m_frameBufferMutex;
-    std::atomic<bool> m_outputRunning;
     std::atomic<bool> m_outputEnabled;
 
     BMDTimeValue m_frameDuration;
     BMDTimeScale m_timeScale;
-    unsigned long m_totalFramesScheduled;
 
     bool m_useHdrMetadata;
     Gamut m_hdrColorimetry;
     Eotf m_hdrEotf;
     HdrMetadataCustom m_hdrCustom;
 
-    bool m_useTimecode;
-    Timecode m_currentTimecode;
-    std::mutex m_timecodeMutex;
-
     bool createFrame(IDeckLinkMutableVideoFrame** frame);
     IDeckLinkVideoFrame* createHdrFrame(IDeckLinkMutableVideoFrame* frame);
-    void incrementTimecode(Timecode& tc, double framerate);
-};
-
-class DeckLinkOutput::OutputCallback : public IDeckLinkVideoOutputCallback {
-public:
-    OutputCallback(DeckLinkOutput* parent);
-    virtual ~OutputCallback();
-
-    virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, LPVOID* ppv);
-    virtual ULONG STDMETHODCALLTYPE AddRef();
-    virtual ULONG STDMETHODCALLTYPE Release();
-    
-    virtual HRESULT STDMETHODCALLTYPE ScheduledFrameCompleted(
-        IDeckLinkVideoFrame* completedFrame,
-        BMDOutputFrameCompletionResult result);
-    
-    virtual HRESULT STDMETHODCALLTYPE ScheduledPlaybackHasStopped();
-
-private:
-    std::atomic<ULONG> m_refCount;
-    DeckLinkOutput* m_parent;
 };

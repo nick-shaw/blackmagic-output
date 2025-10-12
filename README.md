@@ -4,19 +4,18 @@ A Python library for outputting video frames to Blackmagic DeckLink devices usin
 
 Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](https://www.claude.com/product/claude-code)!
 
-**⚠️ Note:** The library has only had minimal testing at this time. Please report any issues you encounter. I am particularly interested in feedback from Linux and Windows users.
+**⚠️ Note:** The library has only had minimal testing at this time, and is under ongoing development. Please report any issues you encounter. I am particularly interested in feedback from Linux and Windows users.
 
 ## Features
 
 - **Static Frame Output**: Display static images from NumPy arrays
 - **Solid Color Output**: Display solid colors for testing and calibration
-- **Dynamic Updates**: Update displayed frames in real-time
+- **Dynamic Updates**: Update currently displayed frame
 - **Multiple Resolutions**: Support for all display modes supported by your DeckLink device (SD, HD, 2K, 4K, 8K, and PC modes)
 - **10-bit Y'CbCr Output**: 10-bit Y'CbCr 4:2:2 (v210) (default for uint16/float data)
 - **10 and 12-bit R'G'B' output**: 10 and 12-bit R'G'B' 4:4:4
 - **HDR Support**: Rec.2020 colorimetry with PQ and HLG transfer functions
 - **Y'CbCr matrix control**: Rec.709 and Rec.2020 matrix support
-- **RP188 Timecode**: Embedded VITC and LTC timecode with auto-increment
 - **Cross-Platform**: Works on Windows, macOS, and Linux (this is in theory – only macOS build tested so far)
 
 ## Requirements
@@ -26,10 +25,11 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 - Blackmagic DeckLink device (DeckLink, UltraStudio, or Intensity series)
 - Blackmagic Desktop Video software installed
 
-### Software Dependencies
-- NumPy >= 1.19.0
-- pybind11 >= 2.6.0
-- Blackmagic DeckLink SDK (v14.1 headers included - see below)
+### Python Dependencies
+Python dependencies (NumPy >= 1.19.0, pybind11 >= 2.6.0) are automatically installed (if needed) during the build process.
+
+### DeckLink SDK
+SDK v14.1 headers for all platforms are included in the repository - no separate download needed.
 
 ## Installation
 
@@ -37,7 +37,6 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 
 **All Platforms (macOS, Windows, Linux):**
 
-No additional download needed - SDK v14.1 headers for all platforms are included in the repository:
 - `decklink_sdk/Mac/include/` - macOS headers
 - `decklink_sdk/Win/include/` - Windows headers
 - `decklink_sdk/Linux/include/` - Linux headers
@@ -46,24 +45,18 @@ The build system automatically uses the correct platform-specific headers.
 
 **⚠️ Important:** This library is built against SDK v14.1. If you need to download the SDK separately, ensure you get v14.1 from the [Blackmagic Design developer site](https://www.blackmagicdesign.com/developer/). Newer versions (v15.0+) may cause API compatibility issues and build failures.
 
-### 2. Build the Library
+### 2. Build and Install the Library
 
 ```bash
 # Clone or download the library files
 git clone https://github.com/nick-shaw/blackmagic-output.git
 cd blackmagic-output
 
-# Install Python dependencies
-pip install numpy pybind11
-
-# Build the C++ extension
-python setup.py build_ext --inplace
-
-# Optional: Install in development mode
+# Install in development mode (this also installs numpy and pybind11 dependencies)
 pip install -e .
 
 # If upgrading from a previous development version, force reinstall:
-# pip install --force-reinstall -e .
+pip install --force-reinstall -e .
 ```
 
 ### 3. Install Optional Dependencies
@@ -101,12 +94,12 @@ with BlackmagicOutput() as output:
 
 The library provides two APIs:
 
-1. **High-level Python wrapper** (`blackmagic_output.BlackmagicOutput`) - Convenient API for simple use cases
-2. **Low-level direct access** (`decklink_output.DeckLinkOutput`) - Full control for advanced features (HDR, timecode)
+1. **High-level Python wrapper** (`blackmagic_output.BlackmagicOutput`) - Convenient API for most cases
+2. **Low-level direct access** (`decklink_output.DeckLinkOutput`) - For more fine-grained control
 
 ### High-Level API: BlackmagicOutput Class
 
-Convenient Python wrapper for simple video output operations.
+Convenient Python wrapper for most video output operations.
 
 #### Methods
 
@@ -121,31 +114,60 @@ Initialize the specified DeckLink device.
 **`get_available_devices() -> List[str]`**
 Get list of available DeckLink device names.
 
-**`setup_output(display_mode, pixel_format=PixelFormat.YUV10) -> bool`**
-Setup video output parameters.
-- `display_mode`: Video resolution and frame rate
-- `pixel_format`: Pixel format (default: YUV10)
-- Returns: True if successful
+**`is_display_mode_supported(display_mode) -> bool`**
+Check if a display mode is supported by the hardware.
+- `display_mode`: Display mode to check
+- Returns: True if supported by hardware
+
+**`is_pixel_format_supported(display_mode, pixel_format) -> bool`**
+Check if a pixel format is supported for a given display mode.
+- `display_mode`: Display mode to check
+- `pixel_format`: Pixel format to check
+- Returns: True if the mode/format combination is supported
 
 **`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, narrow_range=True) -> bool`**
 Display a static frame continuously.
 - `frame_data`: NumPy array with image data:
-  - RGB: shape (height, width, 3), dtype uint8/uint16/float32
+  - RGB: shape (height, width, 3), dtype uint8/uint16/float32/float64
   - BGRA: shape (height, width, 4), dtype uint8
 - `display_mode`: Video resolution and frame rate
 - `pixel_format`: Pixel format (default: YUV10, automatically uses BGRA for uint8 data)
-- `matrix`: Optional R'G'B' to Y'CbCr conversion matrix (`Matrix.Rec709` or `Matrix.Rec2020`). Only used with YUV10 format. Default: Rec709
+- `matrix`: Optional R'G'B' to Y'CbCr conversion matrix (`Matrix.Rec601`, `Matrix.Rec709` or `Matrix.Rec2020`). Only used with YUV10 format. Default: Rec709
 - `hdr_metadata`: Optional HDR metadata dict with keys:
   - `'eotf'`: Eotf enum (SDR, PQ, or HLG)
   - `'custom'`: Optional HdrMetadataCustom object for custom metadata values
-- `narrow_range`: For float input with RGB10 output only, whether to use narrow range (64-940) or full range (0-1023). Default: True (narrow range). Note: Does not apply to YUV10 (always narrow range) or RGB12 (always full range). uint16 inputs are bit-shifted and ignore this parameter.
+- `narrow_range`: Controls range interpretation (see below)
 - Returns: True if successful
 
-**`display_solid_color(color, display_mode) -> bool`**
-Display a solid color.
-- `color`: R'G'B' tuple (r, g, b) with values 0-255 or 0.0-1.0
+**Understanding `narrow_range` in `display_static_frame`:**
+The `narrow_range` parameter interpretation depends on data type and pixel format:
+- **uint16 with YUV10**: If True, input values are treated as narrow range (black at 64<<6 and white at 940<<6, allowing super-white and sub-black). If False, values are full range, converted to narrow range for YUV10 output.
+- **uint16 with RGB10**: Informative only - indicates whether input is narrow (64-940<<6) or full (0-1023<<6) range. Values are bit-shifted to 10-bit output without conversion. Warning issued about lack of range signaling.
+- **uint16 with RGB12**: No effect (always full range). Warning issued if True.
+- **float with YUV10**: No effect (always narrow range). Warning issued if False.
+- **float with RGB10**: If True, converts to narrow range (64-940). If False, converts to full range (0-1023).
+- **float with RGB12**: Always converted to full range (0-4095). Parameter has no effect (warning if True).
+
+**`display_solid_color(color, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, narrow_range=True) -> bool`**
+Display a solid color continuously.
+- `color`: R'G'B' tuple (r, g, b) with values:
+  - Integer values (0-1023): Interpreted as 10-bit values
+  - Float values (0.0-1.0): Interpreted as normalized full range values
 - `display_mode`: Video resolution and frame rate
+- `pixel_format`: Pixel format (default: YUV10)
+- `matrix`: RGB to Y'CbCr conversion matrix (Rec601, Rec709 or Rec2020). Only applies when pixel_format is YUV10
+- `hdr_metadata`: Optional HDR metadata dict with 'eotf' (and optional 'custom') keys
+- `narrow_range`: Controls range interpretation (see below)
 - Returns: True if successful
+
+**Understanding `narrow_range` in `display_solid_color`:**
+The `narrow_range` parameter interpretation depends on input type and pixel format:
+- **Integer with YUV10**: If True, values are treated as narrow range (64-940), allowing super-white (>940) and sub-black (<64). Converted to float then to narrow range YUV10 output. If False, values are treated as full range (0-1023), converted to float then to narrow range YUV10 output.
+- **Integer with RGB10**: Informative only - indicates whether values represent narrow (64-940) or full (0-1023) range. Values are output without range conversion. Warning issued about lack of range signaling.
+- **Integer with RGB12**: Warning issued if True (RGB12 always full range).
+- **Float with YUV10**: Always converted to narrow range (64-940 for Y, 64-960 for CbCr). Parameter has no effect (warning if False).
+- **Float with RGB10**: If True, converts to narrow range (64-940). If False, converts to full range (0-1023).
+- **Float with RGB12**: Always converted to full range (0-4095). Parameter has no effect (warning if True).
 
 **`update_frame(frame_data) -> bool`**
 Update currently displayed frame with new data.
@@ -160,14 +182,12 @@ Get information about a display mode.
 Get information about the current output configuration.
 - Returns: Dictionary with 'display_mode_name', 'pixel_format_name', 'width', 'height', 'framerate', 'rgb444_mode_enabled'
 
-**`stop(send_black_frame=False) -> bool`**
+**`stop() -> bool`**
 Stop video output.
-- `send_black_frame`: If True, sends a black frame before stopping to avoid flickering or frozen last frame
 - Returns: True if successful
 
-**`cleanup(send_black_frame=False)`**
+**`cleanup()`**
 Cleanup resources and stop output.
-- `send_black_frame`: If True, sends a black frame before stopping
 
 **Context Manager Support:**
 ```python
@@ -190,7 +210,7 @@ Create test patterns for display testing and calibration.
 
 ### Low-Level API: DeckLinkOutput Class
 
-Direct C++ API for advanced features including HDR and timecode.
+Direct C++ API for more fine-grained control.
 
 #### Methods
 
@@ -203,18 +223,23 @@ Get list of available DeckLink devices.
 **`get_video_settings(display_mode) -> VideoSettings`**
 Get video settings object for a display mode.
 
+**`is_display_mode_supported(display_mode) -> bool`**
+Check if a display mode is supported by the hardware.
+
+**`is_pixel_format_supported(display_mode, pixel_format) -> bool`**
+Check if a pixel format is supported for a given display mode.
+
 **`setup_output(settings: VideoSettings) -> bool`**
 Setup output with detailed settings.
 
 **`set_frame_data(data: np.ndarray) -> bool`**
 Set frame data from NumPy array (must be in correct format).
 
-**`start_output() -> bool`**
-Start scheduled video output.
+**`display_frame() -> bool`**
+Display the current frame synchronously. Call this after `set_frame_data()` to update the display.
 
-**`stop_output(send_black_frame=False) -> bool`**
+**`stop_output() -> bool`**
 Stop video output.
-- `send_black_frame`: If True, sends a black frame before stopping to avoid flickering or frozen last frame
 
 **`cleanup()`**
 Cleanup all resources.
@@ -224,12 +249,6 @@ Set HDR metadata with default values. Must be called before `setup_output()`.
 
 **`set_hdr_metadata_custom(colorimetry: Gamut, eotf: Eotf, custom: HdrMetadataCustom)`**
 Set HDR metadata with custom values. Must be called before `setup_output()`.
-
-**`set_timecode(tc: Timecode)`**
-Set timecode value (enables timecode output). Must be called before `setup_output()`.
-
-**`get_timecode() -> Timecode`**
-Get current timecode value.
 
 ### Data Structures
 
@@ -241,9 +260,11 @@ class VideoSettings:
     width: int             # Frame width in pixels
     height: int            # Frame height in pixels
     framerate: float       # Frame rate (e.g., 25.0, 29.97, 60.0)
-    colorimetry: Gamut     # Color space (Rec709/Rec2020)
+    colorimetry: Gamut     # Y'CbCr matrix (Rec601/Rec709/Rec2020)
     eotf: Eotf             # Transfer function (SDR/PQ/HLG)
 ```
+
+**Note:** What the Blackmagic SDK refers to as the "color space" (BMDColorspace) is in fact the matrix used for R'G'B' to Y'CbCr conversion, not the gamut of the image data. For example, ARRI Wide Gamut data would typically be converted using a Rec.709 matrix.
 
 **`HdrMetadataCustom`**
 ```python
@@ -263,16 +284,6 @@ class HdrMetadataCustom:
     min_mastering_luminance: float
     max_content_light_level: float
     max_frame_average_light_level: float
-```
-
-**`Timecode`**
-```python
-class Timecode:
-    hours: int         # 0-23
-    minutes: int       # 0-59
-    seconds: int       # 0-59
-    frames: int        # 0-(framerate-1)
-    drop_frame: bool   # True for drop-frame timecode
 ```
 
 ### Utility Functions
@@ -326,22 +337,15 @@ Additional modes are available including SD (NTSC, PAL), 2K, 4K, 8K, and PC disp
 
 **Querying Available Display Modes:**
 
-To determine which display modes your specific DeckLink device supports, use the `get_display_mode_info()` method to test each mode:
+To determine which display modes your specific DeckLink device supports, use the `is_display_mode_supported()` and `is_pixel_format_supported()` methods:
 
 ```python
-from blackmagic_output import BlackmagicOutput, DisplayMode
+from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
 
 with BlackmagicOutput() as output:
     output.initialize()
 
-    # Test a specific display mode
-    try:
-        info = output.get_display_mode_info(DisplayMode.Mode4K2160p25)
-        print(f"4K 25p: {info['width']}x{info['height']} @ {info['framerate']}fps")
-    except Exception as e:
-        print(f"Mode not supported: {e}")
-
-    # Or iterate through modes you're interested in
+    # Test specific display modes
     test_modes = [
         DisplayMode.HD1080p25,
         DisplayMode.HD1080p50,
@@ -349,12 +353,21 @@ with BlackmagicOutput() as output:
         DisplayMode.Mode4K2160p50
     ]
 
+    print("Supported display modes:")
     for mode in test_modes:
-        try:
+        if output.is_display_mode_supported(mode):
             info = output.get_display_mode_info(mode)
-            print(f"{mode.name}: {info['width']}x{info['height']} @ {info['framerate']}fps")
-        except:
-            print(f"{mode.name}: Not supported")
+            print(f"✓ {mode.name}: {info['width']}x{info['height']} @ {info['framerate']}fps")
+        else:
+            print(f"✗ {mode.name}: Not supported")
+
+    # Test pixel format support for a specific mode
+    print("\nPixel formats supported for HD1080p25:")
+    test_formats = [PixelFormat.YUV10, PixelFormat.RGB10, PixelFormat.RGB12]
+    for fmt in test_formats:
+        supported = output.is_pixel_format_supported(DisplayMode.HD1080p25, fmt)
+        status = "✓" if supported else "✗"
+        print(f"{status} {fmt.name}")
 ```
 
 **`PixelFormat`**
@@ -655,7 +668,8 @@ output.setup_output(settings)
 yuv_data = dl.rgb_float_to_yuv10(frame, 1920, 1080, dl.Matrix.Rec2020)
 output.set_frame_data(yuv_data)
 
-output.start_output()
+# Display the frame
+output.display_frame()
 input("Press Enter to stop...")
 output.stop_output()
 output.cleanup()
@@ -717,7 +731,8 @@ output.setup_output(settings)
 yuv_data = dl.rgb_float_to_yuv10(frame, 1920, 1080, dl.Gamut.Rec2020)
 output.set_frame_data(yuv_data)
 
-output.start_output()
+# Display the frame
+output.display_frame()
 input("Press Enter to stop...")
 output.stop_output()
 output.cleanup()
@@ -853,123 +868,6 @@ All 14 CEA-861.3/ITU-R BT.2100 HDR static metadata fields are supported:
 4. **Matrix consistency**: When using the simplified API, the same `matrix` parameter is used for both metadata and R'G'B' →Y'CbCr conversion. With the low-level API, ensure consistency between `set_hdr_metadata()` and conversion functions.
 5. **Transfer function**: The library only sets the metadata - you must apply the actual transfer function (PQ/HLG curve) to your RGB data before conversion
 6. **All 14 metadata fields supported**: The library implements all CEA-861.3/ITU-R BT.2100 HDR metadata fields including display primaries, white point, mastering display luminance, and content light levels
-
-## RP188 Timecode Support
-
-The library supports embedding RP188 timecode in the output video signal. Timecode is automatically incremented each frame and embedded in both VITC1 and LTC formats.
-
-### Basic Timecode Usage
-
-```python
-import decklink_output as dl
-from datetime import datetime
-
-output = dl.DeckLinkOutput()
-output.initialize()
-
-# Create timecode from system clock
-now = datetime.now()
-tc = dl.Timecode()
-tc.hours = now.hour
-tc.minutes = now.minute
-tc.seconds = now.second
-tc.frames = 0
-tc.drop_frame = False
-
-# IMPORTANT: Set timecode BEFORE setup_output()
-output.set_timecode(tc)
-
-# Setup and start output
-settings = output.get_video_settings(dl.DisplayMode.HD1080p25)
-settings.format = dl.PixelFormat.YUV10
-output.setup_output(settings)
-
-# ... set frame data and start output ...
-```
-
-### Frame-Accurate Time-of-Day Timecode
-
-For frame-accurate synchronization to the system clock:
-
-```python
-import decklink_output as dl
-from datetime import datetime
-
-output = dl.DeckLinkOutput()
-output.initialize()
-
-settings = output.get_video_settings(dl.DisplayMode.HD1080p25)
-settings.format = dl.PixelFormat.YUV10
-
-# Calculate frame number from microseconds
-now = datetime.now()
-frame_number = int((now.microsecond / 1000000.0) * settings.framerate)
-
-tc = dl.Timecode()
-tc.hours = now.hour
-tc.minutes = now.minute
-tc.seconds = now.second
-tc.frames = frame_number
-tc.drop_frame = False
-
-output.set_timecode(tc)
-output.setup_output(settings)
-
-# ... set frame data ...
-output.start_output()
-
-# Jam sync for better accuracy (optional)
-time.sleep(0.1)  # Let output stabilize
-now = datetime.now()
-frame_number = int((now.microsecond / 1000000.0) * settings.framerate)
-tc.hours = now.hour
-tc.minutes = now.minute
-tc.seconds = now.second
-tc.frames = frame_number
-output.set_timecode(tc)  # Re-sync while running
-```
-
-### Timecode Features
-
-- **Auto-increment**: Timecode automatically increments each frame based on the video framerate
-- **Drop-frame support**: Properly handles 29.97fps and 59.94fps drop-frame timecode
-- **Multiple formats**: Embeds timecode in both RP188 VITC1 and RP188 LTC formats
-- **Runtime updates**: Timecode can be updated while output is running for jam sync
-- **Reading timecode**: Use `get_timecode()` to read the current timecode value
-
-### Timecode Structure
-
-```python
-class Timecode:
-    hours: int        # 0-23
-    minutes: int      # 0-59
-    seconds: int      # 0-59
-    frames: int       # 0-(framerate-1)
-    drop_frame: bool  # True for drop-frame timecode
-```
-
-### Drop-Frame Timecode
-
-For 29.97fps and 59.94fps video:
-
-```python
-tc = dl.Timecode()
-tc.hours = 10
-tc.minutes = 0
-tc.seconds = 0
-tc.frames = 0
-tc.drop_frame = True  # Enable drop-frame
-
-output.set_timecode(tc)
-```
-
-The library automatically handles drop-frame rules:
-- Skips frames 0 and 1 at the start of each minute (except every 10th minute)
-- For 59.94fps, skips frames 0-3 instead of 0-1
-
-### Complete Example: Color Bars with Time-of-Day Timecode
-
-See `timecode_example.py` for a complete working example that outputs SMPTE color bars with frame-accurate time-of-day timecode and jam sync.
 
 ## Troubleshooting
 

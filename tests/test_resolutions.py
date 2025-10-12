@@ -61,11 +61,13 @@ for mode in test_modes:
 
         # Try to display the frame
         if output.display_static_frame(frame, mode):
+            time.sleep(1.0)  # Let hardware settle after mode change
             print("✓ OK")
-            time.sleep(2.0)  # Display for 2 seconds
+            time.sleep(3)  # Display for 3 seconds
 
-            # Stop output and cleanup before next resolution
-            output.stop(send_black_frame=True)
+            # Fully stop and cleanup before next resolution
+            output.stop()
+            time.sleep(1.0)  # Give hardware time to fully stop
         else:
             print("✗ FAILED (mode not supported by hardware)")
 

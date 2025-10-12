@@ -90,11 +90,18 @@ py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int wi
                     float bf = b / 65535.0f;
 
                     float yf, uf, vf;
-                    if (matrix == DeckLinkOutput::Gamut::Rec2020) {
+                    if (matrix == DeckLinkOutput::Gamut::Rec601) {
+                        // Rec.601 coefficients
+                        yf = 0.299f * rf + 0.587f * gf + 0.114f * bf;
+                        uf = -0.1687f * rf - 0.3313f * gf + 0.5000f * bf;
+                        vf = 0.5000f * rf - 0.4187f * gf - 0.0813f * bf;
+                    } else if (matrix == DeckLinkOutput::Gamut::Rec2020) {
+                        // Rec.2020 coefficients
                         yf = 0.2627f * rf + 0.6780f * gf + 0.0593f * bf;
                         uf = -0.1396f * rf - 0.3604f * gf + 0.5000f * bf;
                         vf = 0.5000f * rf - 0.4598f * gf - 0.0402f * bf;
                     } else {
+                        // Rec.709 coefficients (default)
                         yf = 0.2126f * rf + 0.7152f * gf + 0.0722f * bf;
                         uf = -0.1146f * rf - 0.3854f * gf + 0.5000f * bf;
                         vf = 0.5000f * rf - 0.4542f * gf - 0.0458f * bf;
@@ -175,11 +182,18 @@ py::array_t<uint8_t> rgb_float_to_yuv10(py::array_t<float> rgb_array, int width,
                     float b = pixel[2];
 
                     float yf, uf, vf;
-                    if (matrix == DeckLinkOutput::Gamut::Rec2020) {
+                    if (matrix == DeckLinkOutput::Gamut::Rec601) {
+                        // Rec.601 coefficients
+                        yf = 0.299f * r + 0.587f * g + 0.114f * b;
+                        uf = -0.1687f * r - 0.3313f * g + 0.5000f * b;
+                        vf = 0.5000f * r - 0.4187f * g - 0.0813f * b;
+                    } else if (matrix == DeckLinkOutput::Gamut::Rec2020) {
+                        // Rec.2020 coefficients
                         yf = 0.2627f * r + 0.6780f * g + 0.0593f * b;
                         uf = -0.1396f * r - 0.3604f * g + 0.5000f * b;
                         vf = 0.5000f * r - 0.4598f * g - 0.0402f * b;
                     } else {
+                        // Rec.709 coefficients (default)
                         yf = 0.2126f * r + 0.7152f * g + 0.0722f * b;
                         uf = -0.1146f * r - 0.3854f * g + 0.5000f * b;
                         vf = 0.5000f * r - 0.4542f * g - 0.0458f * b;
@@ -601,6 +615,7 @@ PYBIND11_MODULE(decklink_output, m) {
         .value("Mode2560x1600p60", DeckLinkOutput::DisplayMode::Mode2560x1600p60);
 
     auto gamut_enum = py::enum_<DeckLinkOutput::Gamut>(m, "Gamut")
+        .value("Rec601", DeckLinkOutput::Gamut::Rec601)
         .value("Rec709", DeckLinkOutput::Gamut::Rec709)
         .value("Rec2020", DeckLinkOutput::Gamut::Rec2020);
 
@@ -627,22 +642,6 @@ PYBIND11_MODULE(decklink_output, m) {
         .def_readwrite("min_mastering_luminance", &DeckLinkOutput::HdrMetadataCustom::minMasteringLuminance)
         .def_readwrite("max_content_light_level", &DeckLinkOutput::HdrMetadataCustom::maxContentLightLevel)
         .def_readwrite("max_frame_average_light_level", &DeckLinkOutput::HdrMetadataCustom::maxFrameAverageLightLevel);
-
-    // Timecode struct
-    py::class_<DeckLinkOutput::Timecode>(m, "Timecode")
-        .def(py::init<>())
-        .def_readwrite("hours", &DeckLinkOutput::Timecode::hours)
-        .def_readwrite("minutes", &DeckLinkOutput::Timecode::minutes)
-        .def_readwrite("seconds", &DeckLinkOutput::Timecode::seconds)
-        .def_readwrite("frames", &DeckLinkOutput::Timecode::frames)
-        .def_readwrite("drop_frame", &DeckLinkOutput::Timecode::dropFrame)
-        .def("__repr__", [](const DeckLinkOutput::Timecode& tc) {
-            char buf[32];
-            snprintf(buf, sizeof(buf), "%02d:%02d:%02d%c%02d",
-                tc.hours, tc.minutes, tc.seconds,
-                tc.dropFrame ? ';' : ':', tc.frames);
-            return std::string(buf);
-        });
 
     // VideoSettings struct
     py::class_<DeckLinkOutput::VideoSettings>(m, "VideoSettings")
@@ -678,19 +677,21 @@ PYBIND11_MODULE(decklink_output, m) {
             auto [ptr, size] = numpy_to_raw(data);
             return self.setFrameData(ptr, size);
         }, "Set frame data from numpy array")
-        .def("start_output", &DeckLinkOutput::startOutput, "Start video output")
-        .def("stop_output", &DeckLinkOutput::stopOutput, "Stop video output",
-             py::arg("send_black_frame") = false)
+        .def("display_frame", &DeckLinkOutput::displayFrame, "Display the current frame synchronously")
+        .def("stop_output", &DeckLinkOutput::stopOutput, "Stop video output")
         .def("cleanup", &DeckLinkOutput::cleanup, "Cleanup resources")
         .def("get_device_list", &DeckLinkOutput::getDeviceList, "Get list of available devices")
         .def("get_video_settings", &DeckLinkOutput::getVideoSettings, "Get video settings for display mode")
+        .def("is_display_mode_supported", &DeckLinkOutput::isDisplayModeSupported,
+             "Check if display mode is supported by hardware",
+             py::arg("mode"))
+        .def("is_pixel_format_supported", &DeckLinkOutput::isPixelFormatSupported,
+             "Check if pixel format is supported for given display mode",
+             py::arg("mode"), py::arg("format"))
         .def("set_hdr_metadata", &DeckLinkOutput::setHdrMetadata, "Set HDR metadata with default values",
              py::arg("colorimetry"), py::arg("eotf"))
         .def("set_hdr_metadata_custom", &DeckLinkOutput::setHdrMetadataCustom, "Set HDR metadata with custom values",
              py::arg("colorimetry"), py::arg("eotf"), py::arg("custom"))
-        .def("set_timecode", &DeckLinkOutput::setTimecode, "Set initial timecode value (auto-increments each frame)",
-             py::arg("timecode"))
-        .def("get_timecode", &DeckLinkOutput::getTimecode, "Get current timecode value")
         .def("get_current_output_info", &DeckLinkOutput::getCurrentOutputInfo, "Get current output configuration info");
 
     // Utility functions
@@ -750,5 +751,5 @@ PYBIND11_MODULE(decklink_output, m) {
     }, "Create solid color frame in BGRA format");
 
     // Version info
-    m.attr("__version__") = "0.9.0-beta";
+    m.attr("__version__") = "0.12.0-beta";
 }
