@@ -334,10 +334,11 @@ class BlackmagicOutput:
             else:
                 self._device.set_hdr_metadata(gamut, eotf.value)
 
-        # Setup output if not already done or settings changed
+        # Setup output if not already done, settings changed, or output was stopped
         if (not self._current_settings or
             self._current_settings.mode != display_mode.value or
-            self._current_settings.format != pixel_format.value):
+            self._current_settings.format != pixel_format.value or
+            not self._output_started):
             if not self.setup_output(display_mode, pixel_format):
                 return False
 
@@ -421,31 +422,24 @@ class BlackmagicOutput:
 
         return self._device.display_frame()
 
-    def stop(self, send_black_frame: bool = False) -> bool:
+    def stop(self) -> bool:
         """
         Stop video output.
-
-        Args:
-            send_black_frame: If True, send a black frame before stopping to avoid
-                            flickering or frozen last frame. Default: False
 
         Returns:
             True if successful, False otherwise
         """
         if self._output_started:
-            result = self._device.stop_output(send_black_frame)
+            result = self._device.stop_output()
             self._output_started = False
             return result
         return True
 
-    def cleanup(self, send_black_frame: bool = False):
+    def cleanup(self):
         """
         Cleanup resources and stop output.
-
-        Args:
-            send_black_frame: If True, send a black frame before stopping. Default: False
         """
-        self.stop(send_black_frame)
+        self.stop()
         self._device.cleanup()
         self._initialized = False
 

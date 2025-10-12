@@ -46,20 +46,14 @@ The build system automatically uses the correct platform-specific headers.
 
 **⚠️ Important:** This library is built against SDK v14.1. If you need to download the SDK separately, ensure you get v14.1 from the [Blackmagic Design developer site](https://www.blackmagicdesign.com/developer/). Newer versions (v15.0+) may cause API compatibility issues and build failures.
 
-### 2. Build the Library
+### 2. Build and Install the Library
 
 ```bash
 # Clone or download the library files
 git clone https://github.com/nick-shaw/blackmagic-output.git
 cd blackmagic-output
 
-# Install Python dependencies
-pip install numpy pybind11
-
-# Build the C++ extension
-python setup.py build_ext --inplace
-
-# Optional: Install in development mode
+# Install in development mode (this also installs numpy and pybind11 dependencies)
 pip install -e .
 
 # If upgrading from a previous development version, force reinstall:
@@ -171,14 +165,12 @@ Get information about a display mode.
 Get information about the current output configuration.
 - Returns: Dictionary with 'display_mode_name', 'pixel_format_name', 'width', 'height', 'framerate', 'rgb444_mode_enabled'
 
-**`stop(send_black_frame=False) -> bool`**
+**`stop() -> bool`**
 Stop video output.
-- `send_black_frame`: If True, sends a black frame before stopping to avoid flickering or frozen last frame
 - Returns: True if successful
 
-**`cleanup(send_black_frame=False)`**
+**`cleanup()`**
 Cleanup resources and stop output.
-- `send_black_frame`: If True, sends a black frame before stopping
 
 **Context Manager Support:**
 ```python
@@ -229,9 +221,8 @@ Set frame data from NumPy array (must be in correct format).
 **`display_frame() -> bool`**
 Display the current frame synchronously. Call this after `set_frame_data()` to update the display.
 
-**`stop_output(send_black_frame=False) -> bool`**
+**`stop_output() -> bool`**
 Stop video output.
-- `send_black_frame`: If True, sends a black frame before stopping to avoid flickering or frozen last frame
 
 **`cleanup()`**
 Cleanup all resources.

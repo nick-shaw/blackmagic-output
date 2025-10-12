@@ -66,7 +66,7 @@ for mode in test_modes:
             time.sleep(5)  # Display for 5 seconds
 
             # Fully stop and cleanup before next resolution
-            output.stop(send_black_frame=True)
+            output.stop()
             time.sleep(1.0)  # Give hardware time to fully stop
         else:
             print("✗ FAILED (mode not supported by hardware)")

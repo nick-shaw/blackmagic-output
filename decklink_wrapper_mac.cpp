@@ -283,45 +283,8 @@ bool DeckLinkOutput::displayFrame()
     return true;
 }
 
-bool DeckLinkOutput::stopOutput(bool sendBlackFrame)
+bool DeckLinkOutput::stopOutput()
 {
-    if (sendBlackFrame && m_outputEnabled && m_deckLinkOutput) {
-        // Display a black frame before stopping
-        // Save current buffer
-        std::vector<uint8_t> savedBuffer = m_frameBuffer;
-
-        // Fill frame buffer with black (0,0,0 in video levels)
-        if (m_currentSettings.format == PixelFormat::Format8BitBGRA) {
-            // BGRA: fill with 0,0,0,255
-            for (size_t i = 0; i < m_frameBuffer.size(); i += 4) {
-                m_frameBuffer[i + 0] = 0;   // B
-                m_frameBuffer[i + 1] = 0;   // G
-                m_frameBuffer[i + 2] = 0;   // R
-                m_frameBuffer[i + 3] = 255; // A
-            }
-        } else if (m_currentSettings.format == PixelFormat::Format10BitYUV) {
-            // YUV10 v210: black is Y=64, U=512, V=512 in 10-bit
-            uint32_t* pixels = reinterpret_cast<uint32_t*>(m_frameBuffer.data());
-            size_t numDwords = m_frameBuffer.size() / 4;
-            for (size_t i = 0; i < numDwords; i += 4) {
-                // v210 packing: U Y V in each DWORD
-                pixels[i + 0] = (512 << 0) | (64 << 10) | (512 << 20); // U0 Y0 V0
-                pixels[i + 1] = (64 << 0)  | (512 << 10) | (64 << 20); // Y1 U1 Y2
-                pixels[i + 2] = (512 << 0) | (64 << 10) | (512 << 20); // V1 Y3 U2
-                pixels[i + 3] = (64 << 0)  | (512 << 10) | (64 << 20); // Y4 V2 Y5
-            }
-        } else {
-            // YUV422: black is Y=16, U=128, V=128
-            memset(m_frameBuffer.data(), 16, m_frameBuffer.size());
-        }
-
-        // Display the black frame
-        displayFrame();
-
-        // Restore original buffer
-        m_frameBuffer = savedBuffer;
-    }
-
     if (m_outputEnabled && m_deckLinkOutput) {
         m_deckLinkOutput->DisableVideoOutput();
         m_outputEnabled = false;

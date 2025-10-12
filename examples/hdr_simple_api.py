@@ -53,8 +53,8 @@ def main():
     else:
         print("Failed to display frame")
 
-    # Cleanup - send black frame before stopping to avoid flickering
-    output.stop(send_black_frame=True)
+    # Cleanup
+    output.stop()
     output.cleanup()
 
 
@@ -108,8 +108,8 @@ def example_with_custom_metadata():
         except KeyboardInterrupt:
             print("\nStopping...")
 
-    # Cleanup - send black frame before stopping to avoid flickering
-    output.stop(send_black_frame=True)
+    # Cleanup
+    output.stop()
     output.cleanup()
 
 
