@@ -372,7 +372,6 @@ with BlackmagicOutput() as output:
 
 **`PixelFormat`**
 - `BGRA`: 8-bit BGRA (automatically used for uint8 data)
-- `YUV`: 8-bit Y'CbCr 4:2:2
 - `YUV10`: 10-bit Y'CbCr 4:2:2 (v210) - default for uint16/float data
   - Always uses narrow range: Y: 64-940, UV: 64-960
 - `RGB10`: 10-bit R'G'B' (bmdFormat10BitRGBXLE) - native R'G'B' output without Y'CbCr conversion
