@@ -475,7 +475,6 @@ PYBIND11_MODULE(decklink_output, m) {
 
     // Enums
     py::enum_<DeckLinkOutput::PixelFormat>(m, "PixelFormat")
-        .value("YUV", DeckLinkOutput::PixelFormat::Format8BitYUV)
         .value("BGRA", DeckLinkOutput::PixelFormat::Format8BitBGRA)
         .value("YUV10", DeckLinkOutput::PixelFormat::Format10BitYUV)
         .value("RGB10", DeckLinkOutput::PixelFormat::Format10BitRGB)

@@ -34,7 +34,6 @@ def main():
 
     test_formats = [
         PixelFormat.BGRA,
-        PixelFormat.YUV,
         PixelFormat.YUV10,
         PixelFormat.RGB10,
         PixelFormat.RGB12,
