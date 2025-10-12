@@ -10,7 +10,7 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 
 - **Static Frame Output**: Display static images from NumPy arrays
 - **Solid Color Output**: Display solid colors for testing and calibration
-- **Dynamic Updates**: Update displayed frames in real-time
+- **Dynamic Updates**: Update currently displayed frame
 - **Multiple Resolutions**: Support for all display modes supported by your DeckLink device (SD, HD, 2K, 4K, 8K, and PC modes)
 - **10-bit Y'CbCr Output**: 10-bit Y'CbCr 4:2:2 (v210) (default for uint16/float data)
 - **10 and 12-bit R'G'B' output**: 10 and 12-bit R'G'B' 4:4:4
@@ -25,10 +25,11 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 - Blackmagic DeckLink device (DeckLink, UltraStudio, or Intensity series)
 - Blackmagic Desktop Video software installed
 
-### Software Dependencies
-- NumPy >= 1.19.0
-- pybind11 >= 2.6.0
-- Blackmagic DeckLink SDK (v14.1 headers included - see below)
+### Python Dependencies
+Python dependencies (NumPy >= 1.19.0, pybind11 >= 2.6.0) are automatically installed (if needed) during the build process.
+
+### DeckLink SDK
+SDK v14.1 headers for all platforms are included in the repository - no separate download needed.
 
 ## Installation
 
@@ -36,7 +37,6 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 
 **All Platforms (macOS, Windows, Linux):**
 
-No additional download needed - SDK v14.1 headers for all platforms are included in the repository:
 - `decklink_sdk/Mac/include/` - macOS headers
 - `decklink_sdk/Win/include/` - Windows headers
 - `decklink_sdk/Linux/include/` - Linux headers
@@ -56,7 +56,7 @@ cd blackmagic-output
 pip install -e .
 
 # If upgrading from a previous development version, force reinstall:
-# pip install --force-reinstall -e .
+pip install --force-reinstall -e .
 ```
 
 ### 3. Install Optional Dependencies
@@ -94,12 +94,12 @@ with BlackmagicOutput() as output:
 
 The library provides two APIs:
 
-1. **High-level Python wrapper** (`blackmagic_output.BlackmagicOutput`) - Convenient API for simple use cases
-2. **Low-level direct access** (`decklink_output.DeckLinkOutput`) - Full control for advanced features (HDR)
+1. **High-level Python wrapper** (`blackmagic_output.BlackmagicOutput`) - Convenient API for most cases
+2. **Low-level direct access** (`decklink_output.DeckLinkOutput`) - For more fine-grained control
 
 ### High-Level API: BlackmagicOutput Class
 
-Convenient Python wrapper for simple video output operations.
+Convenient Python wrapper for most video output operations.
 
 #### Methods
 
