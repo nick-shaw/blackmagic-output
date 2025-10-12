@@ -141,7 +141,7 @@ Display a static frame continuously.
 
 **Understanding `narrow_range` in `display_static_frame`:**
 The `narrow_range` parameter interpretation depends on data type and pixel format:
-- **uint16 with YUV10**: If True, values are narrow range (64-940 scaled to 16-bit, allowing super-white >940 and sub-black <64). If False, values are full range (0-1023 scaled to 16-bit), converted to narrow range for YUV10 output.
+- **uint16 with YUV10**: If True, input values are treated as narrow range (black at 64<<6 and white at 940<<6, allowing super-white and sub-black). If False, values are full range, converted to narrow range for YUV10 output.
 - **uint16 with RGB10**: Informative only - indicates whether input is narrow (64-940<<6) or full (0-1023<<6) range. Values are bit-shifted to 10-bit output without conversion. Warning issued about lack of range signaling.
 - **uint16 with RGB12**: No effect (always full range). Warning issued if True.
 - **float with YUV10**: No effect (always narrow range). Warning issued if False.
@@ -162,7 +162,7 @@ Display a solid color continuously.
 
 **Understanding `narrow_range` in `display_solid_color`:**
 The `narrow_range` parameter interpretation depends on input type and pixel format:
-- **Integer with YUV10**: If True, values are narrow range (64-940), allowing super-white (>940) and sub-black (<64). Converted to float then to narrow range YUV10 output. If False, values are full range (0-1023), converted to float then to narrow range YUV10 output.
+- **Integer with YUV10**: If True, values are treated as narrow range (64-940), allowing super-white (>940) and sub-black (<64). Converted to float then to narrow range YUV10 output. If False, values are treated as full range (0-1023), converted to float then to narrow range YUV10 output.
 - **Integer with RGB10**: Informative only - indicates whether values represent narrow (64-940) or full (0-1023) range. Values are output without range conversion. Warning issued about lack of range signaling.
 - **Integer with RGB12**: Warning issued if True (RGB12 always full range).
 - **Float with YUV10**: Always converted to narrow range (64-940 for Y, 64-960 for CbCr). Parameter has no effect (warning if False).
