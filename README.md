@@ -186,7 +186,7 @@ Create test patterns for display testing and calibration.
 
 ### Low-Level API: DeckLinkOutput Class
 
-Direct C++ API for advanced features including HDR.
+Direct C++ API for more fine-grained control.
 
 #### Methods
 
@@ -236,9 +236,11 @@ class VideoSettings:
     width: int             # Frame width in pixels
     height: int            # Frame height in pixels
     framerate: float       # Frame rate (e.g., 25.0, 29.97, 60.0)
-    colorimetry: Gamut     # Color space (Rec709/Rec2020)
+    colorimetry: Gamut     # Y'CbCr matrix (Rec709/Rec2020)
     eotf: Eotf             # Transfer function (SDR/PQ/HLG)
 ```
+
+**Note:** What the Blackmagic SDK refers to as the "color space" (BMDColorspace) is in fact the matrix used for R'G'B' to Y'CbCr conversion, not the gamut of the image data. For example, ARRI Wide Gamut data would typically be converted using a Rec.709 matrix.
 
 **`HdrMetadataCustom`**
 ```python
