@@ -268,22 +268,25 @@ class BlackmagicOutput:
                        - Supported dtypes: uint8, uint16, float32, float64
             display_mode: Video resolution and frame rate
             pixel_format: Pixel format (default: YUV10, auto-detected as BGRA for uint8 data)
-            matrix: RGB to Y'CbCr conversion matrix (Rec601, Rec709 or Rec2020).
+            matrix: R'G'B' to Y'CbCr conversion matrix (Rec601, Rec709 or Rec2020).
                    Only applies when pixel_format is YUV10. Default: Rec709
             hdr_metadata: Optional HDR metadata dict with keys:
                          - 'eotf': Eotf enum value (SDR, PQ, or HLG)
                          - 'custom': Optional HdrMetadataCustom object
                          If only eotf is provided, default metadata values are used.
             narrow_range: Interpretation depends on data type and pixel format:
-                         - uint16 with YUV10: If True, values are narrow range (64-940 scaled to 16-bit).
-                           If False, values are full range (0-1023 scaled to 16-bit, converted to narrow).
-                         - uint16 with RGB10: If True, values are narrow range (64-940 scaled to 16-bit).
-                           If False, values are full range (0-1023 scaled to 16-bit, converted to narrow).
+                         - uint16 with YUV10: If True, input values are treated as narrow range (black at
+                           64<<6 and white at 940<<6, allowing super-white and sub-black). If False, values
+                           are full range, converted to narrow range for YUV10 output.
+                         - uint16 with RGB10: Informative only - indicates whether input is narrow
+                           (64-940<<6) or full (0-1023<<6) range. Values are bit-shifted to 10-bit output
+                           without conversion. Warning issued about lack of range signaling.
                          - uint16 with RGB12: No effect (always full range 0-4095). Warning issued if True.
-                         - float with YUV10: No effect (always narrow range). Warning if False.
+                         - float with YUV10: No effect (always narrow range). Warning issued if False.
                          - float with RGB10: If True, converts to narrow range (64-940).
                            If False, converts to full range (0-1023).
-                         - float with RGB12: No effect (always full range 0-4095).
+                         - float with RGB12: Always converted to full range (0-4095). Parameter has no
+                           effect (warning if True).
                          Default: True
 
         Returns:
@@ -357,27 +360,32 @@ class BlackmagicOutput:
         Display a solid color frame continuously.
 
         Args:
-            color: RGB color tuple (r, g, b) with values:
+            color: R'G'B' tuple (r, g, b) with values:
                    - Integer values (0-1023): Interpreted as 10-bit values
                    - Float values (0.0-1.0): Interpreted as normalized full range values
             display_mode: Video resolution and frame rate
             pixel_format: Pixel format (default: YUV10)
-            matrix: RGB to Y'CbCr conversion matrix (Rec601, Rec709 or Rec2020).
+            matrix: R'G'B' to Y'CbCr conversion matrix (Rec601, Rec709 or Rec2020).
                    Only applies when pixel_format is YUV10. Default: Rec709
             hdr_metadata: Optional HDR metadata dict with keys:
                          - 'eotf': Eotf enum value (SDR, PQ, or HLG)
                          - 'custom': Optional HdrMetadataCustom object
                          If only eotf is provided, default metadata values are used.
             narrow_range: Interpretation depends on input type and pixel format:
-                         - Integer color values: If True, values are narrow range (64-940), allowing
-                           super-white (>940) and sub-black (<64). Values are directly bit-shifted to 16-bit.
-                           If False, values are full range (0-1023), scaled to full 16-bit range.
-                         - Float color values with YUV10: Always converted to narrow range
-                           (64-940 for Y, 64-960 for CbCr). Parameter has no effect (warning if False).
-                         - Float color values with RGB10: If True, converts to narrow range (64-940).
+                         - Integer with YUV10: If True, values are treated as narrow range (64-940), allowing
+                           super-white (>940) and sub-black (<64). Converted to float then to narrow range
+                           YUV10 output. If False, values are treated as full range (0-1023), converted to
+                           float then to narrow range YUV10 output.
+                         - Integer with RGB10: Informative only - indicates whether values represent narrow
+                           (64-940) or full (0-1023) range. Values are output without range conversion.
+                           Warning issued about lack of range signaling.
+                         - Integer with RGB12: Warning issued if True (RGB12 always full range).
+                         - Float with YUV10: Always converted to narrow range (64-940 for Y, 64-960 for CbCr).
+                           Parameter has no effect (warning if False).
+                         - Float with RGB10: If True, converts to narrow range (64-940).
                            If False, converts to full range (0-1023).
-                         - Float color values with RGB12: Always full range (0-4095). Parameter has no effect.
-                         - Integer color values with RGB12: Warning issued if True (RGB12 always full range).
+                         - Float with RGB12: Always converted to full range (0-4095). Parameter has no effect
+                           (warning if True).
                          Default: True
 
         Returns:
