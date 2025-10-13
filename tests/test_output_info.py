@@ -3,32 +3,7 @@
 Test script to query and display current output configuration.
 """
 
-import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
-
-
-def create_simple_colorbars(width, height):
-    """Create simple 100% color bars (8 patches)."""
-    frame = np.zeros((height, width, 3), dtype=np.float32)
-
-    bar_width = width // 8
-    colors = [
-        [1.0, 1.0, 1.0],  # White
-        [1.0, 1.0, 0.0],  # Yellow
-        [0.0, 1.0, 1.0],  # Cyan
-        [0.0, 1.0, 0.0],  # Green
-        [1.0, 0.0, 1.0],  # Magenta
-        [1.0, 0.0, 0.0],  # Red
-        [0.0, 0.0, 1.0],  # Blue
-        [0.0, 0.0, 0.0],  # Black
-    ]
-
-    for i in range(8):
-        x_start = i * bar_width
-        x_end = (i + 1) * bar_width if i < 7 else width
-        frame[:, x_start:x_end] = colors[i]
-
-    return frame
+from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat, create_test_pattern
 
 
 def test_output_info(pixel_format, narrow_range=None):
@@ -48,8 +23,8 @@ def test_output_info(pixel_format, narrow_range=None):
         mode_info = output.get_display_mode_info(DisplayMode.HD1080p25)
         width, height = mode_info['width'], mode_info['height']
 
-        # Create color bars
-        frame = create_simple_colorbars(width, height)
+        # Create color bars using built-in function
+        frame = create_test_pattern(width, height, pattern='bars') * 0.75
 
         # Display with specified pixel format
         kwargs = {'narrow_range': narrow_range} if narrow_range is not None else {}

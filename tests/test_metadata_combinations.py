@@ -10,30 +10,6 @@ import sys
 sys.path.insert(0, '/Users/nick/github/blackmagic-decklink-output/src')
 
 import blackmagic_output as bmo
-import numpy as np
-
-
-def create_color_bars(width, height):
-    """Create standard color bars pattern."""
-    frame = np.zeros((height, width, 3), dtype=np.float32)
-
-    bar_width = width // 8
-    colors = [
-        [1.0, 1.0, 1.0],  # White
-        [1.0, 1.0, 0.0],  # Yellow
-        [0.0, 1.0, 1.0],  # Cyan
-        [0.0, 1.0, 0.0],  # Green
-        [1.0, 0.0, 1.0],  # Magenta
-        [1.0, 0.0, 0.0],  # Red
-        [0.0, 0.0, 1.0],  # Blue
-        [0.0, 0.0, 0.0]   # Black
-    ]
-
-    for x in range(width):
-        color_idx = min(x // bar_width, 7)
-        frame[:, x] = colors[color_idx]
-
-    return frame
 
 
 def main():
@@ -53,8 +29,8 @@ def main():
     width = info['width']
     height = info['height']
 
-    # Create test pattern once
-    frame = create_color_bars(width, height)
+    # Create test pattern once using built-in function
+    frame = bmo.create_test_pattern(width, height, pattern='bars') * 0.75
 
     # Test configurations
     test_cases = [
