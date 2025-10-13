@@ -686,13 +686,8 @@ def create_test_pattern(width: int, height: int, pattern: str = 'gradient', grad
     frame = np.zeros((height, width, 3), dtype=np.float32)
 
     if pattern == 'gradient':
-        for y in range(height):
-            for x in range(width):
-                frame[y, x] = [
-                    grad_start + (grad_end - grad_start) * x / width,      # Red gradient
-                    grad_start + (grad_end - grad_start) * x / width,      # Green gradient
-                    grad_start + (grad_end - grad_start) * x / width       # Blue gradient
-                ]
+        for x in range(width):
+            frame[:, x, :] = [grad_start + (grad_end - grad_start) * x / (width - 1)]
 
     elif pattern == 'bars':
         bar_width = width // 8
