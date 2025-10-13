@@ -15,7 +15,7 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 - **10-bit Y'CbCr Output**: 10-bit Y'CbCr 4:2:2 (v210) (default for uint16/float data)
 - **10 and 12-bit R'G'B' output**: 10 and 12-bit R'G'B' 4:4:4
 - **HDR Support**: Rec.2020 colorimetry with PQ and HLG transfer functions
-- **Y'CbCr matrix control**: Rec.709 and Rec.2020 matrix support
+- **Y'CbCr matrix control**: Rec.601 (SD only), Rec.709 (HD+), and Rec.2020 (HD+) matrix support
 - **Cross-Platform**: Works on Windows, macOS, and Linux (this is in theory – only macOS build tested so far)
 
 ## Requirements
@@ -867,6 +867,9 @@ All 14 CEA-861.3/ITU-R BT.2100 HDR static metadata fields are supported:
 4. **Matrix consistency**: When using the simplified API, the same `matrix` parameter is used for both metadata and R'G'B' →Y'CbCr conversion. With the low-level API, ensure consistency between `set_hdr_metadata()` and conversion functions.
 5. **Transfer function**: The library only sets the metadata - you must apply the actual transfer function (PQ/HLG curve) to your RGB data before conversion
 6. **All 14 metadata fields supported**: The library implements all CEA-861.3/ITU-R BT.2100 HDR metadata fields including display primaries, white point, mastering display luminance, and content light levels
+7. **Matrix/Resolution restrictions**:
+   - **Rec.601** is only supported for SD display modes (NTSC, PAL, etc.) and is the only matrix supported for SD
+   - **Rec.709** and **Rec.2020** are only supported for HD and higher resolutions (720p, 1080p, 2K, 4K, 8K, etc.)
 
 ## Troubleshooting
 

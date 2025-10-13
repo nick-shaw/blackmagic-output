@@ -59,7 +59,7 @@ def main():
     # Test configurations
     test_cases = [
         # SDR with different matrices
-        ("SDR + Rec.601", bmo.Matrix.Rec601, None),
+        # Note: Rec.601 is only supported for SD display modes
         ("SDR + Rec.709", bmo.Matrix.Rec709, None),
         ("SDR + Rec.2020", bmo.Matrix.Rec2020, None),
 
@@ -72,8 +72,8 @@ def main():
         ("PQ + Rec.2020", bmo.Matrix.Rec2020, {'eotf': bmo.Eotf.PQ}),
 
         # Back to SDR to test metadata clearing
-        ("SDR + Rec.709 (after HDR)", bmo.Matrix.Rec709, None),
         ("SDR + Rec.2020 (after HDR)", bmo.Matrix.Rec2020, None),
+        ("SDR + Rec.709 (after HDR)", bmo.Matrix.Rec709, None),
     ]
 
     print("=" * 60)
