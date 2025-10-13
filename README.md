@@ -910,6 +910,32 @@ python example_usage.py
 
 This will show available devices and let you test various output modes.
 
+## Tools
+
+### pixel_reader
+
+The `pixel_reader` tool captures and analyzes video input from a DeckLink device, displaying pixel values and metadata. This is useful for verifying output from the library by looping a DeckLink output back to its own input.
+
+**Build:**
+```bash
+cd tools
+make
+```
+
+**Usage:**
+```bash
+./pixel_reader [device_index]
+```
+See `tools/README.md` for more detail.
+
+The tool displays:
+- **Pixel format** and **color space** (RGB 4:4:4, YCbCr 4:2:2, etc.)
+- **Resolution** and **frame rate**
+- **Metadata**: EOTF (SDR/PQ/HLG), matrix (Rec.601/Rec.709/Rec.2020)
+- **Pixel values** at selected coordinates in native format (code values)
+
+Use this tool to verify that matrix and EOTF metadata are being set correctly by the output library.
+
 ## Platform-Specific Notes
 
 ### Windows
