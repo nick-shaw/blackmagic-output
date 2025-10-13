@@ -308,6 +308,9 @@ class BlackmagicOutput:
         self._current_matrix = matrix
         self._current_narrow_range = narrow_range
 
+        # Get the internal Gamut value from the Matrix enum
+        gamut = matrix.value
+
         # Handle HDR metadata if provided
         if hdr_metadata is not None:
             eotf = hdr_metadata.get('eotf')
@@ -315,13 +318,16 @@ class BlackmagicOutput:
                 raise ValueError("hdr_metadata must contain 'eotf' key")
 
             custom = hdr_metadata.get('custom')
-            # Get the internal Gamut value from the Matrix enum
-            gamut = matrix.value
 
             if custom is not None:
                 self._device.set_hdr_metadata_custom(gamut, eotf.value, custom)
             else:
                 self._device.set_hdr_metadata(gamut, eotf.value)
+        else:
+            # Clear metadata to ensure we don't retain previous HDR settings
+            # This sets metadata to SDR with specified matrix/colorimetry
+            self._device.clear_hdr_metadata()
+            self._device.set_hdr_metadata(gamut, Eotf.SDR.value)
 
         # Setup output if not already done, settings changed, or output was stopped
         if (not self._current_settings or

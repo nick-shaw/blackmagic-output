@@ -342,6 +342,26 @@ void DeckLinkOutput::setHdrMetadataCustom(Gamut colorimetry, Eotf eotf, const Hd
     m_hdrCustom = custom;
 }
 
+void DeckLinkOutput::clearHdrMetadata()
+{
+    m_useHdrMetadata = false;
+    m_hdrColorimetry = Gamut::Rec709;
+    m_hdrEotf = Eotf::SDR;
+    // Zero out custom metadata
+    m_hdrCustom.displayPrimariesRedX = 0.0;
+    m_hdrCustom.displayPrimariesRedY = 0.0;
+    m_hdrCustom.displayPrimariesGreenX = 0.0;
+    m_hdrCustom.displayPrimariesGreenY = 0.0;
+    m_hdrCustom.displayPrimariesBlueX = 0.0;
+    m_hdrCustom.displayPrimariesBlueY = 0.0;
+    m_hdrCustom.whitePointX = 0.0;
+    m_hdrCustom.whitePointY = 0.0;
+    m_hdrCustom.maxMasteringLuminance = 0.0;
+    m_hdrCustom.minMasteringLuminance = 0.0;
+    m_hdrCustom.maxContentLightLevel = 0.0;
+    m_hdrCustom.maxFrameAverageLightLevel = 0.0;
+}
+
 IDeckLinkVideoFrame* DeckLinkOutput::createHdrFrame(IDeckLinkMutableVideoFrame* frame)
 {
     HdrMetadata::ChromaticityCoordinates primaries = {

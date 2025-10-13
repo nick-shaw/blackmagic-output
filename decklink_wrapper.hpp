@@ -210,6 +210,7 @@ public:
     bool isPixelFormatSupported(DisplayMode mode, PixelFormat format);
     void setHdrMetadata(Gamut colorimetry, Eotf eotf);
     void setHdrMetadataCustom(Gamut colorimetry, Eotf eotf, const HdrMetadataCustom& custom);
+    void clearHdrMetadata();
 
     struct OutputInfo {
         DisplayMode displayMode;

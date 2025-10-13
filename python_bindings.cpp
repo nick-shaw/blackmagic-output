@@ -691,6 +691,7 @@ PYBIND11_MODULE(decklink_output, m) {
              py::arg("colorimetry"), py::arg("eotf"))
         .def("set_hdr_metadata_custom", &DeckLinkOutput::setHdrMetadataCustom, "Set HDR metadata with custom values",
              py::arg("colorimetry"), py::arg("eotf"), py::arg("custom"))
+        .def("clear_hdr_metadata", &DeckLinkOutput::clearHdrMetadata, "Clear HDR metadata and reset to SDR")
         .def("get_current_output_info", &DeckLinkOutput::getCurrentOutputInfo, "Get current output configuration info");
 
     // Utility functions
