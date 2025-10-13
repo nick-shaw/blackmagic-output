@@ -138,9 +138,11 @@ PixelValue ExtractPixelValue(void* frameBytes, int width, int height, int rowByt
 
     switch (format) {
         case bmdFormat10BitYUV: {
-            // v210 format: 4 pixels in 16 bytes (128 bits)
-            // Each group of 4 pixels is packed as: U0 Y0 V0 Y1 U2 Y2 V2 Y3
-            // Each component is 10 bits
+            // v210 format: 6 pixels in 16 bytes (4 DWORDs)
+            // DWORD 0: U0 Y0 V0 (bits [9:0] U0, [19:10] Y0, [29:20] V0)
+            // DWORD 1: Y1 U1 Y2 (bits [9:0] Y1, [19:10] U1, [29:20] Y2)
+            // DWORD 2: V1 Y3 U2 (bits [9:0] V1, [19:10] Y3, [29:20] U2)
+            // DWORD 3: Y4 V2 Y5 (bits [9:0] Y4, [19:10] V2, [29:20] Y5)
             UINT32* line = (UINT32*)(buffer + pixelY * rowBytes);
             int groupIndex = (pixelX / 6) * 4; // Each group of 4 UINT32s contains 6 pixels
             int pixelInGroup = pixelX % 6;
@@ -148,21 +150,41 @@ PixelValue ExtractPixelValue(void* frameBytes, int width, int height, int rowByt
             UINT32 d0 = line[groupIndex];
             UINT32 d1 = line[groupIndex + 1];
             UINT32 d2 = line[groupIndex + 2];
+            UINT32 d3 = line[groupIndex + 3];
 
-            // Extract based on position in group
-            // Format: bits [9:0] Cb0, [19:10] Y0, [29:20] Cr0
-            if (pixelInGroup == 0 || pixelInGroup == 1) {
-                result.comp1 = (d0 >> 10) & 0x3FF; // Y
-                result.comp2 = d0 & 0x3FF;         // Cb
-                result.comp3 = (d0 >> 20) & 0x3FF; // Cr
-            } else if (pixelInGroup == 2 || pixelInGroup == 3) {
-                result.comp1 = (d1 >> 10) & 0x3FF; // Y
-                result.comp2 = d1 & 0x3FF;         // Cb
-                result.comp3 = (d1 >> 20) & 0x3FF; // Cr
-            } else {
-                result.comp1 = (d2 >> 10) & 0x3FF; // Y
-                result.comp2 = d2 & 0x3FF;         // Cb
-                result.comp3 = (d2 >> 20) & 0x3FF; // Cr
+            // Extract Y, U, V based on pixel position
+            // In 4:2:2, pixels 0-1 share U0/V0, pixels 2-3 share U1/V1, pixels 4-5 share U2/V2
+            switch (pixelInGroup) {
+                case 0:
+                    result.comp1 = (d0 >> 10) & 0x3FF; // Y0
+                    result.comp2 = d0 & 0x3FF;         // U0
+                    result.comp3 = (d0 >> 20) & 0x3FF; // V0
+                    break;
+                case 1:
+                    result.comp1 = d1 & 0x3FF;         // Y1
+                    result.comp2 = d0 & 0x3FF;         // U0 (shared with pixel 0)
+                    result.comp3 = (d0 >> 20) & 0x3FF; // V0 (shared with pixel 0)
+                    break;
+                case 2:
+                    result.comp1 = (d1 >> 20) & 0x3FF; // Y2
+                    result.comp2 = (d1 >> 10) & 0x3FF; // U1
+                    result.comp3 = d2 & 0x3FF;         // V1
+                    break;
+                case 3:
+                    result.comp1 = (d2 >> 10) & 0x3FF; // Y3
+                    result.comp2 = (d1 >> 10) & 0x3FF; // U1 (shared with pixel 2)
+                    result.comp3 = d2 & 0x3FF;         // V1 (shared with pixel 2)
+                    break;
+                case 4:
+                    result.comp1 = d3 & 0x3FF;         // Y4
+                    result.comp2 = (d2 >> 20) & 0x3FF; // U2
+                    result.comp3 = (d3 >> 10) & 0x3FF; // V2
+                    break;
+                case 5:
+                    result.comp1 = (d3 >> 20) & 0x3FF; // Y5
+                    result.comp2 = (d2 >> 20) & 0x3FF; // U2 (shared with pixel 4)
+                    result.comp3 = (d3 >> 10) & 0x3FF; // V2 (shared with pixel 4)
+                    break;
             }
             result.format = "Y'CbCr";
             break;
@@ -225,12 +247,51 @@ PixelValue ExtractPixelValue(void* frameBytes, int width, int height, int rowByt
         }
 
         case bmdFormat12BitRGBLE: {
-            // R12L format: Little-endian RGB 12-bit
-            UINT16* line = (UINT16*)(buffer + pixelY * rowBytes);
-            int pixelIndex = pixelX * 3;
-            result.comp1 = line[pixelIndex] & 0xFFF;            // R
-            result.comp2 = line[pixelIndex + 1] & 0xFFF;        // G
-            result.comp3 = line[pixelIndex + 2] & 0xFFF;        // B
+            // R12L format: 8 pixels packed in 36 bytes (9 DWORDs)
+            // Need to unpack based on pixel position within group of 8
+            int groupX = (pixelX / 8) * 8;  // Start of 8-pixel group
+            int pixelInGroup = pixelX % 8;
+
+            UINT32* groupStart = (UINT32*)(buffer + pixelY * rowBytes + (groupX / 8) * 36);
+
+            uint16_t r[8], g[8], b[8];
+
+            // Unpack the 8 pixels from 9 DWORDs (reverse of packing formula)
+            r[0] = groupStart[0] & 0xFFF;
+            g[0] = (groupStart[0] >> 12) & 0xFFF;
+            b[0] = ((groupStart[0] >> 24) & 0xFF) | ((groupStart[1] & 0xF) << 8);
+
+            r[1] = (groupStart[1] >> 4) & 0xFFF;
+            g[1] = (groupStart[1] >> 16) & 0xFFF;
+            b[1] = ((groupStart[1] >> 28) & 0xF) | ((groupStart[2] & 0xFF) << 4);
+
+            r[2] = (groupStart[2] >> 8) & 0xFFF;
+            g[2] = (groupStart[2] >> 20) & 0xFFF;
+            b[2] = groupStart[3] & 0xFFF;
+
+            r[3] = (groupStart[3] >> 12) & 0xFFF;
+            g[3] = ((groupStart[3] >> 24) & 0xFF) | ((groupStart[4] & 0xF) << 8);
+            b[3] = (groupStart[4] >> 4) & 0xFFF;
+
+            r[4] = (groupStart[4] >> 16) & 0xFFF;
+            g[4] = ((groupStart[4] >> 28) & 0xF) | ((groupStart[5] & 0xFF) << 4);
+            b[4] = (groupStart[5] >> 8) & 0xFFF;
+
+            r[5] = (groupStart[5] >> 20) & 0xFFF;
+            g[5] = groupStart[6] & 0xFFF;
+            b[5] = (groupStart[6] >> 12) & 0xFFF;
+
+            r[6] = ((groupStart[6] >> 24) & 0xFF) | ((groupStart[7] & 0xF) << 8);
+            g[6] = (groupStart[7] >> 4) & 0xFFF;
+            b[6] = (groupStart[7] >> 16) & 0xFFF;
+
+            r[7] = ((groupStart[7] >> 28) & 0xF) | ((groupStart[8] & 0xFF) << 4);
+            g[7] = (groupStart[8] >> 8) & 0xFFF;
+            b[7] = (groupStart[8] >> 20) & 0xFFF;
+
+            result.comp1 = r[pixelInGroup];
+            result.comp2 = g[pixelInGroup];
+            result.comp3 = b[pixelInGroup];
             result.format = "R'G'B'";
             break;
         }
