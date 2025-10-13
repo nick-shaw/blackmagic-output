@@ -26,6 +26,9 @@ Thumbs.db
 *.dll
 *.exe
 
+# Tools binaries
+tools/pixel_reader
+
 # Large images
 *.tiff
 *.tif
