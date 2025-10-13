@@ -335,8 +335,8 @@ public:
             currentPixelFormat = GetPixelFormatFromDetectedFlags(detectedSignalFlags);
             counter = 0;  // Reset counter so display resets
 
-            printf("Input color space changed:\x1b[K\n");  // \x1b[K clears to end of line
-            printf("  Color space: ");
+            printf("Input signal format changed:\x1b[K\n");  // \x1b[K clears to end of line
+            printf("  Signal format: ");
             if (detectedSignalFlags & bmdDetectedVideoInputYCbCr422)
                 printf("YCbCr422");
             if (detectedSignalFlags & bmdDetectedVideoInputRGB444)
@@ -350,9 +350,7 @@ public:
                 printf("10-bit");
             if (detectedSignalFlags & bmdDetectedVideoInput12BitDepth)
                 printf("12-bit");
-            printf("\x1b[K\n");  // Clear to end of line
-
-            printf("  Pixel format: %s\x1b[K\n\n", GetPixelFormatName(currentPixelFormat));
+            printf("\x1b[K\n\n");  // Clear to end of line
         }
 
         // Check if the video mode has changed
@@ -456,6 +454,35 @@ public:
             }
 
             counter += 1;
+
+            // Display initial format on first frame
+            if (counter == 1) {
+                BMDDetectedVideoInputFormatFlags flags = videoFrame->GetFlags();
+                printf("Input signal detected:\x1b[K\n");
+                printf("  Signal format: ");
+                if (flags & bmdFrameHasNoInputSource) {
+                    printf("No signal");
+                } else {
+                    // Infer from pixel format
+                    if (frameFormat == bmdFormat8BitYUV || frameFormat == bmdFormat10BitYUV) {
+                        printf("YCbCr422");
+                    } else {
+                        printf("RGB444");
+                    }
+                }
+                printf("\x1b[K\n");
+
+                printf("  Bit depth: ");
+                if (frameFormat == bmdFormat8BitYUV || frameFormat == bmdFormat8BitBGRA || frameFormat == bmdFormat8BitARGB) {
+                    printf("8-bit");
+                } else if (frameFormat == bmdFormat10BitYUV || frameFormat == bmdFormat10BitRGBXLE || frameFormat == bmdFormat10BitRGBX) {
+                    printf("10-bit");
+                } else if (frameFormat == bmdFormat12BitRGB || frameFormat == bmdFormat12BitRGBLE) {
+                    printf("12-bit");
+                }
+                printf("\x1b[K\n\n");
+            }
+
             if (counter > 1) {
                 int numLines = 2;  // Start with 2 lines (blank + pixel values)
 
@@ -483,16 +510,20 @@ void print_usage(const char* programName) {
     printf("Usage: %s [options] [x y]\n", programName);
     printf("Options:\n");
     printf("  -d <index>    Select DeckLink device by index (0-based, default: first with input capability)\n");
+    printf("  -i <input>    Select input connection: sdi, hdmi, optical, component, composite, svideo\n");
+    printf("                (default: uses currently active input)\n");
     printf("  -l            List available DeckLink devices and exit\n");
     printf("  -h            Show this help message\n");
     printf("\nArguments:\n");
     printf("  x             X coordinate of pixel to read (default: 960)\n");
     printf("  y             Y coordinate of pixel to read (default: 540)\n");
     printf("\nExamples:\n");
-    printf("  %s                 # Use first input device, read pixel at (960, 540)\n", programName);
-    printf("  %s 100 200         # Use first input device, read pixel at (100, 200)\n", programName);
-    printf("  %s -d 1 100 200    # Use second device, read pixel at (100, 200)\n", programName);
-    printf("  %s -l              # List all devices\n", programName);
+    printf("  %s                      # Use first input device, read pixel at (960, 540)\n", programName);
+    printf("  %s 100 200              # Use first input device, read pixel at (100, 200)\n", programName);
+    printf("  %s -d 1 100 200         # Use second device, read pixel at (100, 200)\n", programName);
+    printf("  %s -i hdmi              # Use HDMI input\n", programName);
+    printf("  %s -d 0 -i sdi 100 200  # Use first device, SDI input, pixel at (100, 200)\n", programName);
+    printf("  %s -l                   # List all devices\n", programName);
 }
 
 void list_devices() {
@@ -524,6 +555,44 @@ void list_devices() {
 
         printf("  [%d] %s%s\n", deviceIndex, deviceName.c_str(), hasInput ? " (input capable)" : "");
 
+        // List available inputs if device has input capability
+        if (hasInput) {
+            IDeckLinkProfileAttributes* deckLinkAttributes = NULL;
+            if (deckLink->QueryInterface(IID_IDeckLinkProfileAttributes, (void**)&deckLinkAttributes) == S_OK) {
+                int64_t availableInputs = 0;
+                if (deckLinkAttributes->GetInt(BMDDeckLinkVideoInputConnections, &availableInputs) == S_OK) {
+                    printf("      Available inputs:");
+                    bool first = true;
+                    if (availableInputs & bmdVideoConnectionSDI) {
+                        printf("%s sdi", first ? "" : ",");
+                        first = false;
+                    }
+                    if (availableInputs & bmdVideoConnectionHDMI) {
+                        printf("%s hdmi", first ? "" : ",");
+                        first = false;
+                    }
+                    if (availableInputs & bmdVideoConnectionOpticalSDI) {
+                        printf("%s optical", first ? "" : ",");
+                        first = false;
+                    }
+                    if (availableInputs & bmdVideoConnectionComponent) {
+                        printf("%s component", first ? "" : ",");
+                        first = false;
+                    }
+                    if (availableInputs & bmdVideoConnectionComposite) {
+                        printf("%s composite", first ? "" : ",");
+                        first = false;
+                    }
+                    if (availableInputs & bmdVideoConnectionSVideo) {
+                        printf("%s svideo", first ? "" : ",");
+                        first = false;
+                    }
+                    printf("\n");
+                }
+                deckLinkAttributes->Release();
+            }
+        }
+
         deckLink->Release();
         deviceIndex++;
     }
@@ -539,6 +608,8 @@ int main(int argc, char** argv)
 {
     int deviceIndex = -1;  // -1 means auto-select first input capable device
     bool listDevicesFlag = false;
+    BMDVideoConnection inputConnection = 0;  // 0 means use current/default input
+    const char* inputConnectionStr = NULL;
 
     // Parse command line arguments
     int argIndex = 1;
@@ -550,6 +621,33 @@ int main(int argc, char** argv)
                     argIndex += 2;
                 } else {
                     fprintf(stderr, "Error: -d requires a device index\n");
+                    print_usage(argv[0]);
+                    return 1;
+                }
+            } else if (strcmp(argv[argIndex], "-i") == 0) {
+                if (argIndex + 1 < argc) {
+                    inputConnectionStr = argv[argIndex + 1];
+                    // Parse input connection type
+                    if (strcasecmp(inputConnectionStr, "sdi") == 0) {
+                        inputConnection = bmdVideoConnectionSDI;
+                    } else if (strcasecmp(inputConnectionStr, "hdmi") == 0) {
+                        inputConnection = bmdVideoConnectionHDMI;
+                    } else if (strcasecmp(inputConnectionStr, "optical") == 0) {
+                        inputConnection = bmdVideoConnectionOpticalSDI;
+                    } else if (strcasecmp(inputConnectionStr, "component") == 0) {
+                        inputConnection = bmdVideoConnectionComponent;
+                    } else if (strcasecmp(inputConnectionStr, "composite") == 0) {
+                        inputConnection = bmdVideoConnectionComposite;
+                    } else if (strcasecmp(inputConnectionStr, "svideo") == 0) {
+                        inputConnection = bmdVideoConnectionSVideo;
+                    } else {
+                        fprintf(stderr, "Error: Unknown input connection '%s'\n", inputConnectionStr);
+                        fprintf(stderr, "Valid options: sdi, hdmi, optical, component, composite, svideo\n");
+                        return 1;
+                    }
+                    argIndex += 2;
+                } else {
+                    fprintf(stderr, "Error: -i requires an input type\n");
                     print_usage(argv[0]);
                     return 1;
                 }
@@ -587,6 +685,7 @@ int main(int argc, char** argv)
     IDeckLinkProfileAttributes* deckLinkAttributes = NULL;
     IDeckLink* deckLink = NULL;
     IDeckLinkInput* deckLinkInput = NULL;
+    IDeckLinkConfiguration* deckLinkConfiguration = NULL;  // Keep this alive for the session
     NotificationCallback* notificationCallback = NULL;
 
     HRESULT result;
@@ -660,7 +759,25 @@ int main(int argc, char** argv)
         goto bail;
     }
 
-    // Obtain the input interface for the DeckLink device
+    // Get the configuration interface and keep it alive
+    result = deckLink->QueryInterface(IID_IDeckLinkConfiguration, (void**)&deckLinkConfiguration);
+    if (result != S_OK) {
+        fprintf(stderr, "Could not obtain the IDeckLinkConfiguration interface - result = %08x\n", (unsigned int)result);
+        goto bail;
+    }
+
+    // Configure input connection BEFORE obtaining the input interface
+    if (inputConnection != 0) {
+        result = deckLinkConfiguration->SetInt(bmdDeckLinkConfigVideoInputConnection, inputConnection);
+
+        if (result != S_OK) {
+            fprintf(stderr, "Could not set input connection to %s - result = %08x\n", inputConnectionStr, (unsigned int)result);
+            fprintf(stderr, "The device may not support this input type\n");
+            goto bail;
+        }
+    }
+
+    // Obtain the input interface for the DeckLink device AFTER configuring input connection
     result = deckLink->QueryInterface(IID_IDeckLinkInput, (void**)&deckLinkInput);
     if (result != S_OK)
     {
@@ -725,6 +842,10 @@ bail:
     // Release the attributes interface
     if (deckLinkAttributes != NULL)
         deckLinkAttributes->Release();
+
+    // Release the configuration interface
+    if (deckLinkConfiguration != NULL)
+        deckLinkConfiguration->Release();
 
     // Release the video input interface
     if (deckLinkInput != NULL)

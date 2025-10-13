@@ -1,4 +1,4 @@
-# Pixel Format Reader for Blackmagic DeckLink Devices
+# Pixel Reader for Blackmagic DeckLink Devices
 
 This tool reads the incoming signal on a Blackmagic DeckLink device and displays:
 - The detected pixel format (including bit depth and color space)
@@ -9,12 +9,12 @@ This tool reads the incoming signal on a Blackmagic DeckLink device and displays
 
 - **Automatic Format Detection**: Detects all supported YUV and RGB formats
 - **Supported Formats**:
-  - **YUV formats**: 8-bit YUV (2vuy), 10-bit YUV (v210), 10-bit YUVA (Ay10)
-  - **RGB formats**:
-    - 8-bit: ARGB, BGRA
-    - 10-bit: R10l (little-endian - default), r210 (big-endian), R10b (big-endian)
-    - 12-bit: R12L (little-endian - default), R12B (big-endian)
-- **Accurate Pixel Extraction**: Properly unpacks pixel data for each format
+  - 8-bit YUV (4:2:2)
+  - 10-bit YUV (4:2:2)
+  - 10-bit YUVA (4:4:4:4)
+  - 8-bit RGB (4:4:4)
+  - 10-bit RGB (4:4:4)
+  - 12-bit RGB (4:4:4)
 - **Metadata Display**: Shows EOTF (SDR/PQ/HLG) and matrix (Rec.601/709/2020) when present
 - **Real-time Display**: Continuously updates as frames arrive
 
@@ -43,8 +43,9 @@ make
 
 ### Options
 
-- `-d <index>`: Select DeckLink device by index (see `-l` for device list)
-- `-l`: List all available DeckLink devices with their capabilities
+- `-d <index>`: Select DeckLink device by index (see `-l` for device list). Default: first device with input capability
+- `-i <input>`: Select input connection (sdi, hdmi, optical, component, composite, svideo). Default: uses currently active input on the device
+- `-l`: List all available DeckLink devices with their input capabilities and available inputs
 - `-h`: Show help message
 
 ### Arguments
@@ -67,6 +68,12 @@ make
 # Select device 0, read pixel at position (100, 100)
 ./pixel_reader -d 0 100 100
 
+# Use HDMI input
+./pixel_reader -i hdmi
+
+# Use device 0, SDI input, read pixel at (100, 200)
+./pixel_reader -d 0 -i sdi 100 200
+
 # Show help
 ./pixel_reader -h
 ```
@@ -74,10 +81,9 @@ make
 ## Output
 
 The tool displays:
-1. **Format Detection**: When the input signal format changes, it shows:
-   - Color space (YCbCr422, RGB444)
+1. **Format Detection**: When the input signal is detected or changes, it shows:
+   - Signal format (YCbCr422, RGB444)
    - Bit depth (8-bit, 10-bit, 12-bit)
-   - Pixel format name
 
 2. **Pixel Values**: Continuously updated pixel values at the specified coordinates
    - For YUV: Shows Y'CbCr values
@@ -91,10 +97,9 @@ The tool displays:
 
 ```
 Input display mode: 1080p50
-Input color space changed:
-  Color space: RGB444
+Input signal detected:
+  Signal format: RGB444
   Bit depth: 10-bit
-  Pixel format: 10-bit RGBX LE (R10l)
 
 R'G'B' (960, 540) = [940, 512, 64]
 Matrix: Rec.709 | EOTF: SDR
@@ -102,20 +107,22 @@ Matrix: Rec.709 | EOTF: SDR
 
 ## Technical Details
 
-### Pixel Format Support
+### Buffer Format Implementation
 
-- **v210 (10-bit YUV)**: 6 pixels packed in 16 bytes, accurate extraction per pixel
-- **2vuy (8-bit YUV)**: UYVY format, 2 pixels in 4 bytes
-- **r210 (10-bit RGB)**: Big-endian RGB 10-bit, packed as 2:10:10:10
-- **R10l/R10b (10-bit RGBX)**: Little/big-endian variants
-- **R12B/R12L (12-bit RGB)**: Big/little-endian 12-bit RGB
-- **BGRA/ARGB (8-bit)**: Standard 8-bit formats
+The tool uses little-endian buffer formats by default for easier unpacking:
+- **8-bit YUV**: 2vuy (UYVY) format
+- **10-bit YUV**: v210 format
+- **10-bit YUVA**: Ay10 format
+- **8-bit RGB**: ARGB/BGRA formats
+- **10-bit RGB**: R10l (little-endian RGBX) format
+- **12-bit RGB**: R12L (little-endian) format
+
+Note: The buffer format variants (little/big-endian, different packing) are SDK implementation details, not signal format differences.
 
 ### Limitations
 
 - Requires a DeckLink device with input format detection support
 - Coordinates must be within the input frame dimensions
-- Does not support input selection (HDMI/SDI) - uses the active input on the selected device
 
 ## Platform Support
 
@@ -131,4 +138,4 @@ Matrix: Rec.709 | EOTF: SDR
 
 ## License
 
-Based on Blackmagic Design DeckLink SDK samples. See LICENSE for details.
+Based on Blackmagic Design DeckLink SDK samples. This tool uses the DeckLink SDK which is subject to the Blackmagic Design End User License Agreement (see `Blackmagic Design EULA.pdf` in the repository root). The tool code itself is available under the license in the repository LICENSE file.
