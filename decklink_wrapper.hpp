@@ -206,7 +206,6 @@ public:
 
     std::vector<std::string> getDeviceList();
     VideoSettings getVideoSettings(DisplayMode mode);
-    bool isDisplayModeSupported(DisplayMode mode);
     bool isPixelFormatSupported(DisplayMode mode, PixelFormat format);
     void setHdrMetadata(Gamut colorimetry, Eotf eotf);
     void setHdrMetadataCustom(Gamut colorimetry, Eotf eotf, const HdrMetadataCustom& custom);

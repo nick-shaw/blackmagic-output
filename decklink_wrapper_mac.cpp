@@ -456,23 +456,6 @@ DeckLinkOutput::VideoSettings DeckLinkOutput::getVideoSettings(DisplayMode mode)
     return settings;
 }
 
-bool DeckLinkOutput::isDisplayModeSupported(DisplayMode mode)
-{
-    if (!m_deckLinkOutput) {
-        return false;
-    }
-
-    IDeckLinkDisplayMode* displayMode = nullptr;
-    HRESULT result = m_deckLinkOutput->GetDisplayMode(static_cast<BMDDisplayMode>(mode), &displayMode);
-
-    if (result == S_OK && displayMode != nullptr) {
-        displayMode->Release();
-        return true;
-    }
-
-    return false;
-}
-
 bool DeckLinkOutput::isPixelFormatSupported(DisplayMode mode, PixelFormat format)
 {
     if (!m_deckLinkOutput) {

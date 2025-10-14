@@ -681,9 +681,6 @@ PYBIND11_MODULE(decklink_output, m) {
         .def("cleanup", &DeckLinkOutput::cleanup, "Cleanup resources")
         .def("get_device_list", &DeckLinkOutput::getDeviceList, "Get list of available devices")
         .def("get_video_settings", &DeckLinkOutput::getVideoSettings, "Get video settings for display mode")
-        .def("is_display_mode_supported", &DeckLinkOutput::isDisplayModeSupported,
-             "Check if display mode is supported by hardware",
-             py::arg("mode"))
         .def("is_pixel_format_supported", &DeckLinkOutput::isPixelFormatSupported,
              "Check if pixel format is supported for given display mode",
              py::arg("mode"), py::arg("format"))

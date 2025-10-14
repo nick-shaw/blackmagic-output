@@ -114,11 +114,6 @@ Initialize the specified DeckLink device.
 **`get_available_devices() -> List[str]`**
 Get list of available DeckLink device names.
 
-**`is_display_mode_supported(display_mode) -> bool`**
-Check if a display mode is supported by the hardware.
-- `display_mode`: Display mode to check
-- Returns: True if supported by hardware
-
 **`is_pixel_format_supported(display_mode, pixel_format) -> bool`**
 Check if a pixel format is supported for a given display mode.
 - `display_mode`: Display mode to check
@@ -222,9 +217,6 @@ Get list of available DeckLink devices.
 
 **`get_video_settings(display_mode) -> VideoSettings`**
 Get video settings object for a display mode.
-
-**`is_display_mode_supported(display_mode) -> bool`**
-Check if a display mode is supported by the hardware.
 
 **`is_pixel_format_supported(display_mode, pixel_format) -> bool`**
 Check if a pixel format is supported for a given display mode.
@@ -332,7 +324,7 @@ Additional modes are available including SD (NTSC, PAL), 2K, 4K, 8K, and PC disp
 
 **Querying Available Display Modes:**
 
-To determine which display modes your specific DeckLink device supports, use the `is_display_mode_supported()` and `is_pixel_format_supported()` methods:
+To determine which combinations of display mode and pixel format your specific DeckLink device supportse, use the `is_pixel_format_supported()` method:
 
 ```python
 from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
@@ -340,24 +332,8 @@ from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
 with BlackmagicOutput() as output:
     output.initialize()
 
-    # Test specific display modes
-    test_modes = [
-        DisplayMode.HD1080p25,
-        DisplayMode.HD1080p50,
-        DisplayMode.Mode4K2160p25,
-        DisplayMode.Mode4K2160p50
-    ]
-
-    print("Supported display modes:")
-    for mode in test_modes:
-        if output.is_display_mode_supported(mode):
-            info = output.get_display_mode_info(mode)
-            print(f"✓ {mode.name}: {info['width']}x{info['height']} @ {info['framerate']}fps")
-        else:
-            print(f"✗ {mode.name}: Not supported")
-
     # Test pixel format support for a specific mode
-    print("\nPixel formats supported for HD1080p25:")
+    print("Pixel formats supported for HD1080p25:")
     test_formats = [PixelFormat.YUV10, PixelFormat.RGB10, PixelFormat.RGB12]
     for fmt in test_formats:
         supported = output.is_pixel_format_supported(DisplayMode.HD1080p25, fmt)

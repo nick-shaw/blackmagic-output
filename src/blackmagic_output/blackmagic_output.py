@@ -13,8 +13,8 @@ try:
     import decklink_output as _decklink
 except ImportError:
     raise ImportError(
-        "DeckLink output module not found. Please build the C++ extension first. "
-        "Run: python setup.py build_ext --inplace"
+        "DeckLink output module not found. Please build and install the C++ extension first. "
+        "Run: pip install -e ."
     )
 
 
@@ -218,21 +218,6 @@ class BlackmagicOutput:
             List of device names
         """
         return self._device.get_device_list()
-
-    def is_display_mode_supported(self, display_mode: DisplayMode) -> bool:
-        """
-        Check if a display mode is supported by the hardware.
-
-        Args:
-            display_mode: Display mode to check
-
-        Returns:
-            True if supported, False otherwise
-        """
-        if not self._initialized:
-            raise RuntimeError("Device not initialized. Call initialize() first.")
-
-        return self._device.is_display_mode_supported(display_mode.value)
 
     def is_pixel_format_supported(self, display_mode: DisplayMode,
                                   pixel_format: PixelFormat) -> bool:
