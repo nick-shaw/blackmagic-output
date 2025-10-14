@@ -343,6 +343,7 @@ with BlackmagicOutput() as output:
 
 **`PixelFormat`**
 - `BGRA`: 8-bit BGRA (automatically used for uint8 data)
+  - **Note**: Over SDI, BGRA data is output as 8-bit Y'CbCr 4:2:2, not RGB. The BGRA name refers to the input buffer format, not the SDI wire format.
 - `YUV10`: 10-bit Y'CbCr 4:2:2 (v210) - default for uint16/float data
   - Always uses narrow range: Y: 64-940, UV: 64-960
 - `RGB10`: 10-bit R'G'B' (bmdFormat10BitRGBXLE) - native R'G'B' output without Y'CbCr conversion
