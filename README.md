@@ -871,7 +871,7 @@ All 14 CEA-861.3/ITU-R BT.2100 HDR static metadata fields are supported:
 ### Common Issues
 
 **"DeckLink output module not found"**
-- Build the C++ extension: `python setup.py build_ext --inplace`
+- Build and install the C++ extension: `pip install -e .`
 - Check that pybind11 is installed: `pip install pybind11`
 
 **"Could not create DeckLink iterator"**
