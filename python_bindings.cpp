@@ -726,30 +726,6 @@ PYBIND11_MODULE(decklink_output, m) {
           "Convert RGB float numpy array to 12-bit RGB format (full range)",
           py::arg("rgb_array"), py::arg("width"), py::arg("height"));
 
-    // Helper function to create solid color frame
-    m.def("create_solid_color_frame", [](int width, int height, py::tuple color) -> py::array_t<uint8_t> {
-        if (color.size() != 3) {
-            throw std::runtime_error("Color must be RGB tuple (r, g, b)");
-        }
-        
-        auto result = py::array_t<uint8_t>({height, width, 4});
-        auto buf = result.request();
-        uint8_t* ptr = static_cast<uint8_t*>(buf.ptr);
-        
-        uint8_t r = color[0].cast<uint8_t>();
-        uint8_t g = color[1].cast<uint8_t>();
-        uint8_t b = color[2].cast<uint8_t>();
-        
-        for (int i = 0; i < height * width; i++) {
-            ptr[i * 4 + 0] = b;   // B
-            ptr[i * 4 + 1] = g;   // G
-            ptr[i * 4 + 2] = r;   // R
-            ptr[i * 4 + 3] = 255; // A
-        }
-        
-        return result;
-    }, "Create solid color frame in BGRA format");
-
     // Version info
     m.attr("__version__") = "0.12.0-beta";
 }

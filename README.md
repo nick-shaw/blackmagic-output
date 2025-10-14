@@ -316,11 +316,6 @@ Convert R'G'B' float to 10-bit R'G'B' (bmdFormat10BitRGBXLE) format.
 - `narrow_range`: If True, maps 0.0-1.0 to 64-940 (narrow range). If False, maps 0.0-1.0 to 0-1023 (full range). Default: True
 - Returns: Packed 10-bit R'G'B' array
 
-**`create_solid_color_frame(width, height, color) -> np.ndarray`**
-Create a solid color frame in BGRA format.
-- `color`: R'G'B' tuple (r, g, b) with values 0-255
-- Returns: BGRA array (H×W×4), dtype uint8
-
 ### Enums
 
 **`DisplayMode`**
