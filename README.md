@@ -14,7 +14,7 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 - **Multiple Resolutions**: Support for all display modes supported by your DeckLink device (SD, HD, 2K, 4K, 8K, and PC modes)
 - **10-bit Y'CbCr Output**: 10-bit Y'CbCr 4:2:2 (v210) (default for uint16/float data)
 - **10 and 12-bit R'G'B' output**: 10 and 12-bit R'G'B' 4:4:4
-- **HDR Support**: Rec.2020 colorimetry with PQ and HLG transfer functions
+- **HDR Support**: SMPTE ST 2086 / CEA-861.3 HDR static metadata
 - **Y'CbCr matrix control**: Rec.601 (SD only), Rec.709 (HD+), and Rec.2020 (HD+) matrix support
 - **Cross-Platform**: Works on Windows, macOS, and Linux (this is in theory – only macOS build tested so far)
 
@@ -66,7 +66,7 @@ For examples and additional functionality:
 pip install imageio pillow jsonschema
 ```
 
-**Note:** While imageio/PIL can load 16-bit TIFF files correctly, 16-bit PNG files are often converted to 8-bit during loading due to PIL limitations. For reliable 16-bit workflows, use TIFF format.
+**Note:** While imageio / PIL can load 16-bit TIFF files correctly, 16-bit PNG files are often converted to 8-bit during loading due to PIL limitations. For reliable 16-bit workflows, use TIFF format.
 
 ## Quick Start
 
@@ -118,12 +118,12 @@ Get list of available DeckLink device names.
 Check if a pixel format is supported for a given display mode.
 - `display_mode`: Display mode to check
 - `pixel_format`: Pixel format to check
-- Returns: True if the mode/format combination is supported
+- Returns: True if the mode / format combination is supported
 
 **`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, narrow_range=True) -> bool`**
 Display a static frame continuously.
 - `frame_data`: NumPy array with image data:
-  - RGB: shape (height, width, 3), dtype uint8/uint16/float32/float64
+  - RGB: shape (height, width, 3), dtype uint8 / uint16 / float32 / float64
   - BGRA: shape (height, width, 4), dtype uint8
 - `display_mode`: Video resolution and frame rate
 - `pixel_format`: Pixel format (default: YUV10, automatically uses BGRA for uint8 data)
@@ -247,13 +247,13 @@ Set HDR metadata with custom values. Must be called before `setup_output()`.
 **`VideoSettings`**
 ```python
 class VideoSettings:
-    mode: DisplayMode      # Video mode (resolution/framerate)
+    mode: DisplayMode      # Video mode (resolution / framerate)
     format: PixelFormat    # Pixel format
     width: int             # Frame width in pixels
     height: int            # Frame height in pixels
     framerate: float       # Frame rate (e.g., 25.0, 29.97, 60.0)
-    colorimetry: Gamut     # Y'CbCr matrix (Rec601/Rec709/Rec2020)
-    eotf: Eotf             # Transfer function (SDR/PQ/HLG)
+    colorimetry: Gamut     # Y'CbCr matrix (Rec601 / Rec709 / Rec2020)
+    eotf: Eotf             # Transfer function (SDR / PQ / HLG)
 ```
 
 **Note:** What the Blackmagic SDK refers to as the "color space" (BMDColorspace) is in fact the matrix used for R'G'B' to Y'CbCr conversion, not the gamut of the image data. For example, ARRI Wide Gamut data would typically be converted using a Rec.709 matrix.
@@ -344,7 +344,7 @@ with BlackmagicOutput() as output:
 **`PixelFormat`**
 - `BGRA`: 8-bit BGRA (automatically used for uint8 data)
   - **Note**: Over SDI, BGRA data is output as 8-bit Y'CbCr 4:2:2, not RGB. The BGRA name refers to the input buffer format, not the SDI wire format.
-- `YUV10`: 10-bit Y'CbCr 4:2:2 (v210) - default for uint16/float data
+- `YUV10`: 10-bit Y'CbCr 4:2:2 (v210) - default for uint16 / float data
   - Always uses narrow range: Y: 64-940, UV: 64-960
 - `RGB10`: 10-bit R'G'B' (bmdFormat10BitRGBXLE) - native R'G'B' output without Y'CbCr conversion
   - uint16 input: Bit-shifted from 16-bit to 10-bit (>> 6)
@@ -431,7 +431,7 @@ with BlackmagicOutput() as output:
         frame[:, offset:offset+100] = [255, 255, 255]  # White bar
 
         output.update_frame(frame)
-        time.sleep(1/25)  # Limit update rate (actual rate will be lower due to processing overhead)
+        time.sleep(1 / 25)  # Limit update rate (actual rate will be lower due to processing overhead)
 ```
 
 ### Example 4: Load Image from File
@@ -495,7 +495,7 @@ import numpy as np
 from blackmagic_output import BlackmagicOutput, DisplayMode
 
 # Create uint16 R'G'B' image (0-65535 range)
-# Useful for 10-bit/12-bit/16-bit image processing pipelines
+# Useful for 10-bit / 12-bit / 16-bit image processing pipelines
 frame = np.zeros((1080, 1920, 3), dtype=np.uint16)
 
 # Full range gradient
@@ -719,8 +719,8 @@ HDR metadata is embedded into each video frame using the DeckLink SDK's `IDeckLi
   - Matrix.Rec709 → Rec.709 primaries (x,y): R(0.64, 0.33), G(0.30, 0.60), B(0.15, 0.06)
   - Matrix.Rec2020 → Rec.2020 primaries (x,y): R(0.708, 0.292), G(0.170, 0.797), B(0.131, 0.046)
 - **White Point**: D65 (0.3127, 0.3290) for all matrices (unless explicitly specified)
-- **EOTF**: Electro-Optical Transfer Function (SDR/Rec.709, PQ/SMPTE ST 2084, or HLG)
-- **Mastering Display Info**: Default values for max/min luminance
+- **EOTF**: Electro-Optical Transfer Function (SDR / Rec.709, PQ / SMPTE ST 2084, or HLG)
+- **Mastering Display Info**: Default values for max / min luminance
 - **Content Light Levels**: Max content light level and max frame average
 
 ### Default HDR Metadata Values (PQ only):
@@ -815,7 +815,7 @@ output.set_hdr_metadata_custom(dl.Gamut.Rec2020, dl.Eotf.PQ, custom)
 
 ### Available HDR Metadata Fields:
 
-All 14 CEA-861.3/ITU-R BT.2100 HDR static metadata fields are supported:
+All 14 SMPTE ST 2086 / CEA-861.3 HDR static metadata fields are supported:
 
 **Display Primaries (xy chromaticity coordinates):**
 - `display_primaries_red_x`, `display_primaries_red_y`
@@ -837,9 +837,9 @@ All 14 CEA-861.3/ITU-R BT.2100 HDR static metadata fields are supported:
 2. **Low-level API call order**: When using the low-level API, `set_hdr_metadata()` must be called before `setup_output()`
 3. **Frame-level metadata**: Metadata is embedded in every video frame, not set globally
 4. **Matrix consistency**: When using the simplified API, the same `matrix` parameter is used for both metadata and R'G'B' →Y'CbCr conversion. With the low-level API, ensure consistency between `set_hdr_metadata()` and conversion functions.
-5. **Transfer function**: The library only sets the metadata - you must apply the actual transfer function (PQ/HLG curve) to your RGB data before conversion
-6. **All 14 metadata fields supported**: The library implements all CEA-861.3/ITU-R BT.2100 HDR metadata fields including display primaries, white point, mastering display luminance, and content light levels
-7. **Matrix/Resolution restrictions**:
+5. **Transfer function**: The library only sets the metadata - you must apply the actual transfer function (PQ / HLG curve) to your RGB data before conversion
+6. **All 14 metadata fields supported**: The library implements all SMPTE ST 2086 / CEA-861.3 HDR metadata fields including display primaries, white point, mastering display luminance, and content light levels
+7. **Matrix / Resolution restrictions**:
    - **Rec.601** is only supported for SD display modes (NTSC, PAL, etc.) and is the only matrix supported for SD
    - **Rec.709** and **Rec.2020** are only supported for HD and higher resolutions (720p, 1080p, 2K, 4K, 8K, etc.)
 
@@ -906,7 +906,7 @@ See `tools/README.md` for more detail.
 The tool displays:
 - **Pixel format** and **color space** (RGB 4:4:4, YCbCr 4:2:2, etc.)
 - **Resolution** and **frame rate**
-- **Metadata**: EOTF (SDR/PQ/HLG), matrix (Rec.601/Rec.709/Rec.2020)
+- **Metadata**: EOTF (SDR / PQ / HLG), matrix (Rec.601 / Rec.709 / Rec.2020)
 - **Pixel values** at selected coordinates in native format (code values)
 
 Use this tool to verify that matrix and EOTF metadata are being set correctly by the output library.
@@ -953,7 +953,7 @@ The Blackmagic DeckLink SDK is © Blackmagic Design Pty. Ltd. All rights reserve
 
 ## Support
 
-- Check the [Issues](https://github.com/nick-shaw/blackmagic-output/issues) page for known problems
+- Check the [Issues](https://github.com/nick-shaw/blackmagic-decklink-output/issues) page for known problems
 - Review Blackmagic's official DeckLink SDK documentation
 - Ensure your DeckLink device is supported by the SDK version
 
