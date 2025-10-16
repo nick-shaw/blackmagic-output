@@ -53,13 +53,19 @@ HRESULT DeckLinkHdrVideoFrame::QueryInterface(REFIID iid, LPVOID* ppv)
     return S_OK;
 }
 #else
+// Linux - use memcmp for REFIID comparison
 HRESULT DeckLinkHdrVideoFrame::QueryInterface(REFIID iid, LPVOID* ppv)
 {
-    if (iid == IID_IUnknown) {
+    // On Linux, IID macros are compound literals, so we need to store them in variables
+    REFIID iunknown = IID_IUnknown;
+    REFIID videoFrame = IID_IDeckLinkVideoFrame;
+    REFIID metadataExt = IID_IDeckLinkVideoFrameMetadataExtensions;
+
+    if (memcmp(&iid, &iunknown, sizeof(REFIID)) == 0) {
         *ppv = static_cast<IDeckLinkVideoFrame*>(this);
-    } else if (iid == IID_IDeckLinkVideoFrame) {
+    } else if (memcmp(&iid, &videoFrame, sizeof(REFIID)) == 0) {
         *ppv = static_cast<IDeckLinkVideoFrame*>(this);
-    } else if (iid == IID_IDeckLinkVideoFrameMetadataExtensions) {
+    } else if (memcmp(&iid, &metadataExt, sizeof(REFIID)) == 0) {
         *ppv = static_cast<IDeckLinkVideoFrameMetadataExtensions*>(this);
     } else {
         *ppv = nullptr;

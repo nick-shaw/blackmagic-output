@@ -6,6 +6,7 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <string>
 
 #ifdef _WIN32
     #include "DeckLinkAPI_h.h"
