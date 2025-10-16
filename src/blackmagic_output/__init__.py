@@ -32,7 +32,7 @@ except ImportError:
     # C++ extension not built yet
     pass
 
-__version__ = "0.12.0-beta"
+__version__ = "0.13.0-beta"
 __author__ = "Nick Shaw"
 
 __all__ = [

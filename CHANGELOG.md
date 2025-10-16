@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0-beta] - 2025-01-16
+
+### Added
+- New `pixel_reader` utility tool for reading and verifying SDI/HDMI output
+  - Displays pixel values, metadata (EOTF, matrix), and video format information
+  - Supports input selection for devices with multiple inputs
+  - Useful for validating output from this library
+
+### Removed
+- **BREAKING**: Removed `is_display_mode_supported()` method from high-level API (`BlackmagicOutput`)
+  - Use `is_pixel_format_supported(display_mode, pixel_format)` instead for more specific hardware capability checking
+  - The removed method only checked if a display mode exists in the enum, not if hardware actually supports it
+- **BREAKING**: Removed 8-bit YUV pixel format support
+  - This needed to be supplied with packed 8-bit YUV data, which there were no helper functions to support
+  - 8-bit data (uint8 dtype) uses BGRA format, which is converted by the SDK to 8-bit YCbCr output
+  - Simplifies API by removing redundant pixel format
+
 ## [0.12.0-beta] - 2025-01-12
 
 ### Removed
