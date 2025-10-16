@@ -1,6 +1,9 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "pybind11>=2.6.0"]
-build-backend = "setuptools.build_meta"
+requires = [
+    "scikit-build-core>=0.3.3",
+    "pybind11>=2.6.0",
+]
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "blackmagic-output"
@@ -36,11 +39,26 @@ dependencies = [
     "pybind11>=2.6.0",
 ]
 
-[project.optional-dependencies]
-examples = ["imageio>=2.0.0", "pillow>=8.0.0"]
-dev = ["pytest", "black", "mypy"]
-
 [project.urls]
 Homepage = "https://github.com/nick-shaw/blackmagic-decklink-output"
 Repository = "https://github.com/nick-shaw/blackmagic-decklink-output"
 Issues = "https://github.com/nick-shaw/blackmagic-decklink-output/issues"
+
+[tool.scikit-build]
+# Minimum CMake version
+minimum-version = "0.3.3"
+# Build directory for cmake artifacts
+build-dir = "build/{wheel_tag}"
+
+[dependency-groups]
+dev = [
+    "black>=23.3.0",
+    "cibuildwheel>=2.13.1",
+    "mypy>=1.4.1",
+    "pytest>=7.4.4",
+]
+examples = [
+    "imageio>=2.0.0",
+    "pillow>=8.0.0",
+]
+# Verbose output during build

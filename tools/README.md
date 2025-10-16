@@ -20,17 +20,31 @@ This tool reads the incoming signal on a Blackmagic DeckLink device and displays
 
 ## Building
 
-### macOS
+### Option 1: CMake (Recommended)
+```bash
+# Create build directory
+mkdir build && cd build
+
+# Configure and build
+cmake ..
+cmake --build .
+
+# The executable will be in the tools directory
+cd ..
+```
+
+### Option 2: Make (Legacy)
+#### macOS
 ```bash
 make
 ```
 
-### Linux
+#### Linux
 ```bash
 make
 ```
 
-### Windows (MinGW)
+#### Windows (MinGW)
 ```bash
 make
 ```
