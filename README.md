@@ -63,7 +63,7 @@ pip install --force-reinstall -e .
 
 For examples and additional functionality:
 ```bash
-pip install imageio pillow  # For image loading with 16-bit TIFF support
+pip install imageio pillow jsonschema
 ```
 
 **Note:** While imageio/PIL can load 16-bit TIFF files correctly, 16-bit PNG files are often converted to 8-bit during loading due to PIL limitations. For reliable 16-bit workflows, use TIFF format.
