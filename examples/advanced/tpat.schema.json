@@ -1,0 +1,355 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "T-PAT Schema",
+  "description": "Schema for Test Pattern Descriptor Specification",
+  "type": "object",
+  "definitions": {
+    "dimension": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ]
+    },
+    "subpatchDimension": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/dimension"
+        },
+        {
+          "type": "string",
+          "enum": ["parent"]
+        }
+      ]
+    },
+    "spacing": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      ]
+    },
+    "cell": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "minItems": 4,
+          "maxItems": 4
+        }
+      ]
+    },
+    "color": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      ]
+    },
+    "gradient": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/color"
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "frequency": {
+      "type": "number",
+      "minimum": 1
+    },
+    "frequencyGrating": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": [
+            {
+              "$ref": "#/definitions/frequency"
+            },
+            {
+              "$ref": "#/definitions/color"
+            },
+            {
+              "$ref": "#/definitions/color"
+            }
+          ],
+          "minItems": 3,
+          "maxItems": 3
+        },
+        {
+          "type": "array",
+          "items": [
+            {
+              "$ref": "#/definitions/frequency"
+            },
+            {
+              "$ref": "#/definitions/frequency"
+            },
+            {
+              "$ref": "#/definitions/color"
+            },
+            {
+              "$ref": "#/definitions/color"
+            }
+          ],
+          "minItems": 4,
+          "maxItems": 4
+        }
+      ]
+    },
+    "patch": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/color"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "width": {
+              "$ref": "#/definitions/subpatchDimension"
+            },
+            "height": {
+              "$ref": "#/definitions/subpatchDimension"
+            },
+            "rows": {
+              "$ref": "#/definitions/subpatchDimension"
+            },
+            "columns": {
+              "$ref": "#/definitions/subpatchDimension"
+            },
+            "border": {
+              "$ref": "#/definitions/spacing"
+            },
+            "bordercolor": {
+              "$ref": "#/definitions/color"
+            },
+            "spacing": {
+              "$ref": "#/definitions/spacing"
+            },
+            "color": {
+              "$ref": "#/definitions/color"
+            },
+            "hramp": {
+              "$ref": "#/definitions/gradient"
+            },
+            "vramp": {
+              "$ref": "#/definitions/gradient"
+            },
+            "hsquare": {
+              "$ref": "#/definitions/frequencyGrating"
+            },
+            "vsquare": {
+              "$ref": "#/definitions/frequencyGrating"
+            },
+            "hsine": {
+              "$ref": "#/definitions/frequencyGrating"
+            },
+            "vsine": {
+              "$ref": "#/definitions/frequencyGrating"
+            },
+            "hcosine": {
+              "$ref": "#/definitions/frequencyGrating"
+            },
+            "vcosine": {
+              "$ref": "#/definitions/frequencyGrating"
+            },
+            "image": {
+              "type": "string"
+            },
+            "premul": {
+              "type": "boolean"
+            },
+            "cell": {
+              "$ref": "#/definitions/cell"
+            },
+            "left": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "right": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "top": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "bottom": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": { "type": "string" },
+            "descriptions": { "type": "array", "items": { "type": "string" }},
+            "patches": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/patch"
+              }
+            },
+            "subpatches": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/patch"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1
+    },
+    "name": {
+      "type": "string"
+    },
+    "depth": {
+      "type": "integer",
+      "enum": [
+        8,
+        10,
+        12,
+        16,
+        32
+      ]
+    },
+    "range": {
+      "type": "string",
+      "enum": ["full", "narrow"]
+    },
+    "matrix": {
+      "type": "string",
+      "enum": ["Rec709", "Rec2020"]
+    },
+    "eotf": {
+      "type": "string"
+    },
+    "width": {
+      "$ref": "#/definitions/subpatchDimension"
+    },
+    "height": {
+      "$ref": "#/definitions/subpatchDimension"
+    },
+    "rows": {
+      "$ref": "#/definitions/subpatchDimension"
+    },
+    "columns": {
+      "$ref": "#/definitions/subpatchDimension"
+    },
+    "border": {
+      "$ref": "#/definitions/spacing"
+    },
+    "bordercolor": {
+      "$ref": "#/definitions/color"
+    },
+    "spacing": {
+      "$ref": "#/definitions/spacing"
+    },
+    "color": {
+      "$ref": "#/definitions/color"
+    },
+    "hramp": {
+      "$ref": "#/definitions/gradient"
+    },
+    "vramp": {
+      "$ref": "#/definitions/gradient"
+    },
+    "hsquare": {
+      "$ref": "#/definitions/frequencyGrating"
+    },
+    "vsquare": {
+      "$ref": "#/definitions/frequencyGrating"
+    },
+    "hsine": {
+      "$ref": "#/definitions/frequencyGrating"
+    },
+    "vsine": {
+      "$ref": "#/definitions/frequencyGrating"
+    },
+    "hcosine": {
+      "$ref": "#/definitions/frequencyGrating"
+    },
+    "vcosine": {
+      "$ref": "#/definitions/frequencyGrating"
+    },
+    "image": {
+      "type": "string"
+    },
+    "premul": {
+      "type": "boolean"
+    },
+    "description": { "type": "string" },
+    "descriptions": { "type": "array", "items": { "type": "string" }},
+    "patches": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/patch"
+      }
+    },
+    "subpatches": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/patch"
+      }
+    }
+  },
+  "anyOf": [
+    {
+      "required": [
+        "depth",
+        "width",
+        "height"
+      ]
+    },
+    {
+      "required": [
+        "depth",
+        "rows",
+        "columns"
+      ]
+    }
+  ],
+  "additionalProperties": false
+}

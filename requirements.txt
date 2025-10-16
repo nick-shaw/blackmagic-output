@@ -3,3 +3,4 @@ pybind11>=2.6.0
 setuptools>=45.0.0
 imageio>=2.0.0
 pillow>=8.0.0
+jsonschema>=4.0.0
