@@ -8,7 +8,6 @@ version = "0.13.0-beta"
 description = "Python library for outputting video frames to Blackmagic DeckLink devices"
 readme = "README.md"
 requires-python = ">=3.7"
-license = "MIT"
 authors = [
     {name = "Nick Shaw", email = "nick@antlerpost.com"}
 ]

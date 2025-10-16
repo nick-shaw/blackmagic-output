@@ -8,17 +8,17 @@ UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S),Darwin)
     # macOS
-    CXXFLAGS = -std=c++11 -I.. -I../decklink_sdk/Mac/include
+    CXXFLAGS = -std=c++11 -I.. -I../_vendor/decklink_sdk/Mac/include
     LDFLAGS = -framework CoreFoundation
-    DECKLINK_DISPATCH = ../decklink_sdk/Mac/include/DeckLinkAPIDispatch.cpp
+    DECKLINK_DISPATCH = ../_vendor/decklink_sdk/Mac/include/DeckLinkAPIDispatch.cpp
 else ifeq ($(UNAME_S),Linux)
     # Linux
-    CXXFLAGS = -std=c++11 -I.. -I../decklink_sdk/Linux/include
+    CXXFLAGS = -std=c++11 -I.. -I../_vendor/decklink_sdk/Linux/include
     LDFLAGS = -lpthread -ldl
-    DECKLINK_DISPATCH = ../decklink_sdk/Linux/include/DeckLinkAPIDispatch.cpp
+    DECKLINK_DISPATCH = ../_vendor/decklink_sdk/Linux/include/DeckLinkAPIDispatch.cpp
 else
     # Windows (MinGW)
-    CXXFLAGS = -std=c++11 -I.. -I../decklink_sdk/Win/include
+    CXXFLAGS = -std=c++11 -I.. -I../_vendor/decklink_sdk/Win/include
     LDFLAGS = -lole32 -loleaut32
     DECKLINK_DISPATCH =
 endif
