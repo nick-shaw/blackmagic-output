@@ -49,7 +49,7 @@ The build system automatically uses the correct platform-specific headers.
 
 ```bash
 # Clone or download the library files
-git clone https://github.com/nick-shaw/blackmagic-output.git
+git clone https://github.com/nick-shaw/blackmagic-decklink-output.git
 cd blackmagic-output
 
 # Install in development mode (this also installs numpy and pybind11 dependencies)
