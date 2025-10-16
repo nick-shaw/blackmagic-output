@@ -594,10 +594,10 @@ def render_tpat(tpat_in: str) -> Tuple:
 def main():
     """Main function for the tpat_bmd utility."""
     displaymode_options = list(DISPLAY_MODES.keys())
-    pixelformat_options = ['YUV10', 'RGB10', 'RGB12']
+    pixelformat_options = ['yuv10', 'rgb10', 'rgb12']
     range_options = ['full', 'narrow']
-    matrix_options = ['Rec709', 'Rec2020']
-    eotf_options = ['SDR', 'HLG', 'PQ']
+    matrix_options = ['rec709', 'rec2020']
+    eotf_options = ['sdr', 'hlg', 'pq']
 
     parser = argparse.ArgumentParser()
     parser.add_argument('tpat_in', help="input T-PAT file")
