@@ -280,23 +280,17 @@ class BlackmagicOutput:
             if not self.initialize():
                 return False
 
-        # Auto-detect pixel format based on dtype if using default YUV10
-        # uint8 data should use 8-bit BGRA output, not 10-bit YUV
         if pixel_format == PixelFormat.YUV10 and frame_data.dtype == np.uint8:
             pixel_format = PixelFormat.BGRA
 
-        # Set default matrix if not provided
         if matrix is None:
             matrix = Matrix.Rec709
 
-        # Store matrix and narrow_range for use in update_frame
         self._current_matrix = matrix
         self._current_narrow_range = narrow_range
 
-        # Get the internal Gamut value from the Matrix enum
         gamut = matrix.value
 
-        # Handle HDR metadata if provided
         if hdr_metadata is not None:
             eotf = hdr_metadata.get('eotf')
             if eotf is None:
@@ -309,12 +303,9 @@ class BlackmagicOutput:
             else:
                 self._device.set_hdr_metadata(gamut, eotf.value)
         else:
-            # Clear metadata to ensure we don't retain previous HDR settings
-            # This sets metadata to SDR with specified matrix/colorimetry
             self._device.clear_hdr_metadata()
             self._device.set_hdr_metadata(gamut, Eotf.SDR.value)
 
-        # Setup output if not already done, settings changed, or output was stopped
         if (not self._current_settings or
             self._current_settings.mode != display_mode.value or
             self._current_settings.format != pixel_format.value or
@@ -326,14 +317,11 @@ class BlackmagicOutput:
                 return False
             self._current_settings = settings
 
-        # Convert frame data if necessary
         processed_frame = self._prepare_frame_data(frame_data, pixel_format, matrix, narrow_range)
 
-        # Set frame data
         if not self._device.set_frame_data(processed_frame):
             return False
 
-        # Display the frame synchronously
         if self._device.display_frame():
             self._output_started = True
             return True
@@ -385,10 +373,8 @@ class BlackmagicOutput:
             if not self.initialize():
                 return False
 
-        # Get video settings to determine frame dimensions
         settings = self._device.get_video_settings(display_mode.value)
 
-        # Add warnings for narrow_range parameter when it has no effect or is ambiguous
         import warnings
         if pixel_format == PixelFormat.RGB12:
             if not isinstance(color[0], float) and narrow_range:
@@ -404,27 +390,18 @@ class BlackmagicOutput:
                             "devices may interpret the data differently. narrow_range={} is informative only.".format(narrow_range),
                             UserWarning)
 
-        # Check if color values are floats
         if isinstance(color[0], float):
-            # Create frame as float32 (0.0-1.0 range)
             frame_data = np.full((settings.height, settings.width, 3),
                                color, dtype=np.float32)
         else:
-            # Integer values are treated as 10-bit
-            # For RGB10 output, use uint16 with bit-shifting (more efficient)
-            # For other formats, convert to float
             if pixel_format == PixelFormat.RGB10:
-                # Bit-shift 10-bit values to 16-bit: allows super-white/sub-black
                 color_uint16 = tuple(int(c) << 6 for c in color)
                 frame_data = np.full((settings.height, settings.width, 3),
                                    color_uint16, dtype=np.uint16)
             else:
-                # Convert to float for YUV10 and other formats
                 if narrow_range:
-                    # Narrow range 10-bit: (64-940) maps to (0.0-1.0), allows values outside this range
                     color_float = tuple((c - 64.0) / 876.0 for c in color)
                 else:
-                    # Full range 10-bit: (0-1023) maps to (0.0-1.0)
                     color_float = tuple(c / 1023.0 for c in color)
                 frame_data = np.full((settings.height, settings.width, 3),
                                    color_float, dtype=np.float32)
@@ -444,7 +421,6 @@ class BlackmagicOutput:
         if not self._output_started:
             raise RuntimeError("Output not started. Call display_static_frame() first.")
 
-        # Determine pixel format from current settings
         if self._current_settings.format == _decklink.PixelFormat.BGRA:
             pixel_format = PixelFormat.BGRA
         elif self._current_settings.format == _decklink.PixelFormat.YUV10:
@@ -505,7 +481,6 @@ class BlackmagicOutput:
 
         settings = self._current_settings
 
-        # Add warnings for narrow_range parameter when it has no effect or is ambiguous
         import warnings
         if pixel_format == PixelFormat.RGB12:
             if frame_data.dtype == np.uint16 and narrow_range:
@@ -533,10 +508,8 @@ class BlackmagicOutput:
                 frame_data = frame_data.astype(np.uint8)
 
             if frame_data.ndim == 3 and frame_data.shape[2] == 3:
-                # RGB to BGRA conversion
                 return _decklink.rgb_to_bgra(frame_data, settings.width, settings.height)
             elif frame_data.ndim == 3 and frame_data.shape[2] == 4:
-                # Already BGRA format
                 return frame_data
             else:
                 raise ValueError("For BGRA format, frame data must be HxWx3 (RGB) or HxWx4 (BGRA)")
@@ -545,24 +518,15 @@ class BlackmagicOutput:
             if frame_data.ndim != 3 or frame_data.shape[2] != 3:
                 raise ValueError("For YUV10 format, frame data must be HxWx3 (RGB)")
 
-            # Get the internal Gamut value from the Matrix enum
             internal_matrix = matrix.value
 
             if frame_data.dtype == np.uint16:
-                # Convert uint16 to float to avoid double scaling
-                # rgb_uint16_to_yuv10 expects full range 16-bit (0-65535 = 0.0-1.0)
-                # But we want to interpret the data according to narrow_range parameter
                 if narrow_range:
-                    # Interpret as narrow range: (64-940)<<6 maps to (0.0-1.0)
-                    # Divide by 64 to get 10-bit values, then normalize
                     frame_data = ((frame_data.astype(np.float32) / 64.0) - 64.0) / 876.0
                 else:
-                    # Interpret as full range: (0-1023)<<6 maps to (0.0-1.0)
                     frame_data = (frame_data.astype(np.float32) / 64.0) / 1023.0
-                # Now use float conversion which expects 0.0-1.0 representing full range RGB
                 return _decklink.rgb_float_to_yuv10(frame_data.astype(np.float32), settings.width, settings.height, internal_matrix)
             elif frame_data.dtype in (np.float32, np.float64):
-                # RGB float to 10-bit YUV v210 conversion (always narrow range for YUV10)
                 return _decklink.rgb_float_to_yuv10(frame_data.astype(np.float32), settings.width, settings.height, internal_matrix)
             else:
                 raise ValueError("For YUV10 format, frame data must be uint16 or float dtype")
@@ -571,17 +535,11 @@ class BlackmagicOutput:
             if frame_data.ndim != 3 or frame_data.shape[2] != 3:
                 raise ValueError("For RGB10 format, frame data must be HxWx3 (RGB)")
 
-            # Get the internal Gamut value from the Matrix enum
             internal_matrix = matrix.value
 
             if frame_data.dtype == np.uint16:
-                # For RGB10, uint16 input is already in the right format
-                # Just bit-shift: input (10-bit<<6) → output (10-bit)
-                # The narrow_range parameter indicates both input interpretation and output range
-                # Since they match, we can use direct bit-shifting
                 return _decklink.rgb_uint16_to_rgb10(frame_data, settings.width, settings.height)
             elif frame_data.dtype in (np.float32, np.float64):
-                # RGB float to 10-bit RGB r210 conversion
                 return _decklink.rgb_float_to_rgb10(frame_data.astype(np.float32), settings.width, settings.height, narrow_range)
             else:
                 raise ValueError("For RGB10 format, frame data must be uint16 or float dtype")
@@ -591,10 +549,8 @@ class BlackmagicOutput:
                 raise ValueError("For RGB12 format, frame data must be HxWx3 (RGB)")
 
             if frame_data.dtype == np.uint16:
-                # RGB uint16 to 12-bit RGB conversion (bit-shift)
                 return _decklink.rgb_uint16_to_rgb12(frame_data, settings.width, settings.height)
             elif frame_data.dtype in (np.float32, np.float64):
-                # RGB float to 12-bit RGB conversion (full range only)
                 return _decklink.rgb_float_to_rgb12(frame_data.astype(np.float32), settings.width, settings.height)
             else:
                 raise ValueError("For RGB12 format, frame data must be uint16 or float dtype")
