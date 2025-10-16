@@ -649,7 +649,6 @@ def main():
                 PixelFormat.YUV10
             )
 
-            # Determine narrow_range: -r flag overrides TPAT file's range tag
             if args.r is not None:
                 narrow_range = str(args.r).lower() == 'narrow'
             elif 'range' in tpat_data:
@@ -657,7 +656,6 @@ def main():
             else:
                 narrow_range = True
 
-            # Determine matrix: -m flag overrides TPAT file's matrix tag
             if args.m is not None:
                 matrix_str = str(args.m).lower()
             elif 'matrix' in tpat_data:
@@ -667,7 +665,6 @@ def main():
 
             matrix = MATRICES.get(matrix_str, bmo.Matrix.Rec709)
 
-            # Determine eotf: -e flag overrides TPAT file's eotf tag
             if args.e is not None:
                 eotf_str = str(args.e).lower()
             elif 'eotf' in tpat_data:

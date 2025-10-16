@@ -33,3 +33,5 @@ tools/pixel_reader
 *.tiff
 *.tif
 *.png
+
+CLAUDE.md
