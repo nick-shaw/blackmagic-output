@@ -7,7 +7,6 @@ Run pixel_reader in another window to verify the metadata.
 
 import time
 import sys
-sys.path.insert(0, '/Users/nick/github/blackmagic-decklink-output/src')
 
 import blackmagic_output as bmo
 
