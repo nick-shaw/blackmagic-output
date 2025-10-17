@@ -37,11 +37,11 @@ SDK v14.1 headers for all platforms are included in the repository - no separate
 
 **All Platforms (macOS, Windows, Linux):**
 
-- `decklink_sdk/Mac/include/` - macOS headers
-- `decklink_sdk/Win/include/` - Windows headers
-- `decklink_sdk/Linux/include/` - Linux headers
+- `_vendor/decklink_sdk/Mac/include/` - macOS headers
+- `_vendor/decklink_sdk/Win/include/` - Windows headers
+- `_vendor/decklink_sdk/Linux/include/` - Linux headers
 
-The build system automatically uses the correct platform-specific headers.
+The build system (CMake + scikit-build-core) automatically uses the correct platform-specific headers.
 
 **⚠️ Important:** This library is built against SDK v14.1. If you need to download the SDK separately, ensure you get v14.1 from the [Blackmagic Design developer site](https://www.blackmagicdesign.com/developer/). Newer versions (v15.0+) may cause API compatibility issues and build failures.
 
@@ -50,7 +50,7 @@ The build system automatically uses the correct platform-specific headers.
 ```bash
 # Clone or download the library files
 git clone https://github.com/nick-shaw/blackmagic-decklink-output.git
-cd blackmagic-output
+cd blackmagic-decklink-output
 
 # Install in development mode (this also installs numpy and pybind11 dependencies)
 pip install -e .
@@ -862,9 +862,9 @@ All 14 SMPTE ST 2086 / CEA-861.3 HDR static metadata fields are supported:
 - Try different device index: `output.initialize(device_index=1)`
 
 **Build errors about missing headers**
-- Verify DeckLink SDK is installed correctly
-- Update SDK paths in `setup.py` if installed in non-standard location
-- On Linux, ensure headers are in system include path
+- The SDK headers are included in the repository under `_vendor/decklink_sdk/`
+- If you need to use a different SDK version, update the paths in `CMakeLists.txt`
+- On Linux, ensure headers are accessible to the build system
 
 **Permission errors (Linux)**
 - Add user to appropriate groups: `sudo usermod -a -G video $USER`
@@ -943,10 +943,10 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 This repository includes header files from the Blackmagic DeckLink SDK v14.1. These header files are redistributable under the terms of the Blackmagic DeckLink SDK End User License Agreement (Section 0.1), which specifically exempts the Include folder headers from the more restrictive licensing terms that apply to other parts of the SDK.
 
 **Important notes about the SDK headers:**
-- The header files in `decklink_sdk/{Mac,Win,Linux}/include/` directories are from the Blackmagic DeckLink SDK
+- The header files in `_vendor/decklink_sdk/{Mac,Win,Linux}/include/` directories are from the Blackmagic DeckLink SDK
 - These headers are required only for **building** the library from source
 - **Runtime usage requires** the Blackmagic Desktop Video software to be installed separately
-- The SDK headers are provided under Blackmagic Design's EULA - see `Blackmagic Design EULA.pdf` for full terms
+- The SDK headers are provided under Blackmagic Design's EULA - see `_vendor/Blackmagic Design EULA.pdf` for full terms
 - Download the complete SDK and Desktop Video software from: https://www.blackmagicdesign.com/developer
 
 The Blackmagic DeckLink SDK is © Blackmagic Design Pty. Ltd. All rights reserved.

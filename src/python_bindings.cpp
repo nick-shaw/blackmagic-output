@@ -724,5 +724,5 @@ PYBIND11_MODULE(decklink_output, m) {
           py::arg("rgb_array"), py::arg("width"), py::arg("height"));
 
     // Version info
-    m.attr("__version__") = "0.12.0-beta";
+    m.attr("__version__") = "0.14.0b0";
 }

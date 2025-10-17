@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15...3.27)
-project(blackmagic-output VERSION 0.13.0 LANGUAGES CXX)
+project(blackmagic-output VERSION 0.14.0 LANGUAGES CXX)
 
 # Find required packages
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)

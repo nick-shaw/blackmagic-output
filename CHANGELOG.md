@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0b0] - 2025-10-17
+
+### Changed
+- **Build system**: Switched from setuptools to CMake + scikit-build-core
+  - Provides better cross-platform build support
+  - Improved Linux compatibility
+- **Directory structure**: Moved SDK headers from `decklink_sdk/` to `_vendor/decklink_sdk/`
+- **C++ improvements**: Enhanced cross-platform support for Linux builds
+  - Uses `memcmp` for `REFIID` comparison on Linux
+  - Platform-specific string handling for device and display mode names
+
+### Notes
+- No breaking changes to the Python API
+- Users building from source will need CMake (automatically handled by scikit-build-core)
+- Installation command remains the same: `pip install -e .`
+
 ## [0.13.0-beta] - 2025-01-16
 
 ### Added
