@@ -36,10 +36,15 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         message(STATUS "Compiling DeckLink IDL files for Windows...")
         file(MAKE_DIRECTORY "${DECKLINK_GENERATED_DIR}")
 
-        # Find MIDL compiler
-        find_program(MIDL_EXECUTABLE midl)
+        # Find MIDL compiler (part of Windows SDK)
+        find_program(MIDL_EXECUTABLE midl
+            HINTS
+                "C:/Program Files (x86)/Windows Kits/10/bin/*/x64"
+                "C:/Program Files (x86)/Windows Kits/10/bin/10.0.*/x64"
+                "$ENV{WindowsSdkDir}/bin/*/x64"
+        )
         if(NOT MIDL_EXECUTABLE)
-            message(FATAL_ERROR "MIDL compiler not found. Please install Windows SDK.")
+            message(FATAL_ERROR "MIDL compiler not found. Please install Windows SDK.\nSearched paths: C:/Program Files (x86)/Windows Kits/10/bin/*/x64")
         endif()
 
         message(STATUS "Using MIDL: ${MIDL_EXECUTABLE}")
