@@ -94,10 +94,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         message(STATUS "MIDL compilation successful")
     endif()
 
-    # Use generated headers directory
+    # Use generated headers directory and include the MIDL-generated source file
     set(DECKLINK_INCLUDE_DIR "${DECKLINK_GENERATED_DIR}")
-    set(DECKLINK_SOURCES "")  # Windows doesn't need DeckLinkAPIDispatch.cpp
-    set(PLATFORM_LIBS ole32 oleaut32)
+    set(DECKLINK_SOURCES "${DECKLINK_GENERATED_DIR}/DeckLinkAPI_i.c")
+    set(PLATFORM_LIBS ole32 oleaut32 comsuppw)
     set(WRAPPER_SOURCE "src/decklink_wrapper.cpp")
 else()
     message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
