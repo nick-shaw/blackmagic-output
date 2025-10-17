@@ -49,6 +49,8 @@ Issues = "https://github.com/nick-shaw/blackmagic-decklink-output/issues"
 minimum-version = "0.3.3"
 # Build directory for cmake artifacts
 build-dir = "build/{wheel_tag}"
+# Include vendor directory in sdist
+sdist.include = ["_vendor/**"]
 
 [dependency-groups]
 dev = [
