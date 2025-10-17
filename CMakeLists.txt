@@ -54,15 +54,20 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         # Find the C++ compiler directory for MIDL
         get_filename_component(MSVC_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
 
-        # Find Windows SDK include directory for system IDL files (unknwn.idl, etc.)
+        # Find Windows SDK include directories for system IDL files
         file(GLOB WINSDK_INCLUDE_DIRS "C:/Program Files (x86)/Windows Kits/10/Include/*/um")
-        list(GET WINSDK_INCLUDE_DIRS 0 WINSDK_INCLUDE_DIR)
+        list(GET WINSDK_INCLUDE_DIRS 0 WINSDK_UM_DIR)
 
-        if(NOT WINSDK_INCLUDE_DIR)
-            message(FATAL_ERROR "Windows SDK include directory not found")
+        if(NOT WINSDK_UM_DIR)
+            message(FATAL_ERROR "Windows SDK um directory not found")
         endif()
 
-        message(STATUS "Windows SDK include: ${WINSDK_INCLUDE_DIR}")
+        # Also need the shared directory for wtypes.idl, etc.
+        get_filename_component(WINSDK_VERSION_DIR "${WINSDK_UM_DIR}" DIRECTORY)
+        set(WINSDK_SHARED_DIR "${WINSDK_VERSION_DIR}/shared")
+
+        message(STATUS "Windows SDK um: ${WINSDK_UM_DIR}")
+        message(STATUS "Windows SDK shared: ${WINSDK_SHARED_DIR}")
 
         # Run MIDL to generate headers from IDL
         # Set the PATH to include the MSVC compiler directory so MIDL can find cl.exe
@@ -73,7 +78,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
                 /h DeckLinkAPI_h.h
                 /iid DeckLinkAPI_i.c
                 /I "${DECKLINK_INCLUDE_DIR}"
-                /I "${WINSDK_INCLUDE_DIR}"
+                /I "${WINSDK_UM_DIR}"
+                /I "${WINSDK_SHARED_DIR}"
                 "${DECKLINK_IDL_FILE}"
             WORKING_DIRECTORY "${DECKLINK_GENERATED_DIR}"
             RESULT_VARIABLE MIDL_RESULT
