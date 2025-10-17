@@ -4,6 +4,8 @@
 #include "decklink_wrapper.hpp"
 
 #ifdef _WIN32
+    #include <windows.h>
+    #include <combaseapi.h>
     #include "DeckLinkAPI_h.h"
 #else
     #include "DeckLinkAPI.h"
