@@ -26,6 +26,32 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     # Windows
     set(DECKLINK_SDK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_vendor/decklink_sdk/Win")
     set(DECKLINK_INCLUDE_DIR "${DECKLINK_SDK_PATH}/include")
+
+    # Check if we need to compile IDL files
+    set(DECKLINK_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/decklink_generated")
+    set(DECKLINK_IDL_FILE "${DECKLINK_INCLUDE_DIR}/DeckLinkAPI.idl")
+    set(DECKLINK_HEADER_FILE "${DECKLINK_GENERATED_DIR}/DeckLinkAPI_h.h")
+
+    if(NOT EXISTS "${DECKLINK_HEADER_FILE}")
+        message(STATUS "Compiling DeckLink IDL files for Windows...")
+        file(MAKE_DIRECTORY "${DECKLINK_GENERATED_DIR}")
+
+        # Run MIDL to generate headers from IDL
+        execute_process(
+            COMMAND midl /nologo /h DeckLinkAPI_h.h /iid DeckLinkAPI_i.c "${DECKLINK_IDL_FILE}"
+            WORKING_DIRECTORY "${DECKLINK_GENERATED_DIR}"
+            RESULT_VARIABLE MIDL_RESULT
+            OUTPUT_VARIABLE MIDL_OUTPUT
+            ERROR_VARIABLE MIDL_ERROR
+        )
+
+        if(NOT MIDL_RESULT EQUAL 0)
+            message(FATAL_ERROR "MIDL compilation failed: ${MIDL_ERROR}")
+        endif()
+    endif()
+
+    # Use generated headers directory
+    set(DECKLINK_INCLUDE_DIR "${DECKLINK_GENERATED_DIR}")
     set(DECKLINK_SOURCES "")  # Windows doesn't need DeckLinkAPIDispatch.cpp
     set(PLATFORM_LIBS ole32 oleaut32)
     set(WRAPPER_SOURCE "src/decklink_wrapper.cpp")
