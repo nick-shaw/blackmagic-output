@@ -85,9 +85,15 @@ public:
     virtual HRESULT GetFlag(BMDDeckLinkFrameMetadataID metadataID, bool* value) override {
         return E_INVALIDARG;
     }
+#ifdef __APPLE__
     virtual HRESULT GetString(BMDDeckLinkFrameMetadataID metadataID, CFStringRef* value) override {
         return E_INVALIDARG;
     }
+#else
+    virtual HRESULT GetString(BMDDeckLinkFrameMetadataID metadataID, const char** value) override {
+        return E_INVALIDARG;
+    }
+#endif
     virtual HRESULT GetBytes(BMDDeckLinkFrameMetadataID metadataID, void* buffer, uint32_t* bufferSize) override {
         *bufferSize = 0;
         return E_INVALIDARG;
