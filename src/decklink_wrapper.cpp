@@ -9,6 +9,16 @@
 
 #ifdef _WIN32
     #include <comutil.h>
+    // Windows needs CoCreateInstance to create the DeckLink iterator
+    IDeckLinkIterator* CreateDeckLinkIteratorInstance() {
+        IDeckLinkIterator* iterator = nullptr;
+        HRESULT result = CoCreateInstance(CLSID_CDeckLinkIterator, nullptr, CLSCTX_ALL,
+                                         IID_IDeckLinkIterator, (void**)&iterator);
+        if (FAILED(result)) {
+            return nullptr;
+        }
+        return iterator;
+    }
 #endif
 
 DeckLinkOutput::DeckLinkOutput()
