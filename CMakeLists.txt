@@ -51,9 +51,14 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         message(STATUS "IDL file: ${DECKLINK_IDL_FILE}")
         message(STATUS "Output directory: ${DECKLINK_GENERATED_DIR}")
 
+        # Find the C++ compiler directory for MIDL
+        get_filename_component(MSVC_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+
         # Run MIDL to generate headers from IDL
+        # Set the PATH to include the MSVC compiler directory so MIDL can find cl.exe
         execute_process(
-            COMMAND "${MIDL_EXECUTABLE}" /nologo /h DeckLinkAPI_h.h /iid DeckLinkAPI_i.c "${DECKLINK_IDL_FILE}"
+            COMMAND ${CMAKE_COMMAND} -E env "PATH=${MSVC_DIR};$ENV{PATH}"
+                "${MIDL_EXECUTABLE}" /nologo /h DeckLinkAPI_h.h /iid DeckLinkAPI_i.c "${DECKLINK_IDL_FILE}"
             WORKING_DIRECTORY "${DECKLINK_GENERATED_DIR}"
             RESULT_VARIABLE MIDL_RESULT
             OUTPUT_VARIABLE MIDL_OUTPUT
