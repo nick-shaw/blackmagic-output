@@ -36,9 +36,19 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         message(STATUS "Compiling DeckLink IDL files for Windows...")
         file(MAKE_DIRECTORY "${DECKLINK_GENERATED_DIR}")
 
+        # Find MIDL compiler
+        find_program(MIDL_EXECUTABLE midl)
+        if(NOT MIDL_EXECUTABLE)
+            message(FATAL_ERROR "MIDL compiler not found. Please install Windows SDK.")
+        endif()
+
+        message(STATUS "Using MIDL: ${MIDL_EXECUTABLE}")
+        message(STATUS "IDL file: ${DECKLINK_IDL_FILE}")
+        message(STATUS "Output directory: ${DECKLINK_GENERATED_DIR}")
+
         # Run MIDL to generate headers from IDL
         execute_process(
-            COMMAND midl /nologo /h DeckLinkAPI_h.h /iid DeckLinkAPI_i.c "${DECKLINK_IDL_FILE}"
+            COMMAND "${MIDL_EXECUTABLE}" /nologo /h DeckLinkAPI_h.h /iid DeckLinkAPI_i.c "${DECKLINK_IDL_FILE}"
             WORKING_DIRECTORY "${DECKLINK_GENERATED_DIR}"
             RESULT_VARIABLE MIDL_RESULT
             OUTPUT_VARIABLE MIDL_OUTPUT
@@ -46,8 +56,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         )
 
         if(NOT MIDL_RESULT EQUAL 0)
-            message(FATAL_ERROR "MIDL compilation failed: ${MIDL_ERROR}")
+            message(FATAL_ERROR "MIDL compilation failed:\nReturn code: ${MIDL_RESULT}\nOutput: ${MIDL_OUTPUT}\nError: ${MIDL_ERROR}")
         endif()
+
+        message(STATUS "MIDL compilation successful")
     endif()
 
     # Use generated headers directory
