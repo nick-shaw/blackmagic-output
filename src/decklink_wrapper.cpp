@@ -490,7 +490,11 @@ bool DeckLinkOutput::isPixelFormatSupported(DisplayMode mode, PixelFormat format
     }
 
     // Check if the mode/format combination is supported
+#ifdef _WIN32
+    BOOL supported = FALSE;
+#else
     bool supported = false;
+#endif
     BMDDisplayMode actualMode;
 
     HRESULT result = m_deckLinkOutput->DoesSupportVideoMode(
@@ -503,7 +507,11 @@ bool DeckLinkOutput::isPixelFormatSupported(DisplayMode mode, PixelFormat format
         &supported
     );
 
+#ifdef _WIN32
+    return (result == S_OK && supported != FALSE);
+#else
     return (result == S_OK && supported);
+#endif
 }
 
 DeckLinkOutput::OutputInfo DeckLinkOutput::getCurrentOutputInfo()
@@ -546,6 +554,13 @@ DeckLinkOutput::OutputInfo DeckLinkOutput::getCurrentOutputInfo()
                     CFStringGetCString(modeName, buffer, sizeof(buffer), kCFStringEncodingUTF8);
                     info.displayModeName = buffer;
                     CFRelease(modeName);
+                }
+#elif defined(_WIN32)
+                BSTR modeName = nullptr;
+                if (displayMode->GetName(&modeName) == S_OK) {
+                    _bstr_t bstr(modeName, false);
+                    info.displayModeName = std::string((const char*)bstr);
+                    SysFreeString(modeName);
                 }
 #else
                 const char* modeName = nullptr;
