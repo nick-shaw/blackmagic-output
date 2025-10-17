@@ -3,6 +3,12 @@
 #include <pybind11/stl.h>
 #include "decklink_wrapper.hpp"
 
+// Windows doesn't have ssize_t, but pybind11/numpy uses it for strides
+#ifdef _WIN32
+    #include <BaseTsd.h>
+    typedef SSIZE_T ssize_t;
+#endif
+
 namespace py = pybind11;
 
 // Helper function to convert NumPy array to raw data

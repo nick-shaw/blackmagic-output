@@ -84,6 +84,8 @@ public:
 
     virtual HRESULT GetInt(BMDDeckLinkFrameMetadataID metadataID, int64_t* value) override;
     virtual HRESULT GetFloat(BMDDeckLinkFrameMetadataID metadataID, double* value) override;
+#ifndef _WIN32
+    // GetFlag and GetString may not be in Windows SDK or have different signatures
     virtual HRESULT GetFlag(BMDDeckLinkFrameMetadataID metadataID, bool* value) override {
         return E_INVALIDARG;
     }
@@ -95,6 +97,7 @@ public:
     virtual HRESULT GetString(BMDDeckLinkFrameMetadataID metadataID, const char** value) override {
         return E_INVALIDARG;
     }
+#endif
 #endif
     virtual HRESULT GetBytes(BMDDeckLinkFrameMetadataID metadataID, void* buffer, uint32_t* bufferSize) override {
         *bufferSize = 0;
