@@ -425,6 +425,14 @@ std::vector<std::string> DeckLinkOutput::getDeviceList()
             delete[] buffer;
             CFRelease(deviceNameRef);
         }
+#elif defined(_WIN32)
+        BSTR deviceNameBSTR = nullptr;
+        if (deckLink->GetDisplayName(&deviceNameBSTR) == S_OK) {
+            // Convert BSTR to std::string
+            _bstr_t bstr(deviceNameBSTR, false); // false = don't copy, we'll free it
+            devices.push_back(std::string((const char*)bstr));
+            SysFreeString(deviceNameBSTR);
+        }
 #else
         const char* deviceName = nullptr;
         if (deckLink->GetDisplayName(&deviceName) == S_OK) {
@@ -511,10 +519,17 @@ DeckLinkOutput::OutputInfo DeckLinkOutput::getCurrentOutputInfo()
 
     // Query RGB 4:4:4 mode status
     if (m_deckLinkConfiguration) {
+#ifdef _WIN32
+        BOOL flagValue = FALSE;
+        if (m_deckLinkConfiguration->GetFlag(bmdDeckLinkConfig444SDIVideoOutput, &flagValue) == S_OK) {
+            info.rgb444ModeEnabled = (flagValue != FALSE);
+        }
+#else
         bool flagValue = false;
         if (m_deckLinkConfiguration->GetFlag(bmdDeckLinkConfig444SDIVideoOutput, &flagValue) == S_OK) {
             info.rgb444ModeEnabled = flagValue;
         }
+#endif
     }
 
     // Get display mode name
