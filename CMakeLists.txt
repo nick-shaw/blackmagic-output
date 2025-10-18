@@ -121,9 +121,11 @@ pybind11_add_module(decklink_output
     ${DECKLINK_SOURCES}
 )
 
-# On Windows, add the generated GUID file to the target after creation
+# On Windows, compile the generated GUID file separately and link it
 if(WIN32)
-    target_sources(decklink_output PRIVATE "${DECKLINK_GENERATED_DIR}/DeckLinkAPI_i.c")
+    # Add the _i.c file as a separate library
+    add_library(decklink_guids STATIC "${DECKLINK_GENERATED_DIR}/DeckLinkAPI_i.c")
+    target_link_libraries(decklink_output PRIVATE decklink_guids)
 endif()
 
 # Set C++ standard
