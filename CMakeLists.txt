@@ -92,6 +92,11 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         endif()
 
         message(STATUS "MIDL compilation successful")
+
+        # Verify the generated files exist
+        if(NOT EXISTS "${DECKLINK_GENERATED_DIR}/DeckLinkAPI_i.c")
+            message(FATAL_ERROR "MIDL did not generate DeckLinkAPI_i.c")
+        endif()
     endif()
 
     # Use generated headers directory and include the MIDL-generated source file
