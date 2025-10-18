@@ -114,22 +114,16 @@ if(NOT EXISTS "${DECKLINK_INCLUDE_DIR}")
 endif()
 
 # Create the Python extension module
-# On Windows, we need to add the generated files explicitly
-if(WIN32 AND EXISTS "${DECKLINK_GENERATED_DIR}/DeckLinkAPI_i.c")
-    pybind11_add_module(decklink_output
-        src/python_bindings.cpp
-        ${WRAPPER_SOURCE}
-        src/decklink_hdr_frame.cpp
-        "${DECKLINK_GENERATED_DIR}/DeckLinkAPI_i.c"
-        ${DECKLINK_SOURCES}
-    )
-else()
-    pybind11_add_module(decklink_output
-        src/python_bindings.cpp
-        ${WRAPPER_SOURCE}
-        src/decklink_hdr_frame.cpp
-        ${DECKLINK_SOURCES}
-    )
+pybind11_add_module(decklink_output
+    src/python_bindings.cpp
+    ${WRAPPER_SOURCE}
+    src/decklink_hdr_frame.cpp
+    ${DECKLINK_SOURCES}
+)
+
+# On Windows, add the generated GUID file to the target after creation
+if(WIN32)
+    target_sources(decklink_output PRIVATE "${DECKLINK_GENERATED_DIR}/DeckLinkAPI_i.c")
 endif()
 
 # Set C++ standard
