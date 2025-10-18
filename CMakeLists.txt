@@ -99,9 +99,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         endif()
     endif()
 
-    # Use generated headers directory and include the MIDL-generated source file
+    # Use generated headers directory
     set(DECKLINK_INCLUDE_DIR "${DECKLINK_GENERATED_DIR}")
-    set(DECKLINK_SOURCES "${DECKLINK_GENERATED_DIR}/DeckLinkAPI_i.c")
+    set(DECKLINK_SOURCES "")
     set(PLATFORM_LIBS ole32 oleaut32 comsuppw)
     set(WRAPPER_SOURCE "src/decklink_wrapper.cpp")
 else()
@@ -123,8 +123,11 @@ pybind11_add_module(decklink_output
 
 # On Windows, compile the generated GUID file separately and link it
 if(WIN32)
+    # Enable C language for the project to compile .c files
+    enable_language(C)
     # Add the _i.c file as a separate library
     add_library(decklink_guids STATIC "${DECKLINK_GENERATED_DIR}/DeckLinkAPI_i.c")
+    set_target_properties(decklink_guids PROPERTIES LINKER_LANGUAGE C)
     target_link_libraries(decklink_output PRIVATE decklink_guids)
 endif()
 
