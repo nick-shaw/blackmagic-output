@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15...3.27)
-project(blackmagic-output VERSION 0.14.0 LANGUAGES CXX)
+project(blackmagic-output VERSION 0.14.0 LANGUAGES CXX C)
 
 # Find required packages
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
@@ -101,7 +101,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
     # Use generated headers directory
     set(DECKLINK_INCLUDE_DIR "${DECKLINK_GENERATED_DIR}")
-    set(DECKLINK_SOURCES "")
+    set(DECKLINK_SOURCES "${DECKLINK_GENERATED_DIR}/DeckLinkAPI_i.c")
     set(PLATFORM_LIBS ole32 oleaut32 comsuppw)
     set(WRAPPER_SOURCE "src/decklink_wrapper.cpp")
 else()
@@ -121,15 +121,6 @@ pybind11_add_module(decklink_output
     ${DECKLINK_SOURCES}
 )
 
-# On Windows, compile the generated GUID file separately and link it
-if(WIN32)
-    # Enable C language for the project to compile .c files
-    enable_language(C)
-    # Add the _i.c file as a separate library
-    add_library(decklink_guids STATIC "${DECKLINK_GENERATED_DIR}/DeckLinkAPI_i.c")
-    set_target_properties(decklink_guids PROPERTIES LINKER_LANGUAGE C)
-    target_link_libraries(decklink_output PRIVATE decklink_guids)
-endif()
 
 # Set C++ standard
 target_compile_features(decklink_output PRIVATE cxx_std_17)
