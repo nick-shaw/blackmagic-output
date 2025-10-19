@@ -40,9 +40,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/nick-shaw/blackmagic-decklink-output"
-Repository = "https://github.com/nick-shaw/blackmagic-decklink-output"
-Issues = "https://github.com/nick-shaw/blackmagic-decklink-output/issues"
+Homepage = "https://github.com/nick-shaw/blackmagic-output"
+Repository = "https://github.com/nick-shaw/blackmagic-output"
+Issues = "https://github.com/nick-shaw/blackmagic-output/issues"
 
 [tool.scikit-build]
 # Minimum CMake version

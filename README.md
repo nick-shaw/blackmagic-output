@@ -49,8 +49,8 @@ The build system (CMake + scikit-build-core) automatically uses the correct plat
 
 ```bash
 # Clone or download the library files
-git clone https://github.com/nick-shaw/blackmagic-decklink-output.git
-cd blackmagic-decklink-output
+git clone https://github.com/nick-shaw/blackmagic-output.git
+cd blackmagic-output
 
 # Install in development mode (this also installs numpy and pybind11 dependencies)
 pip install -e .
@@ -953,7 +953,7 @@ The Blackmagic DeckLink SDK is © Blackmagic Design Pty. Ltd. All rights reserve
 
 ## Support
 
-- Check the [Issues](https://github.com/nick-shaw/blackmagic-decklink-output/issues) page for known problems
+- Check the [Issues](https://github.com/nick-shaw/blackmagic-output/issues) page for known problems
 - Review Blackmagic's official DeckLink SDK documentation
 - Ensure your DeckLink device is supported by the SDK version
 
