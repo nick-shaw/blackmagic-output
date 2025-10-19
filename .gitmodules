@@ -1,0 +1,3 @@
+[submodule "examples/advanced/tpat"]
+	path = examples/advanced/tpat
+	url = https://github.com/yergin/test-pattern-descriptor.git
