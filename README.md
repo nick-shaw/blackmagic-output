@@ -52,6 +52,9 @@ The build system (CMake + scikit-build-core) automatically uses the correct plat
 git clone https://github.com/nick-shaw/blackmagic-output.git
 cd blackmagic-output
 
+# Initialize submodules (required for advanced example using T-Pat test patterns)
+git submodule update --init --recursive
+
 # Install in development mode (this also installs numpy and pybind11 dependencies)
 pip install -e .
 
