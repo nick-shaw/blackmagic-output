@@ -965,3 +965,4 @@ The Blackmagic DeckLink SDK is © Blackmagic Design Pty. Ltd. All rights reserve
 - Blackmagic Design for the DeckLink SDK
 - pybind11 project for the C++/Python bindings
 - Contributors and testers
+- Special thanks to [Zack Lewis](https://github.com/zachlewis)
