@@ -55,7 +55,7 @@ try:
         rgb_array = np.ascontiguousarray(rgb_array)
         return _rgb_to_bgra(rgb_array, width, height)
 
-    def rgb_uint16_to_yuv10(rgb_array, width, height, matrix=Gamut.Rec709):
+    def rgb_uint16_to_yuv10(rgb_array, width, height, matrix=Gamut.Rec709, input_narrow_range=False, output_narrow_range=True):
         """Convert RGB uint16 numpy array to 10-bit YUV v210 format.
 
         Automatically converts input array to C-contiguous layout if needed.
@@ -65,29 +65,39 @@ try:
             width: Image width
             height: Image height
             matrix: Color matrix (Rec601, Rec709, or Rec2020)
+            input_narrow_range: If True, input is narrow range (64-940 @10-bit, i.e., 4096-60160 @16-bit).
+                              If False, input is full range (0-65535). Default: False
+            output_narrow_range: If True, output YUV is narrow range (Y: 64-940, CbCr: 64-960).
+                               If False, output is full range (0-1023). Default: True
 
         Returns:
             Flat uint8 array in v210 format
         """
         rgb_array = np.ascontiguousarray(rgb_array)
-        return _rgb_uint16_to_yuv10(rgb_array, width, height, matrix)
+        return _rgb_uint16_to_yuv10(rgb_array, width, height, matrix, input_narrow_range, output_narrow_range)
 
-    def rgb_float_to_yuv10(rgb_array, width, height, matrix=Gamut.Rec709):
+    def rgb_float_to_yuv10(rgb_array, width, height, matrix=Gamut.Rec709, output_narrow_range=True):
         """Convert RGB float numpy array to 10-bit YUV v210 format.
 
         Automatically converts input array to C-contiguous layout if needed.
 
+        Note: Float input is always interpreted as full range (0.0-1.0). If you have narrow range
+        float values, convert to full range first. The conversion depends on source bit depth.
+        Example for 10-bit source: rgb_full = (rgb_narrow - 64/1023) / (876/1023)
+
         Args:
-            rgb_array: HxWx3 RGB array (float, 0.0-1.0 range)
+            rgb_array: HxWx3 RGB array (float, 0.0-1.0 full range)
             width: Image width
             height: Image height
             matrix: Color matrix (Rec601, Rec709, or Rec2020)
+            output_narrow_range: If True, output YUV is narrow range (Y: 64-940, CbCr: 64-960).
+                               If False, output is full range (0-1023). Default: True
 
         Returns:
             Flat uint8 array in v210 format
         """
         rgb_array = np.ascontiguousarray(rgb_array)
-        return _rgb_float_to_yuv10(rgb_array, width, height, matrix)
+        return _rgb_float_to_yuv10(rgb_array, width, height, matrix, output_narrow_range)
 
     def rgb_uint16_to_rgb10(rgb_array, width, height):
         """Convert RGB uint16 numpy array to 10-bit RGB r210 format.
@@ -105,22 +115,23 @@ try:
         rgb_array = np.ascontiguousarray(rgb_array)
         return _rgb_uint16_to_rgb10(rgb_array, width, height)
 
-    def rgb_float_to_rgb10(rgb_array, width, height, narrow_range=True):
+    def rgb_float_to_rgb10(rgb_array, width, height, output_narrow_range=True):
         """Convert RGB float numpy array to 10-bit RGB r210 format.
 
         Automatically converts input array to C-contiguous layout if needed.
 
         Args:
-            rgb_array: HxWx3 RGB array (float, 0.0-1.0 range)
+            rgb_array: HxWx3 RGB array (float, 0.0-1.0 full range)
             width: Image width
             height: Image height
-            narrow_range: If True, map 0.0-1.0 to 64-940; if False, map to 0-1023
+            output_narrow_range: If True, map 0.0-1.0 to 64-940 (narrow range).
+                               If False, map 0.0-1.0 to 0-1023 (full range). Default: True
 
         Returns:
             Flat uint8 array in r210 format
         """
         rgb_array = np.ascontiguousarray(rgb_array)
-        return _rgb_float_to_rgb10(rgb_array, width, height, narrow_range)
+        return _rgb_float_to_rgb10(rgb_array, width, height, output_narrow_range)
 
     def rgb_uint16_to_rgb12(rgb_array, width, height):
         """Convert RGB uint16 numpy array to 12-bit RGB format.
