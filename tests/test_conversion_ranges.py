@@ -170,5 +170,90 @@ class TestRGBtoYUVConversions:
         assert abs(cr - expected_cr) <= 2, f"Expected Cr≈{expected_cr} for red, got {cr}"
 
 
+    def test_uint16_white_full_range_yuv_rec709(self):
+        """Test white converts to Y=1023, Cb=512, Cr=512 in full range YUV."""
+        width, height = 12, 2
+        rgb = np.full((height, width, 3), 65535, dtype=np.uint16)
+
+        yuv_buffer = rgb_uint16_to_yuv10(rgb, width, height, Gamut.Rec709,
+                                         input_narrow_range=False, output_narrow_range=False)
+
+        y, cb, cr = unpack_v210_pixel(yuv_buffer, 0, width)
+
+        assert y == 1023, f"Expected Y=1023 for white full range, got {y}"
+        assert cb == 512, f"Expected Cb=512 for white, got {cb}"
+        assert cr == 512, f"Expected Cr=512 for white, got {cr}"
+
+    def test_uint16_black_full_range_yuv_rec709(self):
+        """Test black converts to Y=0, Cb=512, Cr=512 in full range YUV."""
+        width, height = 12, 2
+        rgb = np.zeros((height, width, 3), dtype=np.uint16)
+
+        yuv_buffer = rgb_uint16_to_yuv10(rgb, width, height, Gamut.Rec709,
+                                         input_narrow_range=False, output_narrow_range=False)
+
+        y, cb, cr = unpack_v210_pixel(yuv_buffer, 0, width)
+
+        assert y == 0, f"Expected Y=0 for black full range, got {y}"
+        assert cb == 512, f"Expected Cb=512 for black, got {cb}"
+        assert cr == 512, f"Expected Cr=512 for black, got {cr}"
+
+    def test_uint16_narrow_input_to_narrow_output(self):
+        """Test narrow range RGB input (64-940 @10-bit) to narrow range YUV."""
+        width, height = 12, 2
+        # White in narrow range: 940 @ 10-bit = 60160 @ 16-bit
+        rgb = np.full((height, width, 3), 60160, dtype=np.uint16)
+
+        yuv_buffer = rgb_uint16_to_yuv10(rgb, width, height, Gamut.Rec709,
+                                         input_narrow_range=True, output_narrow_range=True)
+
+        y, cb, cr = unpack_v210_pixel(yuv_buffer, 0, width)
+
+        assert y == 940, f"Expected Y=940 for narrow white, got {y}"
+        assert cb == 512, f"Expected Cb=512 for narrow white, got {cb}"
+        assert cr == 512, f"Expected Cr=512 for narrow white, got {cr}"
+
+    def test_uint16_narrow_input_to_full_output(self):
+        """Test narrow range RGB input to full range YUV output."""
+        width, height = 12, 2
+        # White in narrow range: 940 @ 10-bit = 60160 @ 16-bit
+        rgb = np.full((height, width, 3), 60160, dtype=np.uint16)
+
+        yuv_buffer = rgb_uint16_to_yuv10(rgb, width, height, Gamut.Rec709,
+                                         input_narrow_range=True, output_narrow_range=False)
+
+        y, cb, cr = unpack_v210_pixel(yuv_buffer, 0, width)
+
+        assert y == 1023, f"Expected Y=1023 for narrow input to full output, got {y}"
+        assert cb == 512, f"Expected Cb=512, got {cb}"
+        assert cr == 512, f"Expected Cr=512, got {cr}"
+
+    def test_float_white_full_range_yuv_rec709(self):
+        """Test float white converts to full range YUV (Y=1023, Cb=512, Cr=512)."""
+        width, height = 12, 2
+        rgb = np.ones((height, width, 3), dtype=np.float32)
+
+        yuv_buffer = rgb_float_to_yuv10(rgb, width, height, Gamut.Rec709, output_narrow_range=False)
+
+        y, cb, cr = unpack_v210_pixel(yuv_buffer, 0, width)
+
+        assert y == 1023, f"Expected Y=1023 for white full range, got {y}"
+        assert cb == 512, f"Expected Cb=512 for white, got {cb}"
+        assert cr == 512, f"Expected Cr=512 for white, got {cr}"
+
+    def test_float_black_full_range_yuv_rec709(self):
+        """Test float black converts to full range YUV (Y=0, Cb=512, Cr=512)."""
+        width, height = 12, 2
+        rgb = np.zeros((height, width, 3), dtype=np.float32)
+
+        yuv_buffer = rgb_float_to_yuv10(rgb, width, height, Gamut.Rec709, output_narrow_range=False)
+
+        y, cb, cr = unpack_v210_pixel(yuv_buffer, 0, width)
+
+        assert y == 0, f"Expected Y=0 for black full range, got {y}"
+        assert cb == 512, f"Expected Cb=512 for black, got {cb}"
+        assert cr == 512, f"Expected Cr=512 for black, got {cr}"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
