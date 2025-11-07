@@ -363,6 +363,18 @@ with BlackmagicOutput() as output:
   - Output range configurable via `output_narrow_range` parameter
   - Defaults: `input_narrow_range=False, output_narrow_range=False`
 
+### Range Signaling Limitations
+
+**Important:** While this library supports both narrow and full range output encoding via the `output_narrow_range` parameter, the Blackmagic DeckLink SDK (v14.1) does not provide APIs to control the full range flag in the VPID, as per SMPTE ST 425-1 (byte 4, bit 7):
+
+- **YUV10**: The library can encode full range Y'CbCr (0-1023) with `output_narrow_range=False`, but cannot set the full range flag in the VPID. Downstream devices may well assume narrow range.
+
+- **RGB10**: The convention is that 10-bit RGB is narrow range, as described in the Blackmagic SDK, so using `output_narrow_range=False` may cause downstream devices to misinterpret the signal.
+
+- **RGB12**: The convention is that 12-bit RGB is narrow range, as described in the Blackmagic SDK, so using `output_narrow_range=True` may cause downstream devices to misinterpret the signal.
+
+The `output_narrow_range` parameter controls the **actual encoded values** in the output stream, not metadata signaling. Use it when you know the downstream device will correctly interpret the range, or when the receiving device allows manual range configuration.
+
 **`Matrix`** (High-level API)
 - `Rec709`: ITU-R BT.709 R'G'B' to Y'CbCr conversion matrix (standard HD)
 - `Rec2020`: ITU-R BT.2020 R'G'B' to Y'CbCr conversion matrix (wide color gamut for HDR)
