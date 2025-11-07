@@ -137,7 +137,7 @@ try:
         rgb_array = np.ascontiguousarray(rgb_array)
         return _rgb_float_to_rgb10(rgb_array, width, height, output_narrow_range)
 
-    def rgb_uint16_to_rgb12(rgb_array, width, height):
+    def rgb_uint16_to_rgb12(rgb_array, width, height, input_narrow_range=False, output_narrow_range=False):
         """Convert RGB uint16 numpy array to 12-bit RGB format.
 
         Automatically converts input array to C-contiguous layout if needed.
@@ -146,28 +146,36 @@ try:
             rgb_array: HxWx3 RGB array (uint16)
             width: Image width
             height: Image height
+            input_narrow_range: If True, input is narrow range (64-940 @12-bit, i.e., 4096-60160 @16-bit).
+                              If False, input is full range (0-65535). Default: False
+            output_narrow_range: If True, output is narrow range (256-3760).
+                               If False, output is full range (0-4095). Default: False
 
         Returns:
             Flat uint8 array in 12-bit RGB format
         """
         rgb_array = np.ascontiguousarray(rgb_array)
-        return _rgb_uint16_to_rgb12(rgb_array, width, height)
+        return _rgb_uint16_to_rgb12(rgb_array, width, height, input_narrow_range, output_narrow_range)
 
-    def rgb_float_to_rgb12(rgb_array, width, height):
+    def rgb_float_to_rgb12(rgb_array, width, height, output_narrow_range=False):
         """Convert RGB float numpy array to 12-bit RGB format.
 
         Automatically converts input array to C-contiguous layout if needed.
 
+        Note: Float input is always interpreted as full range (0.0-1.0).
+
         Args:
-            rgb_array: HxWx3 RGB array (float, 0.0-1.0 range)
+            rgb_array: HxWx3 RGB array (float, 0.0-1.0 full range)
             width: Image width
             height: Image height
+            output_narrow_range: If True, map 0.0-1.0 to 256-3760 (narrow range).
+                               If False, map 0.0-1.0 to 0-4095 (full range). Default: False
 
         Returns:
             Flat uint8 array in 12-bit RGB format
         """
         rgb_array = np.ascontiguousarray(rgb_array)
-        return _rgb_float_to_rgb12(rgb_array, width, height)
+        return _rgb_float_to_rgb12(rgb_array, width, height, output_narrow_range)
 
 except ImportError:
     # C++ extension not built yet

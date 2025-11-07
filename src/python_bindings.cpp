@@ -401,7 +401,8 @@ py::array_t<uint8_t> rgb_float_to_rgb10(py::array_t<float> rgb_array, int width,
 }
 
 // Helper function to convert RGB uint16 array to 12-bit RGB format
-py::array_t<uint8_t> rgb_uint16_to_rgb12(py::array_t<uint16_t> rgb_array, int width, int height) {
+py::array_t<uint8_t> rgb_uint16_to_rgb12(py::array_t<uint16_t> rgb_array, int width, int height,
+                                         bool input_narrow_range = false, bool output_narrow_range = false) {
     auto buf = rgb_array.request();
 
     if (buf.ndim != 3 || buf.shape[2] != 3) {
@@ -424,6 +425,9 @@ py::array_t<uint8_t> rgb_uint16_to_rgb12(py::array_t<uint16_t> rgb_array, int wi
     ssize_t stride_y = buf.strides[0];
     ssize_t stride_x = buf.strides[1];
 
+    // Optimize: use bit-shift when input and output ranges match
+    bool use_bitshift = (input_narrow_range == output_narrow_range);
+
     for (int y = 0; y < height; y++) {
         uint32_t* nextWord = dst + (y * row_bytes / 4);
 
@@ -437,10 +441,46 @@ py::array_t<uint8_t> rgb_uint16_to_rgb12(py::array_t<uint16_t> rgb_array, int wi
                     const uint16_t* pixel = reinterpret_cast<const uint16_t*>(
                         src_base + y * stride_y + pixel_x * stride_x);
 
-                    // Convert 16-bit to 12-bit by right-shifting 4 bits
-                    r[i] = pixel[0] >> 4;
-                    g[i] = pixel[1] >> 4;
-                    b[i] = pixel[2] >> 4;
+                    if (use_bitshift) {
+                        // Convert 16-bit to 12-bit by right-shifting 4 bits
+                        r[i] = pixel[0] >> 4;
+                        g[i] = pixel[1] >> 4;
+                        b[i] = pixel[2] >> 4;
+                    } else {
+                        // Convert through normalized float when ranges differ
+                        float rf, gf, bf;
+
+                        // Input conversion to 0.0-1.0
+                        if (input_narrow_range) {
+                            // Narrow range: 4096-60160 (64-940 @12-bit)
+                            rf = (pixel[0] - (64 << 6)) / (float)(876 << 6);
+                            gf = (pixel[1] - (64 << 6)) / (float)(876 << 6);
+                            bf = (pixel[2] - (64 << 6)) / (float)(876 << 6);
+                        } else {
+                            // Full range: 0-65535
+                            rf = pixel[0] / 65535.0f;
+                            gf = pixel[1] / 65535.0f;
+                            bf = pixel[2] / 65535.0f;
+                        }
+
+                        // Clamp to valid range
+                        rf = std::max(0.0f, std::min(1.0f, rf));
+                        gf = std::max(0.0f, std::min(1.0f, gf));
+                        bf = std::max(0.0f, std::min(1.0f, bf));
+
+                        // Output conversion from 0.0-1.0
+                        if (output_narrow_range) {
+                            // Narrow range: 256-3760
+                            r[i] = (int)(rf * 3504.0f + 256.0f);
+                            g[i] = (int)(gf * 3504.0f + 256.0f);
+                            b[i] = (int)(bf * 3504.0f + 256.0f);
+                        } else {
+                            // Full range: 0-4095
+                            r[i] = (int)(rf * 4095.0f);
+                            g[i] = (int)(gf * 4095.0f);
+                            b[i] = (int)(bf * 4095.0f);
+                        }
+                    }
                 } else {
                     // Padding for incomplete groups
                     r[i] = 0;
@@ -466,7 +506,7 @@ py::array_t<uint8_t> rgb_uint16_to_rgb12(py::array_t<uint16_t> rgb_array, int wi
 }
 
 // Helper function to convert RGB float array to 12-bit RGB format
-py::array_t<uint8_t> rgb_float_to_rgb12(py::array_t<float> rgb_array, int width, int height) {
+py::array_t<uint8_t> rgb_float_to_rgb12(py::array_t<float> rgb_array, int width, int height, bool output_narrow_range = false) {
     auto buf = rgb_array.request();
 
     if (buf.ndim != 3 || buf.shape[2] != 3) {
@@ -489,8 +529,10 @@ py::array_t<uint8_t> rgb_float_to_rgb12(py::array_t<float> rgb_array, int width,
     ssize_t stride_y = buf.strides[0];
     ssize_t stride_x = buf.strides[1];
 
-    // Full range only: 0.0-1.0 maps to 0-4095 (12-bit)
-    const float scale = 4095.0f;
+    // Narrow range: 0.0-1.0 maps to 256-3760 (12-bit)
+    // Full range: 0.0-1.0 maps to 0-4095 (12-bit)
+    float scale = output_narrow_range ? 3504.0f : 4095.0f;
+    float offset = output_narrow_range ? 256.0f : 0.0f;
 
     for (int y = 0; y < height; y++) {
         uint32_t* nextWord = dst + (y * row_bytes / 4);
@@ -506,9 +548,9 @@ py::array_t<uint8_t> rgb_float_to_rgb12(py::array_t<float> rgb_array, int width,
                         src_base + y * stride_y + pixel_x * stride_x);
 
                     // Convert float (0.0-1.0) to 12-bit with clamping
-                    int r12 = (int)(pixel[0] * scale);
-                    int g12 = (int)(pixel[1] * scale);
-                    int b12 = (int)(pixel[2] * scale);
+                    int r12 = (int)(pixel[0] * scale + offset);
+                    int g12 = (int)(pixel[1] * scale + offset);
+                    int b12 = (int)(pixel[2] * scale + offset);
 
                     // Clamp to valid range
                     r[i] = (uint16_t)(r12 < 0 ? 0 : (r12 > 4095 ? 4095 : r12));
@@ -790,11 +832,13 @@ PYBIND11_MODULE(decklink_output, m) {
 
     m.def("rgb_uint16_to_rgb12", &rgb_uint16_to_rgb12,
           "Convert RGB uint16 numpy array to 12-bit RGB format",
-          py::arg("rgb_array"), py::arg("width"), py::arg("height"));
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"),
+          py::arg("input_narrow_range") = false, py::arg("output_narrow_range") = false);
 
     m.def("rgb_float_to_rgb12", &rgb_float_to_rgb12,
-          "Convert RGB float numpy array to 12-bit RGB format (full range)",
-          py::arg("rgb_array"), py::arg("width"), py::arg("height"));
+          "Convert RGB float numpy array to 12-bit RGB format",
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"),
+          py::arg("output_narrow_range") = false);
 
     // Version info
     m.attr("__version__") = "0.14.0b0";

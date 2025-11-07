@@ -340,5 +340,173 @@ class TestRGBtoRGB10Conversions:
         assert b == 1023, f"Expected B=1023 for narrow→full white, got {b}"
 
 
+class TestRGBtoRGB12Conversions:
+    """Test RGB to 12-bit RGB conversions with range parameters."""
+
+    @staticmethod
+    def unpack_r12l_pixel(buffer, pixel_index):
+        """Unpack a single pixel from R12L (12-bit RGB LE) format.
+
+        R12L format: 8 pixels in 36 bytes (9 DWORDs).
+        This matches the unpacking code in pixel_reader.cpp.
+        """
+        # Each group of 8 pixels is packed in 9 DWORDs (36 bytes)
+        group = pixel_index // 8
+        pixel_in_group = pixel_index % 8
+
+        # Start of this group's data
+        dwords = np.frombuffer(buffer[group * 36:(group + 1) * 36], dtype=np.uint32)
+
+        # Unpack based on position in group (matching pixel_reader.cpp)
+        if pixel_in_group == 0:
+            r = dwords[0] & 0xFFF
+            g = (dwords[0] >> 12) & 0xFFF
+            b = ((dwords[0] >> 24) & 0xFF) | ((dwords[1] & 0xF) << 8)
+        elif pixel_in_group == 1:
+            r = (dwords[1] >> 4) & 0xFFF
+            g = (dwords[1] >> 16) & 0xFFF
+            b = ((dwords[1] >> 28) & 0xF) | ((dwords[2] & 0xFF) << 4)
+        elif pixel_in_group == 2:
+            r = (dwords[2] >> 8) & 0xFFF
+            g = (dwords[2] >> 20) & 0xFFF
+            b = dwords[3] & 0xFFF
+        elif pixel_in_group == 3:
+            r = (dwords[3] >> 12) & 0xFFF
+            g = ((dwords[3] >> 24) & 0xFF) | ((dwords[4] & 0xF) << 8)
+            b = (dwords[4] >> 4) & 0xFFF
+        elif pixel_in_group == 4:
+            r = (dwords[4] >> 16) & 0xFFF
+            g = ((dwords[4] >> 28) & 0xF) | ((dwords[5] & 0xFF) << 4)
+            b = (dwords[5] >> 8) & 0xFFF
+        elif pixel_in_group == 5:
+            r = (dwords[5] >> 20) & 0xFFF
+            g = dwords[6] & 0xFFF
+            b = (dwords[6] >> 12) & 0xFFF
+        elif pixel_in_group == 6:
+            r = ((dwords[6] >> 24) & 0xFF) | ((dwords[7] & 0xF) << 8)
+            g = (dwords[7] >> 4) & 0xFFF
+            b = (dwords[7] >> 16) & 0xFFF
+        else:  # pixel_in_group == 7
+            r = ((dwords[7] >> 28) & 0xF) | ((dwords[8] & 0xFF) << 4)
+            g = (dwords[8] >> 8) & 0xFFF
+            b = (dwords[8] >> 20) & 0xFFF
+
+        return r, g, b
+
+    def test_uint16_to_rgb12_default(self):
+        """Test default behavior: full to full."""
+        width, height = 16, 2
+        # Full range white: 65535 @ 16-bit
+        rgb = np.full((height, width, 3), 65535, dtype=np.uint16)
+
+        from blackmagic_output import rgb_uint16_to_rgb12
+
+        rgb12_buffer = rgb_uint16_to_rgb12(rgb, width, height)
+
+        r, g, b = self.unpack_r12l_pixel(rgb12_buffer, 0)
+
+        assert r == 4095, f"Expected R=4095 for full white, got {r}"
+        assert g == 4095, f"Expected G=4095 for full white, got {g}"
+        assert b == 4095, f"Expected B=4095 for full white, got {b}"
+
+    def test_uint16_to_rgb12_full_to_full(self):
+        """Test full range uint16 to full range RGB12."""
+        width, height = 16, 2
+        # Full range white: 65535 @ 16-bit
+        rgb = np.full((height, width, 3), 65535, dtype=np.uint16)
+
+        from blackmagic_output import rgb_uint16_to_rgb12
+
+        rgb12_buffer = rgb_uint16_to_rgb12(rgb, width, height,
+                                          input_narrow_range=False, output_narrow_range=False)
+
+        r, g, b = self.unpack_r12l_pixel(rgb12_buffer, 0)
+
+        assert r == 4095, f"Expected R=4095 for full white, got {r}"
+        assert g == 4095, f"Expected G=4095 for full white, got {g}"
+        assert b == 4095, f"Expected B=4095 for full white, got {b}"
+
+    def test_uint16_to_rgb12_full_to_narrow(self):
+        """Test full range uint16 to narrow range RGB12."""
+        width, height = 16, 2
+        # Full range white: 65535 @ 16-bit
+        rgb = np.full((height, width, 3), 65535, dtype=np.uint16)
+
+        from blackmagic_output import rgb_uint16_to_rgb12
+
+        rgb12_buffer = rgb_uint16_to_rgb12(rgb, width, height,
+                                          input_narrow_range=False, output_narrow_range=True)
+
+        r, g, b = self.unpack_r12l_pixel(rgb12_buffer, 0)
+
+        assert r == 3760, f"Expected R=3760 for full→narrow white, got {r}"
+        assert g == 3760, f"Expected G=3760 for full→narrow white, got {g}"
+        assert b == 3760, f"Expected B=3760 for full→narrow white, got {b}"
+
+    def test_uint16_to_rgb12_narrow_to_full(self):
+        """Test narrow range uint16 to full range RGB12."""
+        width, height = 16, 2
+        # Narrow range white: 940 @ 10-bit = 60160 @ 16-bit
+        rgb = np.full((height, width, 3), 60160, dtype=np.uint16)
+
+        from blackmagic_output import rgb_uint16_to_rgb12
+
+        rgb12_buffer = rgb_uint16_to_rgb12(rgb, width, height,
+                                          input_narrow_range=True, output_narrow_range=False)
+
+        r, g, b = self.unpack_r12l_pixel(rgb12_buffer, 0)
+
+        assert r == 4095, f"Expected R=4095 for narrow→full white, got {r}"
+        assert g == 4095, f"Expected G=4095 for narrow→full white, got {g}"
+        assert b == 4095, f"Expected B=4095 for narrow→full white, got {b}"
+
+    def test_uint16_to_rgb12_narrow_to_narrow(self):
+        """Test narrow range uint16 to narrow range RGB12 (bitshift path)."""
+        width, height = 16, 2
+        # Narrow range white: 940 @ 10-bit = 60160 @ 16-bit = 3760 @ 12-bit
+        rgb = np.full((height, width, 3), 60160, dtype=np.uint16)
+
+        from blackmagic_output import rgb_uint16_to_rgb12
+
+        rgb12_buffer = rgb_uint16_to_rgb12(rgb, width, height,
+                                          input_narrow_range=True, output_narrow_range=True)
+
+        r, g, b = self.unpack_r12l_pixel(rgb12_buffer, 0)
+
+        assert r == 3760, f"Expected R=3760 for narrow white, got {r}"
+        assert g == 3760, f"Expected G=3760 for narrow white, got {g}"
+        assert b == 3760, f"Expected B=3760 for narrow white, got {b}"
+
+    def test_float_to_rgb12_default(self):
+        """Test float to RGB12 default (full range output)."""
+        width, height = 16, 2
+        rgb = np.full((height, width, 3), 1.0, dtype=np.float32)
+
+        from blackmagic_output import rgb_float_to_rgb12
+
+        rgb12_buffer = rgb_float_to_rgb12(rgb, width, height)
+
+        r, g, b = self.unpack_r12l_pixel(rgb12_buffer, 0)
+
+        assert r == 4095, f"Expected R=4095 for float full white, got {r}"
+        assert g == 4095, f"Expected G=4095 for float full white, got {g}"
+        assert b == 4095, f"Expected B=4095 for float full white, got {b}"
+
+    def test_float_to_rgb12_narrow(self):
+        """Test float to RGB12 narrow range output."""
+        width, height = 16, 2
+        rgb = np.full((height, width, 3), 1.0, dtype=np.float32)
+
+        from blackmagic_output import rgb_float_to_rgb12
+
+        rgb12_buffer = rgb_float_to_rgb12(rgb, width, height, output_narrow_range=True)
+
+        r, g, b = self.unpack_r12l_pixel(rgb12_buffer, 0)
+
+        assert r == 3760, f"Expected R=3760 for float narrow white, got {r}"
+        assert g == 3760, f"Expected G=3760 for float narrow white, got {g}"
+        assert b == 3760, f"Expected B=3760 for float narrow white, got {b}"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
