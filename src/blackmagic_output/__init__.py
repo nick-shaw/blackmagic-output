@@ -99,7 +99,7 @@ try:
         rgb_array = np.ascontiguousarray(rgb_array)
         return _rgb_float_to_yuv10(rgb_array, width, height, matrix, output_narrow_range)
 
-    def rgb_uint16_to_rgb10(rgb_array, width, height):
+    def rgb_uint16_to_rgb10(rgb_array, width, height, input_narrow_range=True, output_narrow_range=True):
         """Convert RGB uint16 numpy array to 10-bit RGB r210 format.
 
         Automatically converts input array to C-contiguous layout if needed.
@@ -108,12 +108,16 @@ try:
             rgb_array: HxWx3 RGB array (uint16)
             width: Image width
             height: Image height
+            input_narrow_range: If True, input is narrow range (64-940 @10-bit, i.e., 4096-60160 @16-bit).
+                              If False, input is full range (0-65535). Default: True
+            output_narrow_range: If True, output is narrow range (64-940).
+                               If False, output is full range (0-1023). Default: True
 
         Returns:
             Flat uint8 array in r210 format
         """
         rgb_array = np.ascontiguousarray(rgb_array)
-        return _rgb_uint16_to_rgb10(rgb_array, width, height)
+        return _rgb_uint16_to_rgb10(rgb_array, width, height, input_narrow_range, output_narrow_range)
 
     def rgb_float_to_rgb10(rgb_array, width, height, output_narrow_range=True):
         """Convert RGB float numpy array to 10-bit RGB r210 format.

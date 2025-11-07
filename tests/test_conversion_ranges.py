@@ -255,5 +255,90 @@ class TestRGBtoYUVConversions:
         assert cr == 512, f"Expected Cr=512 for black, got {cr}"
 
 
+@pytest.mark.skipif(not CONVERSIONS_AVAILABLE, reason="Conversion functions not available")
+class TestRGBtoRGB10Conversions:
+    """Test RGB to RGB10 conversions with different range parameters."""
+
+    def test_uint16_to_rgb10_narrow_to_narrow(self):
+        """Test narrow range uint16 to narrow range RGB10 (default behavior - bit shift)."""
+        width, height = 12, 2
+        # Narrow range white: 940 @ 10-bit = 60160 @ 16-bit
+        rgb = np.full((height, width, 3), 60160, dtype=np.uint16)
+
+        from blackmagic_output import rgb_uint16_to_rgb10
+
+        rgb10_buffer = rgb_uint16_to_rgb10(rgb, width, height)
+
+        # Unpack first pixel from r210 format (little-endian RGBX 10-bit)
+        dwords = np.frombuffer(rgb10_buffer, dtype=np.uint32)
+        r = (dwords[0] >> 22) & 0x3FF
+        g = (dwords[0] >> 12) & 0x3FF
+        b = (dwords[0] >> 2) & 0x3FF
+
+        assert r == 940, f"Expected R=940 for narrow white, got {r}"
+        assert g == 940, f"Expected G=940 for narrow white, got {g}"
+        assert b == 940, f"Expected B=940 for narrow white, got {b}"
+
+    def test_uint16_to_rgb10_full_to_full(self):
+        """Test full range uint16 to full range RGB10."""
+        width, height = 12, 2
+        # Full range white: 65535 @ 16-bit
+        rgb = np.full((height, width, 3), 65535, dtype=np.uint16)
+
+        from blackmagic_output import rgb_uint16_to_rgb10
+
+        rgb10_buffer = rgb_uint16_to_rgb10(rgb, width, height,
+                                          input_narrow_range=False, output_narrow_range=False)
+
+        dwords = np.frombuffer(rgb10_buffer, dtype=np.uint32)
+        r = (dwords[0] >> 22) & 0x3FF
+        g = (dwords[0] >> 12) & 0x3FF
+        b = (dwords[0] >> 2) & 0x3FF
+
+        assert r == 1023, f"Expected R=1023 for full white, got {r}"
+        assert g == 1023, f"Expected G=1023 for full white, got {g}"
+        assert b == 1023, f"Expected B=1023 for full white, got {b}"
+
+    def test_uint16_to_rgb10_full_to_narrow(self):
+        """Test full range uint16 to narrow range RGB10."""
+        width, height = 12, 2
+        # Full range white: 65535 @ 16-bit
+        rgb = np.full((height, width, 3), 65535, dtype=np.uint16)
+
+        from blackmagic_output import rgb_uint16_to_rgb10
+
+        rgb10_buffer = rgb_uint16_to_rgb10(rgb, width, height,
+                                          input_narrow_range=False, output_narrow_range=True)
+
+        dwords = np.frombuffer(rgb10_buffer, dtype=np.uint32)
+        r = (dwords[0] >> 22) & 0x3FF
+        g = (dwords[0] >> 12) & 0x3FF
+        b = (dwords[0] >> 2) & 0x3FF
+
+        assert r == 940, f"Expected R=940 for full→narrow white, got {r}"
+        assert g == 940, f"Expected G=940 for full→narrow white, got {g}"
+        assert b == 940, f"Expected B=940 for full→narrow white, got {b}"
+
+    def test_uint16_to_rgb10_narrow_to_full(self):
+        """Test narrow range uint16 to full range RGB10."""
+        width, height = 12, 2
+        # Narrow range white: 940 @ 10-bit = 60160 @ 16-bit
+        rgb = np.full((height, width, 3), 60160, dtype=np.uint16)
+
+        from blackmagic_output import rgb_uint16_to_rgb10
+
+        rgb10_buffer = rgb_uint16_to_rgb10(rgb, width, height,
+                                          input_narrow_range=True, output_narrow_range=False)
+
+        dwords = np.frombuffer(rgb10_buffer, dtype=np.uint32)
+        r = (dwords[0] >> 22) & 0x3FF
+        g = (dwords[0] >> 12) & 0x3FF
+        b = (dwords[0] >> 2) & 0x3FF
+
+        assert r == 1023, f"Expected R=1023 for narrow→full white, got {r}"
+        assert g == 1023, f"Expected G=1023 for narrow→full white, got {g}"
+        assert b == 1023, f"Expected B=1023 for narrow→full white, got {b}"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
