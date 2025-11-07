@@ -7,7 +7,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "blackmagic-output"
-version = "0.14.0b0"
+version = "0.15.0b0"
 description = "Python library for outputting video frames to Blackmagic DeckLink devices"
 readme = "README.md"
 requires-python = ">=3.7"

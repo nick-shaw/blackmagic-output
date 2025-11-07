@@ -181,7 +181,7 @@ except ImportError:
     # C++ extension not built yet
     pass
 
-__version__ = "0.14.0b0"
+__version__ = "0.15.0b0"
 __author__ = "Nick Shaw"
 
 __all__ = [

@@ -841,5 +841,5 @@ PYBIND11_MODULE(decklink_output, m) {
           py::arg("output_narrow_range") = false);
 
     // Version info
-    m.attr("__version__") = "0.14.0b0";
+    m.attr("__version__") = "0.15.0b0";
 }
