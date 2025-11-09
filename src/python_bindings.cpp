@@ -464,9 +464,9 @@ py::array_t<uint8_t> rgb_uint16_to_rgb12(py::array_t<uint16_t> rgb_array, int wi
                         }
 
                         // Clamp to valid range
-                        rf = std::max(0.0f, std::min(1.0f, rf));
-                        gf = std::max(0.0f, std::min(1.0f, gf));
-                        bf = std::max(0.0f, std::min(1.0f, bf));
+                        rf = rf < 0.0f ? 0.0f : (rf > 1.0f ? 1.0f : rf);
+                        gf = gf < 0.0f ? 0.0f : (gf > 1.0f ? 1.0f : gf);
+                        bf = bf < 0.0f ? 0.0f : (bf > 1.0f ? 1.0f : bf);
 
                         // Output conversion from 0.0-1.0
                         if (output_narrow_range) {
