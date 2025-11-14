@@ -229,6 +229,13 @@ Set HDR metadata with default values. Must be called before `setup_output()`.
 **`set_hdr_metadata_custom(colorimetry: Gamut, eotf: Eotf, custom: HdrMetadataCustom)`**
 Set HDR metadata with custom values. Must be called before `setup_output()`.
 
+**`clear_hdr_metadata()`**
+Clear HDR metadata and reset to SDR. Call before `setup_output()` if you want to ensure no HDR metadata is present.
+
+**`get_current_output_info() -> OutputInfo`**
+Get information about the current output configuration.
+- Returns: OutputInfo struct with display_mode_name, pixel_format_name, width, height, framerate, rgb444_mode_enabled
+
 ### Data Structures
 
 **`VideoSettings`**
@@ -263,6 +270,19 @@ class HdrMetadataCustom:
     min_mastering_luminance: float
     max_content_light_level: float
     max_frame_average_light_level: float
+```
+
+**`OutputInfo`**
+```python
+class OutputInfo:
+    display_mode: DisplayMode         # Current display mode
+    pixel_format: PixelFormat         # Current pixel format
+    width: int                        # Frame width in pixels
+    height: int                       # Frame height in pixels
+    framerate: float                  # Frame rate (e.g., 25.0, 29.97, 60.0)
+    rgb444_mode_enabled: bool         # Whether RGB 4:4:4 mode is enabled
+    display_mode_name: str            # Human-readable display mode name
+    pixel_format_name: str            # Human-readable pixel format name
 ```
 
 ### Utility Functions

@@ -120,11 +120,13 @@ py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int wi
                         vf = 0.5000f * rf - 0.4542f * gf - 0.0458f * bf;
                     }
 
+                    int y10;
                     if (output_narrow_range) {
-                        y_values[i] = (uint16_t)(yf * 876.0f + 64.0f);
+                        y10 = (int)(yf * 876.0f + 64.0f);
                     } else {
-                        y_values[i] = (uint16_t)(yf * 1023.0f);
+                        y10 = (int)(yf * 1023.0f);
                     }
+                    y_values[i] = (uint16_t)(y10 < 0 ? 0 : (y10 > 1023 ? 1023 : y10));
                     u_temp[i] = uf;
                     v_temp[i] = vf;
                 } else {
@@ -138,13 +140,16 @@ py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int wi
             for (int i = 0; i < 3; i++) {
                 float u_avg = (u_temp[i*2] + u_temp[i*2+1]) * 0.5f;
                 float v_avg = (v_temp[i*2] + v_temp[i*2+1]) * 0.5f;
+                int u10, v10;
                 if (output_narrow_range) {
-                    u_values[i] = (uint16_t)((u_avg + 0.5f) * 896.0f + 64.0f);
-                    v_values[i] = (uint16_t)((v_avg + 0.5f) * 896.0f + 64.0f);
+                    u10 = (int)((u_avg + 0.5f) * 896.0f + 64.0f);
+                    v10 = (int)((v_avg + 0.5f) * 896.0f + 64.0f);
                 } else {
-                    u_values[i] = (uint16_t)(512.0f + 1023.0f * u_avg);
-                    v_values[i] = (uint16_t)(512.0f + 1023.0f * v_avg);
+                    u10 = (int)(512.0f + 1023.0f * u_avg);
+                    v10 = (int)(512.0f + 1023.0f * v_avg);
                 }
+                u_values[i] = (uint16_t)(u10 < 0 ? 0 : (u10 > 1023 ? 1023 : u10));
+                v_values[i] = (uint16_t)(v10 < 0 ? 0 : (v10 > 1023 ? 1023 : v10));
             }
 
             // Pack into v210 format
@@ -320,22 +325,23 @@ py::array_t<uint8_t> rgb_uint16_to_rgb10(py::array_t<uint16_t> rgb_array, int wi
                     bf = pixel[2] / 65535.0f;
                 }
 
+                int r10_int, g10_int, b10_int;
                 if (output_narrow_range) {
                     // Narrow 10-bit output: 64-940
-                    r10 = (uint16_t)(rf * 876.0f + 64.0f);
-                    g10 = (uint16_t)(gf * 876.0f + 64.0f);
-                    b10 = (uint16_t)(bf * 876.0f + 64.0f);
+                    r10_int = (int)(rf * 876.0f + 64.0f);
+                    g10_int = (int)(gf * 876.0f + 64.0f);
+                    b10_int = (int)(bf * 876.0f + 64.0f);
                 } else {
                     // Full 10-bit output: 0-1023
-                    r10 = (uint16_t)(rf * 1023.0f);
-                    g10 = (uint16_t)(gf * 1023.0f);
-                    b10 = (uint16_t)(bf * 1023.0f);
+                    r10_int = (int)(rf * 1023.0f);
+                    g10_int = (int)(gf * 1023.0f);
+                    b10_int = (int)(bf * 1023.0f);
                 }
 
-                // Clamp to valid 10-bit range
-                r10 = r10 > 1023 ? 1023 : r10;
-                g10 = g10 > 1023 ? 1023 : g10;
-                b10 = b10 > 1023 ? 1023 : b10;
+                // Clamp to valid 10-bit range before packing
+                r10 = (uint16_t)(r10_int < 0 ? 0 : (r10_int > 1023 ? 1023 : r10_int));
+                g10 = (uint16_t)(g10_int < 0 ? 0 : (g10_int > 1023 ? 1023 : g10_int));
+                b10 = (uint16_t)(b10_int < 0 ? 0 : (b10_int > 1023 ? 1023 : b10_int));
             }
 
             // Pack as bmdFormat10BitRGBXLE (little-endian 10-bit RGB)
@@ -463,23 +469,23 @@ py::array_t<uint8_t> rgb_uint16_to_rgb12(py::array_t<uint16_t> rgb_array, int wi
                             bf = pixel[2] / 65535.0f;
                         }
 
-                        // Clamp to valid range
-                        rf = rf < 0.0f ? 0.0f : (rf > 1.0f ? 1.0f : rf);
-                        gf = gf < 0.0f ? 0.0f : (gf > 1.0f ? 1.0f : gf);
-                        bf = bf < 0.0f ? 0.0f : (bf > 1.0f ? 1.0f : bf);
-
                         // Output conversion from 0.0-1.0
+                        int r12, g12, b12;
                         if (output_narrow_range) {
                             // Narrow range: 256-3760
-                            r[i] = (int)(rf * 3504.0f + 256.0f);
-                            g[i] = (int)(gf * 3504.0f + 256.0f);
-                            b[i] = (int)(bf * 3504.0f + 256.0f);
+                            r12 = (int)(rf * 3504.0f + 256.0f);
+                            g12 = (int)(gf * 3504.0f + 256.0f);
+                            b12 = (int)(bf * 3504.0f + 256.0f);
                         } else {
                             // Full range: 0-4095
-                            r[i] = (int)(rf * 4095.0f);
-                            g[i] = (int)(gf * 4095.0f);
-                            b[i] = (int)(bf * 4095.0f);
+                            r12 = (int)(rf * 4095.0f);
+                            g12 = (int)(gf * 4095.0f);
+                            b12 = (int)(bf * 4095.0f);
                         }
+                        // Clamp to valid 12-bit range before packing
+                        r[i] = (uint16_t)(r12 < 0 ? 0 : (r12 > 4095 ? 4095 : r12));
+                        g[i] = (uint16_t)(g12 < 0 ? 0 : (g12 > 4095 ? 4095 : g12));
+                        b[i] = (uint16_t)(b12 < 0 ? 0 : (b12 > 4095 ? 4095 : b12));
                     }
                 } else {
                     // Padding for incomplete groups
