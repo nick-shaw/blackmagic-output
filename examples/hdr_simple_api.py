@@ -109,7 +109,6 @@ def example_with_custom_metadata():
             print("\nStopping...")
 
     # Cleanup
-    output.stop()
     output.cleanup()
 
 

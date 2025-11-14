@@ -183,16 +183,22 @@ Get information about the current output configuration.
 Stop video output.
 - Returns: True if successful
 
+Stops displaying frames but keeps the device initialized and ready for immediate reuse. After calling `stop()`, you can call `display_static_frame()` or `display_solid_color()` again without needing to re-initialize.
+
 **`cleanup()`**
 Cleanup resources and stop output.
+
+Stops video output (if running) and releases all device resources. After `cleanup()`, the device must be re-initialized with `initialize()` before it can be used again. This method automatically calls `stop()` internally, so there is no need to call `stop()` first.
 
 **Context Manager Support:**
 ```python
 with BlackmagicOutput() as output:
     output.initialize()
     # ... use output ...
-# Automatic cleanup
+# Automatic cleanup() called on exit
 ```
+
+The context manager automatically calls `cleanup()` when exiting, so explicit cleanup is not needed when using the `with` statement.
 
 #### Utility Functions
 
@@ -234,9 +240,14 @@ Display the current frame synchronously. Call this after `set_frame_data()` to u
 
 **`stop_output() -> bool`**
 Stop video output.
+- Returns: True if successful
+
+Stops displaying frames but keeps the device initialized and ready for immediate reuse. After calling `stop_output()`, you can call `setup_output()` and `display_frame()` again without needing to re-initialize.
 
 **`cleanup()`**
 Cleanup all resources.
+
+Stops video output (if running) and releases all device resources. After `cleanup()`, the device must be re-initialized with `initialize()` before it can be used again. This method automatically calls `stop_output()` internally, so there is no need to call `stop_output()` first.
 
 **`set_hdr_metadata(colorimetry: Gamut, eotf: Eotf)`**
 Set HDR metadata with default values. Must be called before `setup_output()`.
