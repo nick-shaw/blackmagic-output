@@ -85,11 +85,20 @@ frame[:, :] = [255, 0, 0]  # Red frame
 with BlackmagicOutput() as output:
     # Initialize device (uses first available device)
     output.initialize()
-    
+
     # Display static frame at 1080p25
     output.display_static_frame(frame, DisplayMode.HD1080p25)
-    
+
     # Keep displaying (Enter to stop)
+    input("Press Enter to stop...")
+```
+
+**Note:** The explicit `initialize()` call is optional - `display_static_frame()` will automatically initialize the first available device (device_index=0) if not already initialized. Explicit initialization is useful for device selection, better error handling, and timing control:
+
+```python
+# Simpler alternative - auto-initialization (uses first device)
+with BlackmagicOutput() as output:
+    output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
 
@@ -113,6 +122,12 @@ Create a new BlackmagicOutput instance.
 Initialize the specified DeckLink device.
 - `device_index`: Index of device to use (default: 0)
 - Returns: True if successful
+
+**Note:** Explicit initialization is optional. Methods like `display_static_frame()` and `display_solid_color()` will automatically initialize the first available device (device_index=0) if not already initialized. Explicit initialization is recommended when you need:
+- To select a specific device (when multiple DeckLink devices are present)
+- Separate error handling for device initialization vs. frame display
+- Control over initialization timing (e.g., to avoid delays during first frame display)
+- To verify device availability before preparing frame data
 
 **`get_available_devices() -> List[str]`**
 Get list of available DeckLink device names.
