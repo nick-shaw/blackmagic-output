@@ -54,7 +54,6 @@ def main():
         print("Failed to display frame")
 
     # Cleanup
-    output.stop()
     output.cleanup()
 
 
