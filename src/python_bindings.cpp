@@ -11,13 +11,11 @@
 
 namespace py = pybind11;
 
-// Helper function to convert NumPy array to raw data
 std::pair<const uint8_t*, size_t> numpy_to_raw(py::array_t<uint8_t> input) {
     py::buffer_info buf_info = input.request();
     return std::make_pair(static_cast<const uint8_t*>(buf_info.ptr), buf_info.size);
 }
 
-// Helper function to convert RGB numpy array to BGRA format
 py::array_t<uint8_t> rgb_to_bgra(py::array_t<uint8_t> rgb_array, int width, int height) {
     auto buf = rgb_array.request();
     
@@ -51,7 +49,6 @@ py::array_t<uint8_t> rgb_to_bgra(py::array_t<uint8_t> rgb_array, int width, int 
     return result;
 }
 
-// Helper function to convert RGB uint16 array to 10-bit YUV v210 format
 py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int width, int height, DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709, bool input_narrow_range = false, bool output_narrow_range = true) {
     auto buf = rgb_array.request();
 
@@ -167,7 +164,6 @@ py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int wi
     return result;
 }
 
-// Helper function to convert RGB float array to 10-bit YUV v210 format
 py::array_t<uint8_t> rgb_float_to_yuv10(py::array_t<float> rgb_array, int width, int height, DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709, bool output_narrow_range = true) {
     auto buf = rgb_array.request();
 
@@ -273,7 +269,6 @@ py::array_t<uint8_t> rgb_float_to_yuv10(py::array_t<float> rgb_array, int width,
     return result;
 }
 
-// Helper function to convert RGB uint16 array to 10-bit RGB r210 format
 py::array_t<uint8_t> rgb_uint16_to_rgb10(py::array_t<uint16_t> rgb_array, int width, int height, bool input_narrow_range = true, bool output_narrow_range = true) {
     auto buf = rgb_array.request();
 
@@ -353,7 +348,6 @@ py::array_t<uint8_t> rgb_uint16_to_rgb10(py::array_t<uint16_t> rgb_array, int wi
     return result;
 }
 
-// Helper function to convert RGB float array to 10-bit RGB r210 format
 py::array_t<uint8_t> rgb_float_to_rgb10(py::array_t<float> rgb_array, int width, int height, bool output_narrow_range = true) {
     auto buf = rgb_array.request();
 
@@ -406,7 +400,6 @@ py::array_t<uint8_t> rgb_float_to_rgb10(py::array_t<float> rgb_array, int width,
     return result;
 }
 
-// Helper function to convert RGB uint16 array to 12-bit RGB format
 py::array_t<uint8_t> rgb_uint16_to_rgb12(py::array_t<uint16_t> rgb_array, int width, int height,
                                          bool input_narrow_range = false, bool output_narrow_range = false) {
     auto buf = rgb_array.request();
@@ -511,7 +504,6 @@ py::array_t<uint8_t> rgb_uint16_to_rgb12(py::array_t<uint16_t> rgb_array, int wi
     return result;
 }
 
-// Helper function to convert RGB float array to 12-bit RGB format
 py::array_t<uint8_t> rgb_float_to_rgb12(py::array_t<float> rgb_array, int width, int height, bool output_narrow_range = false) {
     auto buf = rgb_array.request();
 
