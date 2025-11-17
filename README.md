@@ -461,7 +461,7 @@ for y in range(height):
 
 # Display the frame
 with BlackmagicOutput() as output:
-    output.initialize()
+    output.initialize()  # Optional - auto-initializes on first display if omitted
     output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
@@ -475,7 +475,7 @@ from blackmagic_output import BlackmagicOutput, DisplayMode, create_test_pattern
 frame = create_test_pattern(1920, 1080, 'bars')
 
 with BlackmagicOutput() as output:
-    output.initialize()
+    output.initialize()  # Optional - auto-initializes on first display if omitted
     output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
@@ -488,8 +488,6 @@ import time
 from blackmagic_output import BlackmagicOutput, DisplayMode
 
 with BlackmagicOutput() as output:
-    output.initialize()
-    
     # Start with black frame
     frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
     output.display_static_frame(frame, DisplayMode.HD1080p25)
@@ -529,7 +527,6 @@ if frame.shape[2] == 4:
 
 # Display image (format auto-detected from dtype)
 with BlackmagicOutput() as output:
-    output.initialize()
     output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
@@ -554,7 +551,6 @@ for y in range(1080):
 
 # Output as 10-bit Y'CbCr (automatically selected for float data)
 with BlackmagicOutput() as output:
-    output.initialize()
     output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
@@ -575,7 +571,6 @@ for x in range(1920):
 
 # Output as 10-bit Y'CbCr (automatically selected for uint16 data)
 with BlackmagicOutput() as output:
-    output.initialize()
     output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
@@ -595,7 +590,6 @@ for x in range(1920):
 
 # Output as 10-bit R'G'B' (bit-shifted from 16-bit to 10-bit)
 with BlackmagicOutput() as output:
-    output.initialize()
     output.display_static_frame(frame, DisplayMode.HD1080p25, PixelFormat.RGB10)
     input("Press Enter to stop...")
 ```
@@ -615,7 +609,6 @@ for x in range(1920):
 
 # Output as 10-bit R'G'B' with narrow range (0.0-1.0 maps to 64-940)
 with BlackmagicOutput() as output:
-    output.initialize()
     output.display_static_frame(
         frame,
         DisplayMode.HD1080p25,
@@ -640,7 +633,6 @@ for x in range(1920):
 
 # Output as 10-bit R'G'B' with full range (0.0-1.0 maps to 0-1023)
 with BlackmagicOutput() as output:
-    output.initialize()
     output.display_static_frame(
         frame,
         DisplayMode.HD1080p25,
@@ -670,8 +662,6 @@ for y in range(1080):
 
 # Configure for HLG HDR output using the simplified API
 with BlackmagicOutput() as output:
-    output.initialize()
-
     # Single call with matrix and HDR metadata
     # YUV10 automatically selected for float data
     output.display_static_frame(
@@ -727,13 +717,11 @@ from blackmagic_output import BlackmagicOutput, DisplayMode, Matrix, Eotf
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
 
 # Fill with PQ-encoded HDR content
-# A library such as Colour Science for Python (colour-science.org) is needed for PQ encoding
+# A library such as Colour Science for Python (https://www.colour-science.org/) is needed for PQ encoding
 # frame = colour.eotf(linear_rgb_data, 'ST 2084')
 
 # Configure for HDR10 (PQ) output using the simplified API
 with BlackmagicOutput() as output:
-    output.initialize()
-
     # Single call with Rec.2020 matrix and PQ metadata
     # YUV10 automatically selected for float data
     output.display_static_frame(
@@ -789,8 +777,6 @@ import time
 from blackmagic_output import BlackmagicOutput, DisplayMode
 
 with BlackmagicOutput() as output:
-    output.initialize()
-
     # Full screen white (default behavior)
     output.display_solid_color((1.0, 1.0, 1.0), DisplayMode.HD1080p25)
     time.sleep(2)
