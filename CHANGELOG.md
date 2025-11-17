@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.15.0b0] - 2025-01-22
 
+### Added
+- Color patch support in `display_solid_color()` method
+  - New `patch` parameter: tuple (center_x, center_y, width, height) with normalized coordinates (0.0-1.0)
+  - New `background_color` parameter: R'G'B' tuple for background when using patches
+  - Useful for testing, calibration, and creating custom test patterns
+  - Background color defaults to black (0 or 64 depending on `input_narrow_range`)
+- Comprehensive test suite for range conversions (24 tests covering all range combinations)
+- RGB12 documentation sections in README (previously missing)
+
 ### Changed
 - **BREAKING**: Replaced ambiguous `narrow_range` parameter with explicit `input_narrow_range` and `output_narrow_range` parameters
   - Affects high-level API methods: `display_static_frame()` and `display_solid_color()`
@@ -17,10 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Improved**: YUV10 output now supports full range Y'CbCr (0-1023) via `output_narrow_range=False`
   - Previously only narrow range (64-940/64-960) was supported
 - **Optimized**: uint16 RGB conversions use efficient bit-shift when input and output ranges match, float conversion when they differ
-
-### Added
-- Comprehensive test suite for range conversions (24 tests covering all range combinations)
-- RGB12 documentation sections in README (previously missing)
 
 ### Fixed
 - Removed manual range conversion code from high-level API that prevented full range YUV10 output

@@ -335,7 +335,9 @@ class BlackmagicOutput:
                           matrix: Optional[Matrix] = None,
                           hdr_metadata: Optional[dict] = None,
                           input_narrow_range: bool = False,
-                          output_narrow_range: bool = True) -> bool:
+                          output_narrow_range: bool = True,
+                          patch: Optional[Tuple[float, float, float, float]] = None,
+                          background_color: Optional[Tuple] = None) -> bool:
         """
         Display a solid color frame continuously.
 
@@ -360,6 +362,13 @@ class BlackmagicOutput:
                                - RGB10: If True, 64-940. If False, full range 0-1023.
                                - RGB12: If True, 256-3760. If False, full range 0-4095.
                                Default: True
+            patch: Optional tuple (center_x, center_y, width, height) with normalized coordinates (0.0-1.0).
+                  - center_x, center_y: Center position of the patch (0.5, 0.5 = center of screen)
+                  - width, height: Patch dimensions (1.0, 1.0 = full screen)
+                  If None, displays full screen solid color. Default: None
+            background_color: R'G'B' tuple for background when using patch parameter.
+                            Uses same format as color parameter (integer 0-1023 or float 0.0-1.0).
+                            If None, defaults to black. Default: None
 
         Returns:
             True if successful, False otherwise
@@ -370,13 +379,47 @@ class BlackmagicOutput:
 
         settings = self._device.get_video_settings(display_mode.value)
 
-        if isinstance(color[0], float):
-            frame_data = np.full((settings.height, settings.width, 3),
-                               color, dtype=np.float32)
+        is_float = isinstance(color[0], float)
+
+        if patch is None:
+            if is_float:
+                frame_data = np.full((settings.height, settings.width, 3),
+                                   color, dtype=np.float32)
+            else:
+                color_uint16 = tuple(int(c) << 6 for c in color)
+                frame_data = np.full((settings.height, settings.width, 3),
+                                   color_uint16, dtype=np.uint16)
         else:
-            color_uint16 = tuple(int(c) << 6 for c in color)
-            frame_data = np.full((settings.height, settings.width, 3),
-                               color_uint16, dtype=np.uint16)
+            center_x, center_y, patch_width, patch_height = patch
+
+            if background_color is None:
+                if is_float:
+                    background_color = (0.0, 0.0, 0.0)
+                else:
+                    black_value = 64 if input_narrow_range else 0
+                    background_color = (black_value, black_value, black_value)
+
+            if is_float:
+                frame_data = np.full((settings.height, settings.width, 3),
+                                   background_color, dtype=np.float32)
+                patch_color = color
+            else:
+                bg_uint16 = tuple(int(c) << 6 for c in background_color)
+                frame_data = np.full((settings.height, settings.width, 3),
+                                   bg_uint16, dtype=np.uint16)
+                patch_color = tuple(int(c) << 6 for c in color)
+
+            patch_pixel_width = int(patch_width * settings.width)
+            patch_pixel_height = int(patch_height * settings.height)
+            center_pixel_x = int(center_x * settings.width)
+            center_pixel_y = int(center_y * settings.height)
+
+            left = max(0, center_pixel_x - patch_pixel_width // 2)
+            right = min(settings.width, center_pixel_x + (patch_pixel_width + 1) // 2)
+            top = max(0, center_pixel_y - patch_pixel_height // 2)
+            bottom = min(settings.height, center_pixel_y + (patch_pixel_height + 1) // 2)
+
+            frame_data[top:bottom, left:right] = patch_color
 
         return self.display_static_frame(frame_data, display_mode, pixel_format, matrix, hdr_metadata,
                                        input_narrow_range, output_narrow_range)
