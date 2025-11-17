@@ -11,13 +11,11 @@
 
 namespace py = pybind11;
 
-// Helper function to convert NumPy array to raw data
 std::pair<const uint8_t*, size_t> numpy_to_raw(py::array_t<uint8_t> input) {
     py::buffer_info buf_info = input.request();
     return std::make_pair(static_cast<const uint8_t*>(buf_info.ptr), buf_info.size);
 }
 
-// Helper function to convert RGB numpy array to BGRA format
 py::array_t<uint8_t> rgb_to_bgra(py::array_t<uint8_t> rgb_array, int width, int height) {
     auto buf = rgb_array.request();
     
@@ -51,8 +49,7 @@ py::array_t<uint8_t> rgb_to_bgra(py::array_t<uint8_t> rgb_array, int width, int 
     return result;
 }
 
-// Helper function to convert RGB uint16 array to 10-bit YUV v210 format
-py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int width, int height, DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709) {
+py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int width, int height, DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709, bool input_narrow_range = false, bool output_narrow_range = true) {
     auto buf = rgb_array.request();
 
     if (buf.ndim != 3 || buf.shape[2] != 3) {
@@ -91,9 +88,16 @@ py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int wi
                     uint16_t g = pixel[1];
                     uint16_t b = pixel[2];
 
-                    float rf = r / 65535.0f;
-                    float gf = g / 65535.0f;
-                    float bf = b / 65535.0f;
+                    float rf, gf, bf;
+                    if (input_narrow_range) {
+                        rf = (r - (64 << 6)) / (float)(876 << 6);
+                        gf = (g - (64 << 6)) / (float)(876 << 6);
+                        bf = (b - (64 << 6)) / (float)(876 << 6);
+                    } else {
+                        rf = r / 65535.0f;
+                        gf = g / 65535.0f;
+                        bf = b / 65535.0f;
+                    }
 
                     float yf, uf, vf;
                     if (matrix == DeckLinkOutput::Gamut::Rec601) {
@@ -113,11 +117,17 @@ py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int wi
                         vf = 0.5000f * rf - 0.4542f * gf - 0.0458f * bf;
                     }
 
-                    y_values[i] = (uint16_t)(yf * 876.0f + 64.0f);
+                    int y10;
+                    if (output_narrow_range) {
+                        y10 = (int)(yf * 876.0f + 64.0f);
+                    } else {
+                        y10 = (int)(yf * 1023.0f);
+                    }
+                    y_values[i] = (uint16_t)(y10 < 0 ? 0 : (y10 > 1023 ? 1023 : y10));
                     u_temp[i] = uf;
                     v_temp[i] = vf;
                 } else {
-                    y_values[i] = 64;
+                    y_values[i] = output_narrow_range ? 64 : 0;
                     u_temp[i] = 0.0f;
                     v_temp[i] = 0.0f;
                 }
@@ -127,8 +137,16 @@ py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int wi
             for (int i = 0; i < 3; i++) {
                 float u_avg = (u_temp[i*2] + u_temp[i*2+1]) * 0.5f;
                 float v_avg = (v_temp[i*2] + v_temp[i*2+1]) * 0.5f;
-                u_values[i] = (uint16_t)((u_avg + 0.5f) * 896.0f + 64.0f);
-                v_values[i] = (uint16_t)((v_avg + 0.5f) * 896.0f + 64.0f);
+                int u10, v10;
+                if (output_narrow_range) {
+                    u10 = (int)((u_avg + 0.5f) * 896.0f + 64.0f);
+                    v10 = (int)((v_avg + 0.5f) * 896.0f + 64.0f);
+                } else {
+                    u10 = (int)(512.0f + 1023.0f * u_avg);
+                    v10 = (int)(512.0f + 1023.0f * v_avg);
+                }
+                u_values[i] = (uint16_t)(u10 < 0 ? 0 : (u10 > 1023 ? 1023 : u10));
+                v_values[i] = (uint16_t)(v10 < 0 ? 0 : (v10 > 1023 ? 1023 : v10));
             }
 
             // Pack into v210 format
@@ -146,8 +164,7 @@ py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int wi
     return result;
 }
 
-// Helper function to convert RGB float array to 10-bit YUV v210 format
-py::array_t<uint8_t> rgb_float_to_yuv10(py::array_t<float> rgb_array, int width, int height, DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709) {
+py::array_t<uint8_t> rgb_float_to_yuv10(py::array_t<float> rgb_array, int width, int height, DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709, bool output_narrow_range = true) {
     auto buf = rgb_array.request();
 
     if (buf.ndim != 3 || buf.shape[2] != 3) {
@@ -205,12 +222,17 @@ py::array_t<uint8_t> rgb_float_to_yuv10(py::array_t<float> rgb_array, int width,
                         vf = 0.5000f * r - 0.4542f * g - 0.0458f * b;
                     }
 
-                    int y10 = (int)(yf * 876.0f + 64.0f);
+                    int y10;
+                    if (output_narrow_range) {
+                        y10 = (int)(yf * 876.0f + 64.0f);
+                    } else {
+                        y10 = (int)(yf * 1023.0f);
+                    }
                     y_values[i] = (uint16_t)(y10 < 0 ? 0 : (y10 > 1023 ? 1023 : y10));
                     u_temp[i] = uf;
                     v_temp[i] = vf;
                 } else {
-                    y_values[i] = 64;
+                    y_values[i] = output_narrow_range ? 64 : 0;
                     u_temp[i] = 0.0f;
                     v_temp[i] = 0.0f;
                 }
@@ -220,8 +242,14 @@ py::array_t<uint8_t> rgb_float_to_yuv10(py::array_t<float> rgb_array, int width,
             for (int i = 0; i < 3; i++) {
                 float u_avg = (u_temp[i*2] + u_temp[i*2+1]) * 0.5f;
                 float v_avg = (v_temp[i*2] + v_temp[i*2+1]) * 0.5f;
-                int u10 = (int)((u_avg + 0.5f) * 896.0f + 64.0f);
-                int v10 = (int)((v_avg + 0.5f) * 896.0f + 64.0f);
+                int u10, v10;
+                if (output_narrow_range) {
+                    u10 = (int)((u_avg + 0.5f) * 896.0f + 64.0f);
+                    v10 = (int)((v_avg + 0.5f) * 896.0f + 64.0f);
+                } else {
+                    u10 = (int)(512.0f + 1023.0f * u_avg);
+                    v10 = (int)(512.0f + 1023.0f * v_avg);
+                }
                 u_values[i] = (uint16_t)(u10 < 0 ? 0 : (u10 > 1023 ? 1023 : u10));
                 v_values[i] = (uint16_t)(v10 < 0 ? 0 : (v10 > 1023 ? 1023 : v10));
             }
@@ -241,8 +269,7 @@ py::array_t<uint8_t> rgb_float_to_yuv10(py::array_t<float> rgb_array, int width,
     return result;
 }
 
-// Helper function to convert RGB uint16 array to 10-bit RGB r210 format
-py::array_t<uint8_t> rgb_uint16_to_rgb10(py::array_t<uint16_t> rgb_array, int width, int height) {
+py::array_t<uint8_t> rgb_uint16_to_rgb10(py::array_t<uint16_t> rgb_array, int width, int height, bool input_narrow_range = true, bool output_narrow_range = true) {
     auto buf = rgb_array.request();
 
     if (buf.ndim != 3 || buf.shape[2] != 3) {
@@ -271,10 +298,46 @@ py::array_t<uint8_t> rgb_uint16_to_rgb10(py::array_t<uint16_t> rgb_array, int wi
             const uint16_t* pixel = reinterpret_cast<const uint16_t*>(
                 src_base + y * stride_y + x * stride_x);
 
-            // Convert 16-bit to 10-bit by right-shifting 6 bits
-            uint16_t r10 = pixel[0] >> 6;
-            uint16_t g10 = pixel[1] >> 6;
-            uint16_t b10 = pixel[2] >> 6;
+            uint16_t r10, g10, b10;
+
+            if (input_narrow_range == output_narrow_range) {
+                // Same range: simple bit-shift
+                r10 = pixel[0] >> 6;
+                g10 = pixel[1] >> 6;
+                b10 = pixel[2] >> 6;
+            } else {
+                // Different ranges: convert through normalized float
+                float rf, gf, bf;
+                if (input_narrow_range) {
+                    // Narrow 16-bit input: 64-940 @ 10-bit = 4096-60160 @ 16-bit
+                    rf = (pixel[0] - (64 << 6)) / (float)(876 << 6);
+                    gf = (pixel[1] - (64 << 6)) / (float)(876 << 6);
+                    bf = (pixel[2] - (64 << 6)) / (float)(876 << 6);
+                } else {
+                    // Full 16-bit input: 0-65535
+                    rf = pixel[0] / 65535.0f;
+                    gf = pixel[1] / 65535.0f;
+                    bf = pixel[2] / 65535.0f;
+                }
+
+                int r10_int, g10_int, b10_int;
+                if (output_narrow_range) {
+                    // Narrow 10-bit output: 64-940
+                    r10_int = (int)(rf * 876.0f + 64.0f);
+                    g10_int = (int)(gf * 876.0f + 64.0f);
+                    b10_int = (int)(bf * 876.0f + 64.0f);
+                } else {
+                    // Full 10-bit output: 0-1023
+                    r10_int = (int)(rf * 1023.0f);
+                    g10_int = (int)(gf * 1023.0f);
+                    b10_int = (int)(bf * 1023.0f);
+                }
+
+                // Clamp to valid 10-bit range before packing
+                r10 = (uint16_t)(r10_int < 0 ? 0 : (r10_int > 1023 ? 1023 : r10_int));
+                g10 = (uint16_t)(g10_int < 0 ? 0 : (g10_int > 1023 ? 1023 : g10_int));
+                b10 = (uint16_t)(b10_int < 0 ? 0 : (b10_int > 1023 ? 1023 : b10_int));
+            }
 
             // Pack as bmdFormat10BitRGBXLE (little-endian 10-bit RGB)
             // 32-bit word: R[9:0] at bits 31:22, G[9:0] at bits 21:12, B[9:0] at bits 11:2, padding at bits 1:0
@@ -285,8 +348,7 @@ py::array_t<uint8_t> rgb_uint16_to_rgb10(py::array_t<uint16_t> rgb_array, int wi
     return result;
 }
 
-// Helper function to convert RGB float array to 10-bit RGB r210 format
-py::array_t<uint8_t> rgb_float_to_rgb10(py::array_t<float> rgb_array, int width, int height, bool narrow_range = true) {
+py::array_t<uint8_t> rgb_float_to_rgb10(py::array_t<float> rgb_array, int width, int height, bool output_narrow_range = true) {
     auto buf = rgb_array.request();
 
     if (buf.ndim != 3 || buf.shape[2] != 3) {
@@ -311,8 +373,8 @@ py::array_t<uint8_t> rgb_float_to_rgb10(py::array_t<float> rgb_array, int width,
 
     // Narrow range: 0.0-1.0 maps to 64-940 (10-bit)
     // Full range: 0.0-1.0 maps to 0-1023 (10-bit)
-    float scale = narrow_range ? 876.0f : 1023.0f;
-    float offset = narrow_range ? 64.0f : 0.0f;
+    float scale = output_narrow_range ? 876.0f : 1023.0f;
+    float offset = output_narrow_range ? 64.0f : 0.0f;
 
     for (int y = 0; y < height; y++) {
         uint32_t* row_dst = dst + (y * row_bytes / 4);
@@ -338,8 +400,8 @@ py::array_t<uint8_t> rgb_float_to_rgb10(py::array_t<float> rgb_array, int width,
     return result;
 }
 
-// Helper function to convert RGB uint16 array to 12-bit RGB format
-py::array_t<uint8_t> rgb_uint16_to_rgb12(py::array_t<uint16_t> rgb_array, int width, int height) {
+py::array_t<uint8_t> rgb_uint16_to_rgb12(py::array_t<uint16_t> rgb_array, int width, int height,
+                                         bool input_narrow_range = false, bool output_narrow_range = false) {
     auto buf = rgb_array.request();
 
     if (buf.ndim != 3 || buf.shape[2] != 3) {
@@ -362,6 +424,9 @@ py::array_t<uint8_t> rgb_uint16_to_rgb12(py::array_t<uint16_t> rgb_array, int wi
     ssize_t stride_y = buf.strides[0];
     ssize_t stride_x = buf.strides[1];
 
+    // Optimize: use bit-shift when input and output ranges match
+    bool use_bitshift = (input_narrow_range == output_narrow_range);
+
     for (int y = 0; y < height; y++) {
         uint32_t* nextWord = dst + (y * row_bytes / 4);
 
@@ -375,10 +440,46 @@ py::array_t<uint8_t> rgb_uint16_to_rgb12(py::array_t<uint16_t> rgb_array, int wi
                     const uint16_t* pixel = reinterpret_cast<const uint16_t*>(
                         src_base + y * stride_y + pixel_x * stride_x);
 
-                    // Convert 16-bit to 12-bit by right-shifting 4 bits
-                    r[i] = pixel[0] >> 4;
-                    g[i] = pixel[1] >> 4;
-                    b[i] = pixel[2] >> 4;
+                    if (use_bitshift) {
+                        // Convert 16-bit to 12-bit by right-shifting 4 bits
+                        r[i] = pixel[0] >> 4;
+                        g[i] = pixel[1] >> 4;
+                        b[i] = pixel[2] >> 4;
+                    } else {
+                        // Convert through normalized float when ranges differ
+                        float rf, gf, bf;
+
+                        // Input conversion to 0.0-1.0
+                        if (input_narrow_range) {
+                            // Narrow range: 4096-60160 (64-940 @12-bit)
+                            rf = (pixel[0] - (64 << 6)) / (float)(876 << 6);
+                            gf = (pixel[1] - (64 << 6)) / (float)(876 << 6);
+                            bf = (pixel[2] - (64 << 6)) / (float)(876 << 6);
+                        } else {
+                            // Full range: 0-65535
+                            rf = pixel[0] / 65535.0f;
+                            gf = pixel[1] / 65535.0f;
+                            bf = pixel[2] / 65535.0f;
+                        }
+
+                        // Output conversion from 0.0-1.0
+                        int r12, g12, b12;
+                        if (output_narrow_range) {
+                            // Narrow range: 256-3760
+                            r12 = (int)(rf * 3504.0f + 256.0f);
+                            g12 = (int)(gf * 3504.0f + 256.0f);
+                            b12 = (int)(bf * 3504.0f + 256.0f);
+                        } else {
+                            // Full range: 0-4095
+                            r12 = (int)(rf * 4095.0f);
+                            g12 = (int)(gf * 4095.0f);
+                            b12 = (int)(bf * 4095.0f);
+                        }
+                        // Clamp to valid 12-bit range before packing
+                        r[i] = (uint16_t)(r12 < 0 ? 0 : (r12 > 4095 ? 4095 : r12));
+                        g[i] = (uint16_t)(g12 < 0 ? 0 : (g12 > 4095 ? 4095 : g12));
+                        b[i] = (uint16_t)(b12 < 0 ? 0 : (b12 > 4095 ? 4095 : b12));
+                    }
                 } else {
                     // Padding for incomplete groups
                     r[i] = 0;
@@ -403,8 +504,7 @@ py::array_t<uint8_t> rgb_uint16_to_rgb12(py::array_t<uint16_t> rgb_array, int wi
     return result;
 }
 
-// Helper function to convert RGB float array to 12-bit RGB format
-py::array_t<uint8_t> rgb_float_to_rgb12(py::array_t<float> rgb_array, int width, int height) {
+py::array_t<uint8_t> rgb_float_to_rgb12(py::array_t<float> rgb_array, int width, int height, bool output_narrow_range = false) {
     auto buf = rgb_array.request();
 
     if (buf.ndim != 3 || buf.shape[2] != 3) {
@@ -427,8 +527,10 @@ py::array_t<uint8_t> rgb_float_to_rgb12(py::array_t<float> rgb_array, int width,
     ssize_t stride_y = buf.strides[0];
     ssize_t stride_x = buf.strides[1];
 
-    // Full range only: 0.0-1.0 maps to 0-4095 (12-bit)
-    const float scale = 4095.0f;
+    // Narrow range: 0.0-1.0 maps to 256-3760 (12-bit)
+    // Full range: 0.0-1.0 maps to 0-4095 (12-bit)
+    float scale = output_narrow_range ? 3504.0f : 4095.0f;
+    float offset = output_narrow_range ? 256.0f : 0.0f;
 
     for (int y = 0; y < height; y++) {
         uint32_t* nextWord = dst + (y * row_bytes / 4);
@@ -444,9 +546,9 @@ py::array_t<uint8_t> rgb_float_to_rgb12(py::array_t<float> rgb_array, int width,
                         src_base + y * stride_y + pixel_x * stride_x);
 
                     // Convert float (0.0-1.0) to 12-bit with clamping
-                    int r12 = (int)(pixel[0] * scale);
-                    int g12 = (int)(pixel[1] * scale);
-                    int b12 = (int)(pixel[2] * scale);
+                    int r12 = (int)(pixel[0] * scale + offset);
+                    int g12 = (int)(pixel[1] * scale + offset);
+                    int b12 = (int)(pixel[2] * scale + offset);
 
                     // Clamp to valid range
                     r[i] = (uint16_t)(r12 < 0 ? 0 : (r12 > 4095 ? 4095 : r12));
@@ -705,30 +807,37 @@ PYBIND11_MODULE(decklink_output, m) {
     m.def("rgb_uint16_to_yuv10", &rgb_uint16_to_yuv10,
           "Convert RGB uint16 numpy array to 10-bit YUV v210 format",
           py::arg("rgb_array"), py::arg("width"), py::arg("height"),
-          py::arg("matrix") = DeckLinkOutput::Gamut::Rec709);
+          py::arg("matrix") = DeckLinkOutput::Gamut::Rec709,
+          py::arg("input_narrow_range") = false,
+          py::arg("output_narrow_range") = true);
 
     m.def("rgb_float_to_yuv10", &rgb_float_to_yuv10,
           "Convert RGB float numpy array to 10-bit YUV v210 format",
           py::arg("rgb_array"), py::arg("width"), py::arg("height"),
-          py::arg("matrix") = DeckLinkOutput::Gamut::Rec709);
+          py::arg("matrix") = DeckLinkOutput::Gamut::Rec709,
+          py::arg("output_narrow_range") = true);
 
     m.def("rgb_uint16_to_rgb10", &rgb_uint16_to_rgb10,
-          "Convert RGB uint16 numpy array to 10-bit RGB r210 format (bit-shift from 16-bit to 10-bit)",
-          py::arg("rgb_array"), py::arg("width"), py::arg("height"));
+          "Convert RGB uint16 numpy array to 10-bit RGB r210 format",
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"),
+          py::arg("input_narrow_range") = true,
+          py::arg("output_narrow_range") = true);
 
     m.def("rgb_float_to_rgb10", &rgb_float_to_rgb10,
           "Convert RGB float numpy array to 10-bit RGB r210 format",
           py::arg("rgb_array"), py::arg("width"), py::arg("height"),
-          py::arg("narrow_range") = true);
+          py::arg("output_narrow_range") = true);
 
     m.def("rgb_uint16_to_rgb12", &rgb_uint16_to_rgb12,
           "Convert RGB uint16 numpy array to 12-bit RGB format",
-          py::arg("rgb_array"), py::arg("width"), py::arg("height"));
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"),
+          py::arg("input_narrow_range") = false, py::arg("output_narrow_range") = false);
 
     m.def("rgb_float_to_rgb12", &rgb_float_to_rgb12,
-          "Convert RGB float numpy array to 12-bit RGB format (full range)",
-          py::arg("rgb_array"), py::arg("width"), py::arg("height"));
+          "Convert RGB float numpy array to 12-bit RGB format",
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"),
+          py::arg("output_narrow_range") = false);
 
     // Version info
-    m.attr("__version__") = "0.14.0b0";
+    m.attr("__version__") = "0.15.0b0";
 }

@@ -16,7 +16,7 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 - **10 and 12-bit R'G'B' output**: 10 and 12-bit R'G'B' 4:4:4
 - **HDR Support**: SMPTE ST 2086 / CEA-861.3 HDR static metadata
 - **Y'CbCr matrix control**: Rec.601 (SD only), Rec.709 (HD+), and Rec.2020 (HD+) matrix support
-- **Cross-Platform**: Works on Windows, macOS, and Linux (this is in theory – only macOS build tested so far)
+- **Cross-Platform**: Works on Windows, macOS, and Linux (this is in theory – only macOS build fully tested so far)
 
 ## Requirements
 
@@ -43,7 +43,7 @@ SDK v14.1 headers for all platforms are included in the repository - no separate
 
 The build system (CMake + scikit-build-core) automatically uses the correct platform-specific headers.
 
-**⚠️ Important:** This library is built against SDK v14.1. If you need to download the SDK separately, ensure you get v14.1 from the [Blackmagic Design developer site](https://www.blackmagicdesign.com/developer/). Newer versions (v15.0+) may cause API compatibility issues and build failures.
+**⚠️ Important:** This library was built against SDK v14.1 to maintain compatibility with older macOS versions. If you need to download the SDK separately, ensure you get v14.1 from the [Blackmagic Design developer site](https://www.blackmagicdesign.com/developer/). Newer versions (v15.0+) may cause API compatibility issues and build failures.
 
 ### 2. Build and Install the Library
 
@@ -85,11 +85,20 @@ frame[:, :] = [255, 0, 0]  # Red frame
 with BlackmagicOutput() as output:
     # Initialize device (uses first available device)
     output.initialize()
-    
+
     # Display static frame at 1080p25
     output.display_static_frame(frame, DisplayMode.HD1080p25)
-    
+
     # Keep displaying (Enter to stop)
+    input("Press Enter to stop...")
+```
+
+**Note:** The explicit `initialize()` call is optional - `display_static_frame()` will automatically initialize the first available device (device_index=0) if not already initialized. Explicit initialization is useful for device selection, better error handling, and timing control:
+
+```python
+# Simpler alternative - auto-initialization (uses first device)
+with BlackmagicOutput() as output:
+    output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
 
@@ -114,6 +123,12 @@ Initialize the specified DeckLink device.
 - `device_index`: Index of device to use (default: 0)
 - Returns: True if successful
 
+**Note:** Explicit initialization is optional. Methods like `display_static_frame()` and `display_solid_color()` will automatically initialize the first available device (device_index=0) if not already initialized. Explicit initialization is recommended when you need:
+- To select a specific device (when multiple DeckLink devices are present)
+- Separate error handling for device initialization vs. frame display
+- Control over initialization timing (e.g., to avoid delays during first frame display)
+- To verify device availability before preparing frame data
+
 **`get_available_devices() -> List[str]`**
 Get list of available DeckLink device names.
 
@@ -123,7 +138,7 @@ Check if a pixel format is supported for a given display mode.
 - `pixel_format`: Pixel format to check
 - Returns: True if the mode / format combination is supported
 
-**`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, narrow_range=True) -> bool`**
+**`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, input_narrow_range=False, output_narrow_range=True) -> bool`**
 Display a static frame continuously.
 - `frame_data`: NumPy array with image data:
   - RGB: shape (height, width, 3), dtype uint8 / uint16 / float32 / float64
@@ -134,19 +149,11 @@ Display a static frame continuously.
 - `hdr_metadata`: Optional HDR metadata dict with keys:
   - `'eotf'`: Eotf enum (SDR, PQ, or HLG)
   - `'custom'`: Optional HdrMetadataCustom object for custom metadata values
-- `narrow_range`: Controls range interpretation (see below)
+- `input_narrow_range`: Whether to interpret integer `frame_data` as narrow range (float is always interpreted as full range). Default: False
+- `output_narrow_range`: Whether to output a narrow range signal. Default: True
 - Returns: True if successful
 
-**Understanding `narrow_range` in `display_static_frame`:**
-The `narrow_range` parameter interpretation depends on data type and pixel format:
-- **uint16 with YUV10**: If True, input values are treated as narrow range (black at 64<<6 and white at 940<<6, allowing super-white and sub-black). If False, values are full range, converted to narrow range for YUV10 output.
-- **uint16 with RGB10**: Informative only - indicates whether input is narrow (64-940<<6) or full (0-1023<<6) range. Values are bit-shifted to 10-bit output without conversion. Warning issued about lack of range signaling.
-- **uint16 with RGB12**: No effect (always full range). Warning issued if True.
-- **float with YUV10**: No effect (always narrow range). Warning issued if False.
-- **float with RGB10**: If True, converts to narrow range (64-940). If False, converts to full range (0-1023).
-- **float with RGB12**: Always converted to full range (0-4095). Parameter has no effect (warning if True).
-
-**`display_solid_color(color, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, narrow_range=True) -> bool`**
+**`display_solid_color(color, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, input_narrow_range=False, output_narrow_range=True, patch=None, background_color=None) -> bool`**
 Display a solid color continuously.
 - `color`: R'G'B' tuple (r, g, b) with values:
   - Integer values (0-1023): Interpreted as 10-bit values
@@ -155,17 +162,14 @@ Display a solid color continuously.
 - `pixel_format`: Pixel format (default: YUV10)
 - `matrix`: RGB to Y'CbCr conversion matrix (Rec601, Rec709 or Rec2020). Only applies when pixel_format is YUV10
 - `hdr_metadata`: Optional HDR metadata dict with 'eotf' (and optional 'custom') keys
-- `narrow_range`: Controls range interpretation (see below)
+- `input_narrow_range`: Whether to interpret integer `color` values as narrow range (float is always interpreted as full range). Default: False
+- `output_narrow_range`: Whether to output a narrow range signal. Default: True
+- `patch`: Optional tuple (center_x, center_y, width, height) with normalized coordinates (0.0-1.0):
+  - center_x, center_y: Center position of the patch (0.5, 0.5 = center of screen)
+  - width, height: Patch dimensions (1.0, 1.0 = full screen)
+  - If None, displays full screen solid color. Default: None
+- `background_color`: R'G'B' tuple for background when using patch parameter. Uses same format as `color` parameter (respecting `input_narrow_range`). If None, defaults to black. Default: None
 - Returns: True if successful
-
-**Understanding `narrow_range` in `display_solid_color`:**
-The `narrow_range` parameter interpretation depends on input type and pixel format:
-- **Integer with YUV10**: If True, values are treated as narrow range (64-940), allowing super-white (>940) and sub-black (<64). Converted to float then to narrow range YUV10 output. If False, values are treated as full range (0-1023), converted to float then to narrow range YUV10 output.
-- **Integer with RGB10**: Informative only - indicates whether values represent narrow (64-940) or full (0-1023) range. Values are output without range conversion. Warning issued about lack of range signaling.
-- **Integer with RGB12**: Warning issued if True (RGB12 always full range).
-- **Float with YUV10**: Always converted to narrow range (64-940 for Y, 64-960 for CbCr). Parameter has no effect (warning if False).
-- **Float with RGB10**: If True, converts to narrow range (64-940). If False, converts to full range (0-1023).
-- **Float with RGB12**: Always converted to full range (0-4095). Parameter has no effect (warning if True).
 
 **`update_frame(frame_data) -> bool`**
 Update currently displayed frame with new data.
@@ -184,16 +188,22 @@ Get information about the current output configuration.
 Stop video output.
 - Returns: True if successful
 
+Stops displaying frames but keeps the device initialized and ready for immediate reuse. After calling `stop()`, you can call `display_static_frame()` or `display_solid_color()` again without needing to re-initialize.
+
 **`cleanup()`**
 Cleanup resources and stop output.
+
+Stops video output (if running) and releases all device resources. After `cleanup()`, the device must be re-initialized with `initialize()` before it can be used again. This method automatically calls `stop()` internally, so there is no need to call `stop()` first.
 
 **Context Manager Support:**
 ```python
 with BlackmagicOutput() as output:
     output.initialize()
     # ... use output ...
-# Automatic cleanup
+# Automatic cleanup() called on exit
 ```
+
+The context manager automatically calls `cleanup()` when exiting, so explicit cleanup is not needed when using the `with` statement.
 
 #### Utility Functions
 
@@ -235,15 +245,27 @@ Display the current frame synchronously. Call this after `set_frame_data()` to u
 
 **`stop_output() -> bool`**
 Stop video output.
+- Returns: True if successful
+
+Stops displaying frames but keeps the device initialized and ready for immediate reuse. After calling `stop_output()`, you can call `setup_output()` and `display_frame()` again without needing to re-initialize.
 
 **`cleanup()`**
 Cleanup all resources.
+
+Stops video output (if running) and releases all device resources. After `cleanup()`, the device must be re-initialized with `initialize()` before it can be used again. This method automatically calls `stop_output()` internally, so there is no need to call `stop_output()` first.
 
 **`set_hdr_metadata(colorimetry: Gamut, eotf: Eotf)`**
 Set HDR metadata with default values. Must be called before `setup_output()`.
 
 **`set_hdr_metadata_custom(colorimetry: Gamut, eotf: Eotf, custom: HdrMetadataCustom)`**
 Set HDR metadata with custom values. Must be called before `setup_output()`.
+
+**`clear_hdr_metadata()`**
+Clear HDR metadata and reset to SDR. Call before `setup_output()` if you want to ensure no HDR metadata is present.
+
+**`get_current_output_info() -> OutputInfo`**
+Get information about the current output configuration.
+- Returns: OutputInfo struct with display_mode_name, pixel_format_name, width, height, framerate, rgb444_mode_enabled
 
 ### Data Structures
 
@@ -281,35 +303,67 @@ class HdrMetadataCustom:
     max_frame_average_light_level: float
 ```
 
+**`OutputInfo`**
+```python
+class OutputInfo:
+    display_mode: DisplayMode         # Current display mode
+    pixel_format: PixelFormat         # Current pixel format
+    width: int                        # Frame width in pixels
+    height: int                       # Frame height in pixels
+    framerate: float                  # Frame rate (e.g., 25.0, 29.97, 60.0)
+    rgb444_mode_enabled: bool         # Whether RGB 4:4:4 mode is enabled
+    display_mode_name: str            # Human-readable display mode name
+    pixel_format_name: str            # Human-readable pixel format name
+```
+
 ### Utility Functions
 
 **`rgb_to_bgra(rgb_array, width, height) -> np.ndarray`**
 Convert RGB to BGRA format.
 - `rgb_array`: NumPy array (H×W×3), dtype uint8
+- 8-bit data is always treated as full range, but 8-bit Y'CbCr output will always be narrow range
 - Returns: BGRA array (H×W×4), dtype uint8
 
-**`rgb_uint16_to_yuv10(rgb_array, width, height, matrix=Matrix.Rec709) -> np.ndarray`**
+**`rgb_uint16_to_yuv10(rgb_array, width, height, matrix=Matrix.Rec709, input_narrow_range=False, output_narrow_range=True) -> np.ndarray`**
 Convert R'G'B' uint16 to 10-bit Y'CbCr v210 format.
 - `rgb_array`: NumPy array (H×W×3), dtype uint16 (0-65535 range)
-- `matrix`: R'G'B' to Y'CbCr conversion matrix (Matrix.Rec709 or Matrix.Rec2020)
+- `matrix`: R'G'B' to Y'CbCr conversion matrix (Matrix.Rec601, Matrix.Rec709 or Matrix.Rec2020). Default: Matrix.Rec709
+- `input_narrow_range`: Whether to interpret the `rgb_array` as narrow range. Default: False
+- `output_narrow_range`: Whether to encode the Y'CbCr as narrow range. Default: True
 - Returns: Packed v210 array
 
-**`rgb_float_to_yuv10(rgb_array, width, height, matrix=Matrix.Rec709) -> np.ndarray`**
+**`rgb_float_to_yuv10(rgb_array, width, height, matrix=Matrix.Rec709, output_narrow_range=True) -> np.ndarray`**
 Convert R'G'B' float to 10-bit Y'CbCr v210 format.
 - `rgb_array`: NumPy array (H×W×3), dtype float32 (0.0-1.0 range)
-- `matrix`: R'G'B' to Y'CbCr conversion matrix (Matrix.Rec709 or Matrix.Rec2020)
-- Returns: Packed v210 array (always video range: Y: 64-940, UV: 64-960)
+- `matrix`: R'G'B' to Y'CbCr conversion matrix (Matrix.Rec601, Matrix.Rec709 or Matrix.Rec2020). Default: Matrix.Rec709
+- `output_narrow_range`: Whether to encode the Y'CbCr as narrow range. Default: True
+- Returns: Packed v210 array
 
-**`rgb_uint16_to_rgb10(rgb_array, width, height) -> np.ndarray`**
+**`rgb_uint16_to_rgb10(rgb_array, width, height, input_narrow_range=True, output_narrow_range=True) -> np.ndarray`**
 Convert R'G'B' uint16 to 10-bit R'G'B' (bmdFormat10BitRGBXLE) format.
 - `rgb_array`: NumPy array (H×W×3), dtype uint16 (0-65535 range)
-- Returns: Packed 10-bit R'G'B' array (bit-shifted from 16-bit to 10-bit)
+- `input_narrow_range`: Whether to interpret the `rgb_array` as narrow range. Default: True
+- `output_narrow_range`: Whether to output narrow range. Default: True
+- Returns: Packed 10-bit R'G'B' array
 
-**`rgb_float_to_rgb10(rgb_array, width, height, narrow_range=True) -> np.ndarray`**
+**`rgb_float_to_rgb10(rgb_array, width, height, output_narrow_range=True) -> np.ndarray`**
 Convert R'G'B' float to 10-bit R'G'B' (bmdFormat10BitRGBXLE) format.
 - `rgb_array`: NumPy array (H×W×3), dtype float32 (0.0-1.0 range)
-- `narrow_range`: If True, maps 0.0-1.0 to 64-940 (narrow range). If False, maps 0.0-1.0 to 0-1023 (full range). Default: True
+- `output_narrow_range`: Whether to output narrow range. Default: True
 - Returns: Packed 10-bit R'G'B' array
+
+**`rgb_uint16_to_rgb12(rgb_array, width, height, input_narrow_range=False, output_narrow_range=False) -> np.ndarray`**
+Convert R'G'B' uint16 to 12-bit R'G'B' (bmdFormat12BitRGBLE) format.
+- `rgb_array`: NumPy array (H×W×3), dtype uint16 (0-65535 range)
+- `input_narrow_range`: Whether to interpret the `rgb_array` as narrow range. Default: False
+- `output_narrow_range`: Whether to output narrow range. Default: False
+- Returns: Packed 12-bit R'G'B' array
+
+**`rgb_float_to_rgb12(rgb_array, width, height, output_narrow_range=False) -> np.ndarray`**
+Convert R'G'B' float to 12-bit R'G'B' (bmdFormat12BitRGBLE) format.
+- `rgb_array`: NumPy array (H×W×3), dtype float32 (0.0-1.0 range)
+- `output_narrow_range`: Whether to output narrow range. Default: False
+- Returns: Packed 12-bit R'G'B' array
 
 ### Enums
 
@@ -346,17 +400,31 @@ with BlackmagicOutput() as output:
 
 **`PixelFormat`**
 - `BGRA`: 8-bit BGRA (automatically used for uint8 data)
-  - **Note**: Over SDI, BGRA data is output as 8-bit Y'CbCr 4:2:2, not RGB. The BGRA name refers to the input buffer format, not the SDI wire format.
+  - **Note**: Over SDI, BGRA data is output as narrow range 8-bit Y'CbCr 4:2:2, not RGB. The BGRA name refers to the input buffer format, not the SDI wire format.
 - `YUV10`: 10-bit Y'CbCr 4:2:2 (v210) - default for uint16 / float data
-  - Always uses narrow range: Y: 64-940, UV: 64-960
+  - Defaults to narrow range: Y: 64-940, UV: 64-960. Supports full range Y'CbCr (0-1023, as per [Rec. ITU-T H.273](https://www.itu.int/rec/T-REC-H.273)) if `output_narrow_range` is False in the high level API
 - `RGB10`: 10-bit R'G'B' (bmdFormat10BitRGBXLE) - native R'G'B' output without Y'CbCr conversion
-  - uint16 input: Bit-shifted from 16-bit to 10-bit (>> 6)
-  - float input: Configurable range via `narrow_range` parameter
-    - `narrow_range=True` (default): 0.0-1.0 maps to 64-940 (narrow range)
-    - `narrow_range=False`: 0.0-1.0 maps to 0-1023 (full range)
+  - uint16 input: Configurable interpretation via `input_narrow_range` parameter
+  - float input: Always interpreted as full range (0.0-1.0)
+  - Output range configurable via `output_narrow_range` parameter
+  - Defaults: `input_narrow_range=True, output_narrow_range=True`
 - `RGB12`: 12-bit R'G'B' (bmdFormat12BitRGBLE) - native R'G'B' output with 12-bit precision
-  - uint16 input: Bit-shifted from 16-bit to 12-bit (>> 4)
-  - float input: Full range only - 0.0-1.0 maps to 0-4095
+  - uint16 input: Configurable interpretation via `input_narrow_range` parameter
+  - float input: Always interpreted as full range (0.0-1.0)
+  - Output range configurable via `output_narrow_range` parameter
+  - Defaults: `input_narrow_range=False, output_narrow_range=False`
+
+### Range Signaling Limitations
+
+**Important:** While this library supports both narrow and full range output encoding via the `output_narrow_range` parameter, the Blackmagic DeckLink SDK (v14.1) does not provide APIs to control the full range flag in the VPID, as per SMPTE ST 425-1 (byte 4, bit 7):
+
+- **YUV10**: The library can encode full range Y'CbCr (0-1023) with `output_narrow_range=False`, but cannot set the full range flag in the VPID. Downstream devices may well assume narrow range.
+
+- **RGB10**: The convention is that 10-bit RGB is narrow range, as described in the Blackmagic SDK, so using `output_narrow_range=False` may cause downstream devices to misinterpret the signal.
+
+- **RGB12**: The convention is that 12-bit RGB is narrow range, as described in the Blackmagic SDK, so using `output_narrow_range=True` may cause downstream devices to misinterpret the signal.
+
+The `output_narrow_range` parameter controls the **actual encoded values** in the output stream, not metadata signaling. Use it when you know the downstream device will correctly interpret the range, or when the receiving device allows manual range configuration.
 
 **`Matrix`** (High-level API)
 - `Rec709`: ITU-R BT.709 R'G'B' to Y'CbCr conversion matrix (standard HD)
@@ -393,7 +461,7 @@ for y in range(height):
 
 # Display the frame
 with BlackmagicOutput() as output:
-    output.initialize()
+    output.initialize()  # Optional - auto-initializes on first display if omitted
     output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
@@ -407,7 +475,7 @@ from blackmagic_output import BlackmagicOutput, DisplayMode, create_test_pattern
 frame = create_test_pattern(1920, 1080, 'bars')
 
 with BlackmagicOutput() as output:
-    output.initialize()
+    output.initialize()  # Optional - auto-initializes on first display if omitted
     output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
@@ -420,8 +488,6 @@ import time
 from blackmagic_output import BlackmagicOutput, DisplayMode
 
 with BlackmagicOutput() as output:
-    output.initialize()
-    
     # Start with black frame
     frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
     output.display_static_frame(frame, DisplayMode.HD1080p25)
@@ -461,7 +527,6 @@ if frame.shape[2] == 4:
 
 # Display image (format auto-detected from dtype)
 with BlackmagicOutput() as output:
-    output.initialize()
     output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
@@ -486,7 +551,6 @@ for y in range(1080):
 
 # Output as 10-bit Y'CbCr (automatically selected for float data)
 with BlackmagicOutput() as output:
-    output.initialize()
     output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
@@ -507,7 +571,6 @@ for x in range(1920):
 
 # Output as 10-bit Y'CbCr (automatically selected for uint16 data)
 with BlackmagicOutput() as output:
-    output.initialize()
     output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
@@ -527,7 +590,6 @@ for x in range(1920):
 
 # Output as 10-bit R'G'B' (bit-shifted from 16-bit to 10-bit)
 with BlackmagicOutput() as output:
-    output.initialize()
     output.display_static_frame(frame, DisplayMode.HD1080p25, PixelFormat.RGB10)
     input("Press Enter to stop...")
 ```
@@ -547,12 +609,11 @@ for x in range(1920):
 
 # Output as 10-bit R'G'B' with narrow range (0.0-1.0 maps to 64-940)
 with BlackmagicOutput() as output:
-    output.initialize()
     output.display_static_frame(
         frame,
         DisplayMode.HD1080p25,
         PixelFormat.RGB10,
-        narrow_range=True  # Default: narrow range
+        output_narrow_range=True  # Default: narrow range
     )
     input("Press Enter to stop...")
 ```
@@ -572,12 +633,11 @@ for x in range(1920):
 
 # Output as 10-bit R'G'B' with full range (0.0-1.0 maps to 0-1023)
 with BlackmagicOutput() as output:
-    output.initialize()
     output.display_static_frame(
         frame,
         DisplayMode.HD1080p25,
         PixelFormat.RGB10,
-        narrow_range=False  # Full range
+        output_narrow_range=False  # Full range
     )
     input("Press Enter to stop...")
 ```
@@ -602,8 +662,6 @@ for y in range(1080):
 
 # Configure for HLG HDR output using the simplified API
 with BlackmagicOutput() as output:
-    output.initialize()
-
     # Single call with matrix and HDR metadata
     # YUV10 automatically selected for float data
     output.display_static_frame(
@@ -659,13 +717,11 @@ from blackmagic_output import BlackmagicOutput, DisplayMode, Matrix, Eotf
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
 
 # Fill with PQ-encoded HDR content
-# A library such as Colour Science for Python (colour-science.org) is needed for PQ encoding
+# A library such as Colour Science for Python (https://www.colour-science.org/) is needed for PQ encoding
 # frame = colour.eotf(linear_rgb_data, 'ST 2084')
 
 # Configure for HDR10 (PQ) output using the simplified API
 with BlackmagicOutput() as output:
-    output.initialize()
-
     # Single call with Rec.2020 matrix and PQ metadata
     # YUV10 automatically selected for float data
     output.display_static_frame(
@@ -711,6 +767,68 @@ input("Press Enter to stop...")
 output.stop_output()
 output.cleanup()
 ```
+
+### Example 9: Color Patches for Testing and Calibration
+
+The `display_solid_color()` method supports displaying color patches smaller than full screen, useful for testing, calibration, and creating custom test patterns.
+
+```python
+import time
+from blackmagic_output import BlackmagicOutput, DisplayMode
+
+with BlackmagicOutput() as output:
+    # Full screen white (default behavior)
+    output.display_solid_color((1.0, 1.0, 1.0), DisplayMode.HD1080p25)
+    time.sleep(2)
+
+    # Centered 50% white patch on black background
+    output.display_solid_color(
+        (1.0, 1.0, 1.0),
+        DisplayMode.HD1080p25,
+        patch=(0.5, 0.5, 0.5, 0.5)  # (center_x, center_y, width, height)
+    )
+    time.sleep(2)
+
+    # Small centered white patch (10% size) on gray background
+    output.display_solid_color(
+        (1.0, 1.0, 1.0),
+        DisplayMode.HD1080p25,
+        patch=(0.5, 0.5, 0.1, 0.1),
+        background_color=(0.5, 0.5, 0.5)
+    )
+    time.sleep(2)
+
+    # Red patch in top-left quadrant on blue background
+    output.display_solid_color(
+        (1.0, 0.0, 0.0),
+        DisplayMode.HD1080p25,
+        patch=(0.25, 0.25, 0.3, 0.3),
+        background_color=(0.0, 0.0, 1.0)
+    )
+    time.sleep(2)
+
+    # Horizontal bar across center (full width, half height)
+    # Using integer 10-bit values with narrow range
+    output.display_solid_color(
+        (940, 940, 64),
+        DisplayMode.HD1080p25,
+        patch=(0.5, 0.5, 1.0, 0.5),
+        background_color=(400, 400, 400),
+        input_narrow_range=True
+    )
+    time.sleep(2)
+```
+
+**Patch coordinates:**
+- All values are normalized (0.0-1.0) for resolution independence
+- `center_x, center_y`: Position of patch center (0.0 = left/top, 1.0 = right/bottom)
+- `width, height`: Patch dimensions as fraction of screen (1.0 = full width/height)
+- Example: `(0.5, 0.5, 0.25, 0.25)` = centered patch, 25% of screen size
+
+**Background color:**
+- Uses same format as foreground `color` (integers 0-1023 or floats 0.0-1.0)
+- Defaults to black if not specified
+- For integer colors with `input_narrow_range=True`, black defaults to 64 instead of 0
 
 ## HDR Metadata
 

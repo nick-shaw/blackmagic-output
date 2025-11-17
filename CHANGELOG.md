@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0b0] - 2025-01-22
+
+### Added
+- Color patch support in `display_solid_color()` method
+  - New `patch` parameter: tuple (center_x, center_y, width, height) with normalized coordinates (0.0-1.0)
+  - New `background_color` parameter: R'G'B' tuple for background when using patches
+  - Useful for testing, calibration, and creating custom test patterns
+  - Background color defaults to black (0 or 64 depending on `input_narrow_range`)
+- Comprehensive test suite for range conversions (24 tests covering all range combinations)
+- RGB12 documentation sections in README (previously missing)
+
+### Changed
+- **BREAKING**: Replaced ambiguous `narrow_range` parameter with explicit `input_narrow_range` and `output_narrow_range` parameters
+  - Affects high-level API methods: `display_static_frame()` and `display_solid_color()`
+  - Affects low-level conversion functions: `rgb_uint16_to_yuv10()`, `rgb_float_to_yuv10()`, `rgb_uint16_to_rgb10()`, `rgb_float_to_rgb10()`, `rgb_uint16_to_rgb12()`, `rgb_float_to_rgb12()`
+  - `input_narrow_range`: Controls interpretation of uint16 input values (narrow: 64-940 @10-bit, i.e., 4096-60160 @16-bit; full: 0-65535)
+  - `output_narrow_range`: Controls output encoding (narrow or full range)
+  - Float inputs always interpreted as full range (0.0-1.0), no `input_narrow_range` parameter
+- **Improved**: YUV10 output now supports full range Y'CbCr (0-1023) via `output_narrow_range=False`
+  - Previously only narrow range (64-940/64-960) was supported
+- **Optimized**: uint16 RGB conversions use efficient bit-shift when input and output ranges match, float conversion when they differ
+
+### Fixed
+- Removed manual range conversion code from high-level API that prevented full range YUV10 output
+
+### Notes
+- Default behavior maintained for backward compatibility:
+  - `input_narrow_range=False` (full range 16-bit input)
+  - `output_narrow_range=True` for YUV10 and RGB10 (narrow range output)
+  - `output_narrow_range=False` for RGB12 (full range output)
+- Applications using default parameters do not require code changes
+
 ## [0.14.0b0] - 2025-10-17
 
 ### Changed

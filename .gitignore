@@ -35,4 +35,8 @@ tools/pixel_reader
 *.tif
 *.png
 
+# Claude
 CLAUDE.md
+
+# Scratch Folder
+scratch/

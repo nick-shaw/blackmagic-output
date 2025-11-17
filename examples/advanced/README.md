@@ -48,6 +48,8 @@ The range, matrix and EOTF are specified in the T-PAT files, so do not need to b
 - `BT2111_HLG_10bit_narrow_1080.tpat` - ITU-R BT.2111 HLG HDR test pattern
 - `BT2111_PQ_10bit_full_1080.tpat` - ITU-R BT.2111 PQ HDR test pattern
 
+**Note:** The full range PQ pattern is intended to be displayed as full range RGB, i.e. using `RGB10` or `RGB12` as the `PixelFormat`. Displaying it without specifying the pixel format will output full range `YUV10`, which is non-standard.
+
 ## Creating Your Own Patterns
 
 You can create your own T-PAT files using the JSON format. See the [test-pattern-descriptor](https://github.com/yergin/test-pattern-descriptor) repository for:

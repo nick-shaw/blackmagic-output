@@ -141,7 +141,8 @@ def main():
                 pixel_format,
                 matrix=matrix,
                 hdr_metadata=eotf,
-                narrow_range=narrow_range
+                input_narrow_range=narrow_range,
+                output_narrow_range=narrow_range
             )
 
             input("Press Enter to stop...")
