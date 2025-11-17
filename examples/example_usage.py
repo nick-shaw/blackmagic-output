@@ -124,52 +124,83 @@ def example_test_patterns():
 def example_dynamic_updates():
     """Example: Update frames dynamically"""
     print("Example 4: Dynamic Frame Updates")
-    
+
     with BlackmagicOutput() as output:
         if not output.initialize():
             print("Failed to initialize device")
             return
-        
+
         # Get display settings
         mode_info = output.get_display_mode_info(DisplayMode.HD1080p25)
         width, height = mode_info['width'], mode_info['height']
-        
+
         # Create initial frame
         frame = np.zeros((height, width, 3), dtype=np.uint8)
-        
+
+        # Pre-compute coordinate array for fast vectorized operations
+        y_coords = np.arange(height).reshape(-1, 1)
+
         # Start with initial frame
         if not output.display_static_frame(frame, DisplayMode.HD1080p25):
             print("Failed to start output")
             return
-        
-        print("Starting dynamic animation. Press Ctrl+C to stop...")
-        
+
+        print("Starting dynamic animation (optimized with NumPy)...")
+        print("Press Ctrl+C to stop...\n")
+
         try:
             frame_count = 0
+            start_time = time.perf_counter()
+            last_report = start_time
+            target_frame_time = 0.039  # 39ms to account for timing overhead, targets ~25.6 FPS
+
             while True:
-                # Create animated pattern - moving diagonal bars
-                frame.fill(0)  # Clear frame
-                
-                offset = (frame_count * 2) % (width + height)
-                
-                for y in range(height):
-                    for x in range(width):
-                        # Create diagonal moving pattern
-                        if (x + y - offset) % 40 < 20:
-                            frame[y, x] = [255, 255, 255]  # White bars
-                        else:
-                            frame[y, x] = [0, 0, 100]      # Dark blue background
-                
+                frame_start = time.perf_counter()
+
+                # Calculate bar position (moves down the screen)
+                bar_position = (frame_count * 4) % height
+
+                # Vectorized pattern generation (much faster than nested Python loops)
+                # Creates a moving horizontal white bar on blue background
+                bar_mask = (y_coords >= bar_position) & (y_coords < bar_position + 40)
+
+                # Update frame using NumPy array operations
+                frame[:] = [0, 0, 100]  # Dark blue background
+                frame[bar_mask.squeeze()] = [255, 255, 255]  # White bar
+
                 # Update the frame
                 if not output.update_frame(frame):
                     print("Failed to update frame")
                     break
-                
+
                 frame_count += 1
-                time.sleep(1/25)  # Limit update rate (actual rate will be lower due to processing overhead)
-                
+
+                # Report FPS every 2 seconds
+                current_time = time.perf_counter()
+                if current_time - last_report >= 2.0:
+                    elapsed = current_time - start_time
+                    actual_fps = frame_count / elapsed
+                    print(f"Frame {frame_count:4d}  |  Elapsed: {elapsed:6.2f}s  |  FPS: {actual_fps:5.2f}")
+                    last_report = current_time
+
+                # Smart sleep: only sleep if we're ahead of schedule
+                frame_time = time.perf_counter() - frame_start
+                time_remaining = target_frame_time - frame_time
+                if time_remaining > 0.003:  # Only sleep if >3ms remaining
+                    # Sleep most of the remaining time, leaving a small buffer for jitter
+                    time.sleep(time_remaining - 0.002)
+                elif time_remaining > 0:
+                    # Busy-wait for the last few milliseconds for precision
+                    while time.perf_counter() - frame_start < target_frame_time:
+                        pass
+
         except KeyboardInterrupt:
-            print("\nStopping animation...")
+            elapsed = time.perf_counter() - start_time
+            actual_fps = frame_count / elapsed if elapsed > 0 else 0
+            print(f"\n\nAnimation stopped")
+            print(f"Total frames: {frame_count}")
+            print(f"Elapsed time: {elapsed:.2f}s")
+            print(f"Average FPS:  {actual_fps:.2f}")
 
 def example_from_image_file():
     """Example: Load and display image from file"""
