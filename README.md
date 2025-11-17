@@ -785,6 +785,7 @@ output.cleanup()
 The `display_solid_color()` method supports displaying color patches smaller than full screen, useful for testing, calibration, and creating custom test patterns.
 
 ```python
+import time
 from blackmagic_output import BlackmagicOutput, DisplayMode
 
 with BlackmagicOutput() as output:
@@ -792,6 +793,7 @@ with BlackmagicOutput() as output:
 
     # Full screen white (default behavior)
     output.display_solid_color((1.0, 1.0, 1.0), DisplayMode.HD1080p25)
+    time.sleep(2)
 
     # Centered 50% white patch on black background
     output.display_solid_color(
@@ -799,6 +801,7 @@ with BlackmagicOutput() as output:
         DisplayMode.HD1080p25,
         patch=(0.5, 0.5, 0.5, 0.5)  # (center_x, center_y, width, height)
     )
+    time.sleep(2)
 
     # Small centered white patch (10% size) on gray background
     output.display_solid_color(
@@ -807,6 +810,7 @@ with BlackmagicOutput() as output:
         patch=(0.5, 0.5, 0.1, 0.1),
         background_color=(0.5, 0.5, 0.5)
     )
+    time.sleep(2)
 
     # Red patch in top-left quadrant on blue background
     output.display_solid_color(
@@ -815,16 +819,18 @@ with BlackmagicOutput() as output:
         patch=(0.25, 0.25, 0.3, 0.3),
         background_color=(0.0, 0.0, 1.0)
     )
+    time.sleep(2)
 
     # Horizontal bar across center (full width, half height)
+    # Using integer 10-bit values with narrow range
     output.display_solid_color(
-        (1.0, 1.0, 0.0),
+        (940, 940, 64),
         DisplayMode.HD1080p25,
         patch=(0.5, 0.5, 1.0, 0.5),
-        background_color=(0.2, 0.2, 0.2)
+        background_color=(400, 400, 400),
+        input_narrow_range=True
     )
-
-    input("Press Enter to stop...")
+    time.sleep(2)
 ```
 
 **Patch coordinates:**
