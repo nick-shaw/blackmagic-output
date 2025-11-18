@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.15.0b0] - 2025-01-22
 
 ### Added
+- `get_supported_display_modes()` method to query device capabilities
+  - Returns list of all display modes supported by the initialized device
+  - Each mode includes: display_mode enum, name, width, height, framerate
+  - Useful for populating display mode dropdowns in GUI applications
+  - Exposes SDK's `GetDisplayModeIterator()` functionality
 - Color patch support in `display_solid_color()` method
   - New `patch` parameter: tuple (center_x, center_y, width, height) with normalized coordinates (0.0-1.0)
   - New `background_color` parameter: R'G'B' tuple for background when using patches
