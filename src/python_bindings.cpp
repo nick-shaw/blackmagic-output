@@ -773,6 +773,15 @@ PYBIND11_MODULE(decklink_output, m) {
         .def_readwrite("display_mode_name", &DeckLinkOutput::OutputInfo::displayModeName)
         .def_readwrite("pixel_format_name", &DeckLinkOutput::OutputInfo::pixelFormatName);
 
+    // DisplayModeInfo struct
+    py::class_<DeckLinkOutput::DisplayModeInfo>(m, "DisplayModeInfo")
+        .def(py::init<>())
+        .def_readwrite("display_mode", &DeckLinkOutput::DisplayModeInfo::displayMode)
+        .def_readwrite("name", &DeckLinkOutput::DisplayModeInfo::name)
+        .def_readwrite("width", &DeckLinkOutput::DisplayModeInfo::width)
+        .def_readwrite("height", &DeckLinkOutput::DisplayModeInfo::height)
+        .def_readwrite("framerate", &DeckLinkOutput::DisplayModeInfo::framerate);
+
     // Main DeckLinkOutput class
     py::class_<DeckLinkOutput>(m, "DeckLinkOutput")
         .def(py::init<>())
@@ -797,7 +806,8 @@ PYBIND11_MODULE(decklink_output, m) {
         .def("set_hdr_metadata_custom", &DeckLinkOutput::setHdrMetadataCustom, "Set HDR metadata with custom values",
              py::arg("colorimetry"), py::arg("eotf"), py::arg("custom"))
         .def("clear_hdr_metadata", &DeckLinkOutput::clearHdrMetadata, "Clear HDR metadata and reset to SDR")
-        .def("get_current_output_info", &DeckLinkOutput::getCurrentOutputInfo, "Get current output configuration info");
+        .def("get_current_output_info", &DeckLinkOutput::getCurrentOutputInfo, "Get current output configuration info")
+        .def("get_supported_display_modes", &DeckLinkOutput::getSupportedDisplayModes, "Get list of supported display modes");
 
     // Utility functions
     m.def("rgb_to_bgra", &rgb_to_bgra,

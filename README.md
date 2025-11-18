@@ -138,6 +138,28 @@ Check if a pixel format is supported for a given display mode.
 - `pixel_format`: Pixel format to check
 - Returns: True if the mode / format combination is supported
 
+**`get_supported_display_modes() -> List[dict]`**
+Get list of supported display modes for the initialized device.
+- Returns: List of dictionaries, each containing:
+  - `display_mode`: DisplayMode enum value
+  - `name`: Human-readable mode name (e.g., "1080p25", "2160p59.94")
+  - `width`: Frame width in pixels
+  - `height`: Frame height in pixels
+  - `framerate`: Frame rate in frames per second
+- Raises: RuntimeError if device not initialized
+
+**Example:**
+```python
+from blackmagic_output import BlackmagicOutput
+
+with BlackmagicOutput() as output:
+    output.initialize()
+
+    modes = output.get_supported_display_modes()
+    for mode in modes:
+        print(f"{mode['name']}: {mode['width']}x{mode['height']} @ {mode['framerate']:.2f} fps")
+```
+
 **`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, input_narrow_range=False, output_narrow_range=True) -> bool`**
 Display a static frame continuously.
 - `frame_data`: NumPy array with image data:
@@ -234,6 +256,10 @@ Get video settings object for a display mode.
 **`is_pixel_format_supported(display_mode, pixel_format) -> bool`**
 Check if a pixel format is supported for a given display mode.
 
+**`get_supported_display_modes() -> List[DisplayModeInfo]`**
+Get list of supported display modes for the initialized device.
+- Returns: List of DisplayModeInfo objects with display_mode, name, width, height, framerate
+
 **`setup_output(settings: VideoSettings) -> bool`**
 Setup output with detailed settings.
 
@@ -316,6 +342,16 @@ class OutputInfo:
     pixel_format_name: str            # Human-readable pixel format name
 ```
 
+**`DisplayModeInfo`**
+```python
+class DisplayModeInfo:
+    display_mode: DisplayMode         # Display mode enum value
+    name: str                         # Human-readable mode name
+    width: int                        # Frame width in pixels
+    height: int                       # Frame height in pixels
+    framerate: float                  # Frame rate (e.g., 25.0, 29.97, 60.0)
+```
+
 ### Utility Functions
 
 **`rgb_to_bgra(rgb_array, width, height) -> np.ndarray`**
@@ -381,7 +417,22 @@ Additional modes are available including SD (NTSC, PAL), 2K, 4K, 8K, and PC disp
 
 **Querying Available Display Modes:**
 
-To determine which combinations of display mode and pixel format your specific DeckLink device supportse, use the `is_pixel_format_supported()` method:
+You can query which display modes are supported by your specific DeckLink device using `get_supported_display_modes()`:
+
+```python
+from blackmagic_output import BlackmagicOutput
+
+with BlackmagicOutput() as output:
+    output.initialize()
+
+    # Get all supported display modes
+    modes = output.get_supported_display_modes()
+    print(f"Device supports {len(modes)} display modes:\n")
+    for mode in modes:
+        print(f"{mode['name']}: {mode['width']}x{mode['height']} @ {mode['framerate']:.2f} fps")
+```
+
+To determine which pixel formats are supported for a specific display mode, use `is_pixel_format_supported()`:
 
 ```python
 from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat

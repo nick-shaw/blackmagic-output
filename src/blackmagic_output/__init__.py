@@ -23,6 +23,7 @@ try:
         DeckLinkOutput,
         VideoSettings,
         HdrMetadataCustom,
+        DisplayModeInfo,
         Gamut,
         Eotf as _Eotf,
         Matrix as _Matrix,
@@ -196,6 +197,7 @@ __all__ = [
     "DeckLinkOutput",
     "VideoSettings",
     "HdrMetadataCustom",
+    "DisplayModeInfo",
     "Gamut",
     # Conversion utilities
     "rgb_to_bgra",

@@ -606,3 +606,57 @@ DeckLinkOutput::OutputInfo DeckLinkOutput::getCurrentOutputInfo()
 
     return info;
 }
+
+std::vector<DeckLinkOutput::DisplayModeInfo> DeckLinkOutput::getSupportedDisplayModes()
+{
+    std::vector<DisplayModeInfo> modes;
+
+    if (!m_deckLinkOutput) {
+        std::cerr << "DeckLink output not initialized" << std::endl;
+        return modes;
+    }
+
+    IDeckLinkDisplayModeIterator* displayModeIterator = nullptr;
+    if (m_deckLinkOutput->GetDisplayModeIterator(&displayModeIterator) != S_OK) {
+        std::cerr << "Could not get display mode iterator" << std::endl;
+        return modes;
+    }
+
+    IDeckLinkDisplayMode* displayMode = nullptr;
+    while (displayModeIterator->Next(&displayMode) == S_OK) {
+        DisplayModeInfo modeInfo;
+
+        modeInfo.displayMode = static_cast<DisplayMode>(displayMode->GetDisplayMode());
+        modeInfo.width = displayMode->GetWidth();
+        modeInfo.height = displayMode->GetHeight();
+
+        BMDTimeValue frameDuration;
+        BMDTimeScale timeScale;
+        displayMode->GetFrameRate(&frameDuration, &timeScale);
+        modeInfo.framerate = (double)timeScale / (double)frameDuration;
+
+#ifdef _WIN32
+        BSTR nameString;
+        if (displayMode->GetName(&nameString) == S_OK) {
+            int nameLen = WideCharToMultiByte(CP_UTF8, 0, nameString, -1, nullptr, 0, nullptr, nullptr);
+            if (nameLen > 0) {
+                std::vector<char> nameBuffer(nameLen);
+                WideCharToMultiByte(CP_UTF8, 0, nameString, -1, nameBuffer.data(), nameLen, nullptr, nullptr);
+                modeInfo.name = std::string(nameBuffer.data());
+            }
+            SysFreeString(nameString);
+        }
+#else
+        const char* nameString;
+        if (displayMode->GetName(&nameString) == S_OK) {
+            modeInfo.name = std::string(nameString);
+        }
+#endif
+
+        modes.push_back(modeInfo);
+        displayMode->Release();
+    }
+
+    displayModeIterator->Release();
+    return modes;
+}

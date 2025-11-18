@@ -226,6 +226,15 @@ public:
     };
     OutputInfo getCurrentOutputInfo();
 
+    struct DisplayModeInfo {
+        DisplayMode displayMode;
+        std::string name;
+        int width;
+        int height;
+        double framerate;
+    };
+    std::vector<DisplayModeInfo> getSupportedDisplayModes();
+
 private:
     IDeckLink* m_deckLink;
     IDeckLinkOutput* m_deckLinkOutput;

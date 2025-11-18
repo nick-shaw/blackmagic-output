@@ -551,3 +551,50 @@ DeckLinkOutput::OutputInfo DeckLinkOutput::getCurrentOutputInfo()
 
     return info;
 }
+
+std::vector<DeckLinkOutput::DisplayModeInfo> DeckLinkOutput::getSupportedDisplayModes()
+{
+    std::vector<DisplayModeInfo> modes;
+
+    if (!m_deckLinkOutput) {
+        std::cerr << "DeckLink output not initialized" << std::endl;
+        return modes;
+    }
+
+    IDeckLinkDisplayModeIterator* displayModeIterator = nullptr;
+    if (m_deckLinkOutput->GetDisplayModeIterator(&displayModeIterator) != S_OK) {
+        std::cerr << "Could not get display mode iterator" << std::endl;
+        return modes;
+    }
+
+    IDeckLinkDisplayMode* displayMode = nullptr;
+    while (displayModeIterator->Next(&displayMode) == S_OK) {
+        DisplayModeInfo modeInfo;
+
+        modeInfo.displayMode = static_cast<DisplayMode>(displayMode->GetDisplayMode());
+        modeInfo.width = displayMode->GetWidth();
+        modeInfo.height = displayMode->GetHeight();
+
+        BMDTimeValue frameDuration;
+        BMDTimeScale timeScale;
+        displayMode->GetFrameRate(&frameDuration, &timeScale);
+        modeInfo.framerate = (double)timeScale / (double)frameDuration;
+
+        CFStringRef nameString;
+        if (displayMode->GetName(&nameString) == S_OK) {
+            CFIndex nameLen = CFStringGetLength(nameString);
+            CFIndex maxSize = CFStringGetMaximumSizeForEncoding(nameLen, kCFStringEncodingUTF8) + 1;
+            std::vector<char> nameBuffer(maxSize);
+            if (CFStringGetCString(nameString, nameBuffer.data(), maxSize, kCFStringEncodingUTF8)) {
+                modeInfo.name = std::string(nameBuffer.data());
+            }
+            CFRelease(nameString);
+        }
+
+        modes.push_back(modeInfo);
+        displayMode->Release();
+    }
+
+    displayModeIterator->Release();
+    return modes;
+}

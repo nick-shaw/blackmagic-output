@@ -597,6 +597,36 @@ class BlackmagicOutput:
             'rgb444_mode_enabled': info.rgb444_mode_enabled
         }
 
+    def get_supported_display_modes(self) -> List[dict]:
+        """
+        Get list of supported display modes for the initialized device.
+
+        Returns:
+            List of dictionaries, each containing:
+            - display_mode: DisplayMode enum value
+            - name: Human-readable mode name
+            - width: Frame width
+            - height: Frame height
+            - framerate: Frame rate
+
+        Raises:
+            RuntimeError: If device not initialized
+        """
+        if not self._initialized:
+            raise RuntimeError("Device not initialized. Call initialize() first.")
+
+        modes = self._device.get_supported_display_modes()
+        return [
+            {
+                'display_mode': DisplayMode(mode.display_mode),
+                'name': mode.name,
+                'width': mode.width,
+                'height': mode.height,
+                'framerate': mode.framerate
+            }
+            for mode in modes
+        ]
+
     def __enter__(self):
         """Context manager entry."""
         return self
