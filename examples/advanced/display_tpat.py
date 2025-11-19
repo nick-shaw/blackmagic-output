@@ -100,7 +100,6 @@ def main():
         if bits < 32:
             image = image.astype(np.uint16) << (16 - bits)
         with BlackmagicOutput() as output:
-            output.initialize()
 
             display_mode = DISPLAY_MODES[args.display_mode]
 
@@ -145,6 +144,7 @@ def main():
                 output_narrow_range=narrow_range
             )
 
+            print("Displaying:", name)
             input("Press Enter to stop...")
 
             output.display_solid_color((0.0, 0.0, 0.0), display_mode)
