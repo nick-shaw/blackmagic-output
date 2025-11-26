@@ -77,9 +77,9 @@ pip install imageio pillow jsonschema
 import numpy as np
 from blackmagic_output import BlackmagicOutput, DisplayMode
 
-# Create a simple test image (1080p R'G'B')
-frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
-frame[:, :] = [255, 0, 0]  # Red frame
+# Create a simple test image (1080p R'G'B', normalized float)
+frame = np.ones((1080, 1920, 3), dtype=np.float32)
+frame[:, :] = [1.0, 0.0, 0.0]  # Red frame
 
 # Display the frame
 with BlackmagicOutput() as output:
@@ -115,8 +115,8 @@ Convenient Python wrapper for most video output operations.
 
 #### Methods
 
-**`__init__()`**
-Create a new BlackmagicOutput instance.
+**`get_available_devices() -> List[str]`**
+Get list of available DeckLink device names.
 
 **`initialize(device_index=0) -> bool`**
 Initialize the specified DeckLink device.
@@ -128,15 +128,6 @@ Initialize the specified DeckLink device.
 - Separate error handling for device initialization vs. frame display
 - Control over initialization timing (e.g., to avoid delays during first frame display)
 - To verify device availability before preparing frame data
-
-**`get_available_devices() -> List[str]`**
-Get list of available DeckLink device names.
-
-**`is_pixel_format_supported(display_mode, pixel_format) -> bool`**
-Check if a pixel format is supported for a given display mode.
-- `display_mode`: Display mode to check
-- `pixel_format`: Pixel format to check
-- Returns: True if the mode / format combination is supported
 
 **`get_supported_display_modes() -> List[dict]`**
 Get list of supported display modes for the initialized device.
@@ -159,6 +150,12 @@ with BlackmagicOutput() as output:
     for mode in modes:
         print(f"{mode['name']}: {mode['width']}x{mode['height']} @ {mode['framerate']:.2f} fps")
 ```
+
+**`is_pixel_format_supported(display_mode, pixel_format) -> bool`**
+Check if a pixel format is supported for a given display mode.
+- `display_mode`: Display mode to check
+- `pixel_format`: Pixel format to check
+- Returns: True if the mode / format combination is supported
 
 **`display_static_frame(frame_data, display_mode, pixel_format=PixelFormat.YUV10, matrix=None, hdr_metadata=None, input_narrow_range=False, output_narrow_range=True) -> bool`**
 Display a static frame continuously.
@@ -244,21 +241,30 @@ Direct C++ API for more fine-grained control.
 
 #### Methods
 
-**`initialize(device_index=0) -> bool`**
-Initialize the specified DeckLink device.
-
 **`get_device_list() -> List[str]`**
 Get list of available DeckLink devices.
 
-**`get_video_settings(display_mode) -> VideoSettings`**
-Get video settings object for a display mode.
-
-**`is_pixel_format_supported(display_mode, pixel_format) -> bool`**
-Check if a pixel format is supported for a given display mode.
+**`initialize(device_index=0) -> bool`**
+Initialize the specified DeckLink device.
 
 **`get_supported_display_modes() -> List[DisplayModeInfo]`**
 Get list of supported display modes for the initialized device.
 - Returns: List of DisplayModeInfo objects with display_mode, name, width, height, framerate
+
+**`is_pixel_format_supported(display_mode, pixel_format) -> bool`**
+Check if a pixel format is supported for a given display mode.
+
+**`get_video_settings(display_mode) -> VideoSettings`**
+Get video settings object for a display mode.
+
+**`set_hdr_metadata(colorimetry: Gamut, eotf: Eotf)`**
+Set HDR metadata with default values. Must be called before `setup_output()`.
+
+**`set_hdr_metadata_custom(colorimetry: Gamut, eotf: Eotf, custom: HdrMetadataCustom)`**
+Set HDR metadata with custom values. Must be called before `setup_output()`.
+
+**`clear_hdr_metadata()`**
+Clear HDR metadata and reset to SDR. Call before `setup_output()` if you want to ensure no HDR metadata is present.
 
 **`setup_output(settings: VideoSettings) -> bool`**
 Setup output with detailed settings.
@@ -268,6 +274,10 @@ Set frame data from NumPy array (must be in correct format).
 
 **`display_frame() -> bool`**
 Display the current frame synchronously. Call this after `set_frame_data()` to update the display.
+
+**`get_current_output_info() -> OutputInfo`**
+Get information about the current output configuration.
+- Returns: OutputInfo struct with display_mode_name, pixel_format_name, width, height, framerate, rgb444_mode_enabled
 
 **`stop_output() -> bool`**
 Stop video output.
@@ -279,19 +289,6 @@ Stops displaying frames but keeps the device initialized and ready for immediate
 Cleanup all resources.
 
 Stops video output (if running) and releases all device resources. After `cleanup()`, the device must be re-initialized with `initialize()` before it can be used again. This method automatically calls `stop_output()` internally, so there is no need to call `stop_output()` first.
-
-**`set_hdr_metadata(colorimetry: Gamut, eotf: Eotf)`**
-Set HDR metadata with default values. Must be called before `setup_output()`.
-
-**`set_hdr_metadata_custom(colorimetry: Gamut, eotf: Eotf, custom: HdrMetadataCustom)`**
-Set HDR metadata with custom values. Must be called before `setup_output()`.
-
-**`clear_hdr_metadata()`**
-Clear HDR metadata and reset to SDR. Call before `setup_output()` if you want to ensure no HDR metadata is present.
-
-**`get_current_output_info() -> OutputInfo`**
-Get information about the current output configuration.
-- Returns: OutputInfo struct with display_mode_name, pixel_format_name, width, height, framerate, rgb444_mode_enabled
 
 ### Data Structures
 
@@ -473,7 +470,7 @@ with BlackmagicOutput() as output:
 
 - **RGB10**: The convention is that 10-bit RGB is narrow range, as described in the Blackmagic SDK, so using `output_narrow_range=False` may cause downstream devices to misinterpret the signal.
 
-- **RGB12**: The convention is that 12-bit RGB is narrow range, as described in the Blackmagic SDK, so using `output_narrow_range=True` may cause downstream devices to misinterpret the signal.
+- **RGB12**: The convention is that 12-bit RGB is full range, as described in the Blackmagic SDK, so using `output_narrow_range=True` may cause downstream devices to misinterpret the signal.
 
 The `output_narrow_range` parameter controls the **actual encoded values** in the output stream, not metadata signaling. Use it when you know the downstream device will correctly interpret the range, or when the receiving device allows manual range configuration.
 
@@ -492,32 +489,7 @@ The `output_narrow_range` parameter controls the **actual encoded values** in th
 
 ## Examples
 
-### Example 1: Static Image Display
-
-```python
-import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode
-
-# Create a gradient test pattern
-height, width = 1080, 1920
-frame = np.zeros((height, width, 3), dtype=np.uint8)
-
-for y in range(height):
-    for x in range(width):
-        frame[y, x] = [
-            int(255 * x / width),      # Red gradient
-            int(255 * y / height),     # Green gradient
-            128                        # Blue constant
-        ]
-
-# Display the frame
-with BlackmagicOutput() as output:
-    output.initialize()  # Optional - auto-initializes on first display if omitted
-    output.display_static_frame(frame, DisplayMode.HD1080p25)
-    input("Press Enter to stop...")
-```
-
-### Example 2: Color Bars Test Pattern
+### Example 1: Color Bars Test Pattern
 
 ```python
 from blackmagic_output import BlackmagicOutput, DisplayMode, create_test_pattern
@@ -531,7 +503,7 @@ with BlackmagicOutput() as output:
     input("Press Enter to stop...")
 ```
 
-### Example 3: Dynamic Animation
+### Example 2: Dynamic Animation
 
 ```python
 import numpy as np
@@ -540,21 +512,21 @@ from blackmagic_output import BlackmagicOutput, DisplayMode
 
 with BlackmagicOutput() as output:
     # Start with black frame
-    frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+    frame = np.zeros((1080, 1920, 3), dtype=np.float32)
     output.display_static_frame(frame, DisplayMode.HD1080p25)
-    
+
     # Animate
     for i in range(100):
         # Create moving pattern
-        frame.fill(0)
+        frame.fill(0.0)
         offset = i * 10
-        frame[:, offset:offset+100] = [255, 255, 255]  # White bar
+        frame[:, offset:offset+100] = [1.0, 1.0, 1.0]  # White bar
 
         output.update_frame(frame)
         time.sleep(1 / 25)  # Limit update rate (actual rate will be lower due to processing overhead)
 ```
 
-### Example 4: Load Image from File
+### Example 3: Load Image from File
 
 ```python
 import imageio.v3 as iio
@@ -582,7 +554,7 @@ with BlackmagicOutput() as output:
     input("Press Enter to stop...")
 ```
 
-### Example 5: 10-bit Y'CbCr Output with Float Data
+### Example 4: 10-bit Y'CbCr Output with Float Data
 
 ```python
 import numpy as np
@@ -606,7 +578,7 @@ with BlackmagicOutput() as output:
     input("Press Enter to stop...")
 ```
 
-### Example 6: 10-bit Y'CbCr with uint16 Data
+### Example 5: 10-bit Y'CbCr with uint16 Data
 
 ```python
 import numpy as np
@@ -626,7 +598,7 @@ with BlackmagicOutput() as output:
     input("Press Enter to stop...")
 ```
 
-### Example 6a: 10-bit R'G'B' with uint16 Data
+### Example 5a: 10-bit R'G'B' with uint16 Data
 
 ```python
 import numpy as np
@@ -645,7 +617,7 @@ with BlackmagicOutput() as output:
     input("Press Enter to stop...")
 ```
 
-### Example 6b: 10-bit R'G'B' with Float Data (Narrow Range)
+### Example 5b: 10-bit R'G'B' with Float Data (Narrow Range)
 
 ```python
 import numpy as np
@@ -669,7 +641,7 @@ with BlackmagicOutput() as output:
     input("Press Enter to stop...")
 ```
 
-### Example 6c: 10-bit R'G'B' with Float Data (Full Range)
+### Example 5c: 10-bit R'G'B' with Float Data (Full Range)
 
 ```python
 import numpy as np
@@ -690,6 +662,27 @@ with BlackmagicOutput() as output:
         PixelFormat.RGB10,
         output_narrow_range=False  # Full range
     )
+    input("Press Enter to stop...")
+```
+
+### Example 6: 8-bit BGRA Output
+
+For simple applications or quick testing, 8-bit RGB data can be used directly without conversion to float or uint16. Note that 8-bit data is always treated as full range RGB input and output as narrow range 8-bit Y'CbCr 4:2:2 over SDI.
+
+```python
+import numpy as np
+from blackmagic_output import BlackmagicOutput, DisplayMode
+
+# Create 8-bit R'G'B' image (0-255 range, full range)
+frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+
+# Simple gradient
+for x in range(1920):
+    frame[:, x, 0] = int(255 * x / 1920)  # Red gradient
+
+# Output as 8-bit (BGRA format automatically selected for uint8 data)
+with BlackmagicOutput() as output:
+    output.display_static_frame(frame, DisplayMode.HD1080p25)
     input("Press Enter to stop...")
 ```
 
