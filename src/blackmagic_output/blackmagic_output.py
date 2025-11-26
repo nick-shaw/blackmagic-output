@@ -255,7 +255,10 @@ class BlackmagicOutput:
             display_mode: Video resolution and frame rate
             pixel_format: Pixel format (default: YUV10, auto-detected as BGRA for uint8 data)
             matrix: R'G'B' to Y'CbCr conversion matrix (Rec601, Rec709 or Rec2020).
-                   Only applies when pixel_format is YUV10. Default: Rec709
+                   Only applies when pixel_format is YUV10.
+                   If not specified, auto-detects based on resolution:
+                   - SD modes (NTSC, PAL) use Rec.601
+                   - HD and higher use Rec.709
             hdr_metadata: Optional HDR metadata dict with keys:
                          - 'eotf': Eotf enum value (SDR, PQ, or HLG)
                          - 'custom': Optional HdrMetadataCustom object
@@ -283,8 +286,15 @@ class BlackmagicOutput:
         if pixel_format == PixelFormat.YUV10 and frame_data.dtype == np.uint8:
             pixel_format = PixelFormat.BGRA
 
+        # Auto-detect matrix based on display mode if not specified
         if matrix is None:
-            matrix = Matrix.Rec709
+            # SD modes (NTSC, PAL) require Rec.601
+            SD_MODES = {DisplayMode.NTSC, DisplayMode.NTSC2398, DisplayMode.PAL,
+                       DisplayMode.NTSCp, DisplayMode.PALp}
+            if display_mode in SD_MODES:
+                matrix = Matrix.Rec601
+            else:
+                matrix = Matrix.Rec709
 
         self._current_matrix = matrix
         self._current_input_narrow_range = input_narrow_range
@@ -348,7 +358,10 @@ class BlackmagicOutput:
             display_mode: Video resolution and frame rate
             pixel_format: Pixel format (default: YUV10)
             matrix: R'G'B' to Y'CbCr conversion matrix (Rec601, Rec709 or Rec2020).
-                   Only applies when pixel_format is YUV10. Default: Rec709
+                   Only applies when pixel_format is YUV10.
+                   If not specified, auto-detects based on resolution:
+                   - SD modes (NTSC, PAL) use Rec.601
+                   - HD and higher use Rec.709
             hdr_metadata: Optional HDR metadata dict with keys:
                          - 'eotf': Eotf enum value (SDR, PQ, or HLG)
                          - 'custom': Optional HdrMetadataCustom object
