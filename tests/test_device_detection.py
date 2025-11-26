@@ -6,7 +6,7 @@ Tests device enumeration and detection functionality.
 
 import sys
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode, create_test_pattern
+from blackmagic_output import BlackmagicOutput, create_test_pattern
 import decklink_output
 
 def test_device_enumeration():
@@ -34,10 +34,9 @@ def test_display_modes(max_modes=5):
     """
     print("\nTesting available display modes...")
 
-    # Use low-level API to enumerate display modes
-    output = decklink_output.DeckLinkOutput()
+    output = BlackmagicOutput()
+    devices = output.get_available_devices()
 
-    devices = output.get_device_list()
     if not devices:
         print("  No devices available to query display modes")
         return
@@ -46,26 +45,22 @@ def test_display_modes(max_modes=5):
         print(f"\n  Device [{device_idx}]: {device_name}")
 
         # Initialize this device
-        test_output = decklink_output.DeckLinkOutput()
+        test_output = BlackmagicOutput()
         if not test_output.initialize(device_idx):
             print(f"    Could not initialize device")
             continue
 
-        # Iterate through all display modes in the DisplayMode enum
-        # Use a common pixel format (YUV10) to test hardware support
-        supported_modes = []
-        for display_mode in DisplayMode:
-            try:
-                # Get the underlying C++ enum value
-                mode_value = display_mode.value
-                # Use is_pixel_format_supported which queries actual hardware capabilities
-                if test_output.is_pixel_format_supported(mode_value, decklink_output.PixelFormat.YUV10):
-                    settings = test_output.get_video_settings(mode_value)
-                    mode_name = display_mode.name
-                    supported_modes.append(f"{mode_name} ({settings.width}x{settings.height} @ {settings.framerate:.2f}fps)")
-            except Exception:
-                # Skip modes that cause errors
-                continue
+        # Query supported display modes directly from device
+        try:
+            modes = test_output.get_supported_display_modes()
+            supported_modes = [
+                f"{mode['name']} ({mode['width']}x{mode['height']} @ {mode['framerate']:.2f}fps)"
+                for mode in modes
+            ]
+        except Exception as e:
+            print(f"    Error querying display modes: {e}")
+            test_output.cleanup()
+            continue
 
         if supported_modes:
             print(f"    Supported display modes: {len(supported_modes)}")
