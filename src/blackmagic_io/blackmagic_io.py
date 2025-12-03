@@ -749,7 +749,12 @@ class BlackmagicInput:
         return False
 
     def initialize(self, device_index: int = 0) -> bool:
-        """Initialize DeckLink device for input.
+        """Initialize DeckLink device for input and start capture.
+
+        Immediately activates capture mode, which will:
+        - Start accepting input signal
+        - Activate front panel display (if present)
+        - Enable format detection
 
         Args:
             device_index: Index of device to use (default: 0)
@@ -759,7 +764,11 @@ class BlackmagicInput:
         """
         if self._input.initialize(device_index):
             self._initialized = True
-            return True
+            # Start capture immediately so front panel shows signal
+            if self._input.start_capture():
+                self._capturing = True
+                return True
+            return False
         return False
 
     def get_available_devices(self) -> List[str]:
@@ -877,10 +886,10 @@ class BlackmagicInput:
             'rgb': rgb_array,
             'width': captured_frame.width,
             'height': captured_frame.height,
-            'format': pixel_format,
-            'mode': display_mode,
-            'colorspace': colorspace,
-            'eotf': eotf,
+            'format': pixel_format.name,
+            'mode': display_mode.name if display_mode else 'Unknown',
+            'colorspace': colorspace.name,
+            'eotf': eotf.name,
             'input_narrow_range': input_narrow_range
         }
 
@@ -897,8 +906,9 @@ class BlackmagicInput:
 
         try:
             detected = self._input.get_detected_format()
+            mode = DisplayMode(detected.mode)
             return {
-                'mode': DisplayMode(detected.mode),
+                'mode': mode.name,
                 'width': detected.width,
                 'height': detected.height,
                 'framerate': detected.framerate

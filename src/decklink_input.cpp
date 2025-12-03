@@ -313,23 +313,6 @@ void DeckLinkInput::onFormatChanged(IDeckLinkDisplayMode* newDisplayMode, BMDDet
         m_detectedSettings.framerate = (double)timeScale / (double)frameDuration;
 
         m_formatDetected = true;
-
-        std::cout << "Detected format: " << m_detectedSettings.width << "x" << m_detectedSettings.height
-                  << " @ " << m_detectedSettings.framerate << " fps";
-
-        if (detectedSignalFlags & bmdDetectedVideoInputRGB444) {
-            std::cout << " (RGB 4:4:4";
-        } else {
-            std::cout << " (YCbCr 4:2:2";
-        }
-
-        if (detectedSignalFlags & bmdDetectedVideoInput12BitDepth) {
-            std::cout << " 12-bit)" << std::endl;
-        } else if (detectedSignalFlags & bmdDetectedVideoInput10BitDepth) {
-            std::cout << " 10-bit)" << std::endl;
-        } else {
-            std::cout << " 8-bit)" << std::endl;
-        }
     }
 
     m_currentSettings.format = m_detectedSettings.format;

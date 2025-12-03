@@ -20,9 +20,9 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 
 ### Input
 - **Video Capture**: Capture video frames from DeckLink devices
-- **Automatic Format Conversion**: Convert all DeckLink pixel formats to RGB
+- **Automatic Format Conversion**: Convert all DeckLink pixel formats to RGB float
 - **Format Detection**: Automatic detection of input signal format (resolution, frame rate, colorspace, EOTF)
-- **Metadata Access**: Access to format metadata (pixel format, colorspace, EOTF, range)
+- **Metadata Access**: Access to format metadata (pixel format, colorspace, EOTF, source range)
 
 ### General
 - **Cross-Platform**: Works on Windows, macOS, and Linux (this is in theory – only macOS build fully tested so far)
@@ -334,9 +334,14 @@ Get device capabilities (name and supported input/output).
   - `'supports_output'`: True if device can output video
 
 **`initialize(device_index=0) -> bool`**
-Initialize the specified DeckLink device for input.
+Initialize the specified DeckLink device for input and start capture.
 - `device_index`: Index of device to use (default: 0)
 - Returns: True if successful
+
+Immediately activates capture mode, which will:
+- Start accepting input signal
+- Activate front panel display (if present)
+- Enable format detection
 
 **`capture_frame_as_rgb(timeout_ms=5000) -> Optional[np.ndarray]`**
 Capture a single frame and convert to RGB.
