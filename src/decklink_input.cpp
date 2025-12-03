@@ -2,10 +2,18 @@
 #include <iostream>
 #include <cstring>
 #include <chrono>
+#include <thread>
 
 #ifdef __APPLE__
     #include <CoreFoundation/CoreFoundation.h>
 #endif
+
+namespace {
+    constexpr int64_t kEOTF_SDR = 0;
+    constexpr int64_t kEOTF_HDR_Traditional = 1;
+    constexpr int64_t kEOTF_PQ = 2;  // SMPTE ST 2084
+    constexpr int64_t kEOTF_HLG = 3;
+}
 
 class DeckLinkInputCallback : public IDeckLinkInputCallback {
 public:
@@ -83,6 +91,9 @@ DeckLinkInput::DeckLinkInput()
     , m_formatDetected(false)
 {
     m_lastFrame.valid = false;
+    m_lastFrame.hasMetadata = false;
+    m_lastFrame.colorspace = Gamut::Rec709;
+    m_lastFrame.eotf = Eotf::SDR;
 }
 
 DeckLinkInput::~DeckLinkInput()
@@ -166,10 +177,25 @@ bool DeckLinkInput::captureFrame(CapturedFrame& frame, int timeoutMs)
         return false;
     }
 
+    auto startTime = std::chrono::steady_clock::now();
+    auto deadline = startTime + std::chrono::milliseconds(timeoutMs);
+
+    while (!m_formatDetected.load()) {
+        if (std::chrono::steady_clock::now() >= deadline) {
+            std::cerr << "Timeout waiting for format detection" << std::endl;
+            return false;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
     m_frameReceived = false;
 
     std::unique_lock<std::mutex> lock(m_frameMutex);
-    if (!m_frameCondition.wait_for(lock, std::chrono::milliseconds(timeoutMs),
+    auto remainingTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+        deadline - std::chrono::steady_clock::now());
+
+    if (remainingTime.count() <= 0 ||
+        !m_frameCondition.wait_for(lock, remainingTime,
                                    [this] { return m_frameReceived.load(); })) {
         std::cerr << "Timeout waiting for frame" << std::endl;
         return false;
@@ -190,8 +216,53 @@ void DeckLinkInput::onFrameArrived(IDeckLinkVideoInputFrame* videoFrame)
 
     m_lastFrame.width = videoFrame->GetWidth();
     m_lastFrame.height = videoFrame->GetHeight();
-    m_lastFrame.format = m_currentSettings.format;
+    m_lastFrame.format = static_cast<PixelFormat>(videoFrame->GetPixelFormat());
     m_lastFrame.mode = m_currentSettings.mode;
+
+    m_lastFrame.hasMetadata = false;
+    m_lastFrame.colorspace = Gamut::Rec709;
+    m_lastFrame.eotf = Eotf::SDR;
+
+    IDeckLinkVideoFrameMetadataExtensions* metadataExt = nullptr;
+    if (videoFrame->QueryInterface(IID_IDeckLinkVideoFrameMetadataExtensions, (void**)&metadataExt) == S_OK) {
+        int64_t colorspace = 0;
+        int64_t eotf = 0;
+
+        if (metadataExt->GetInt(bmdDeckLinkFrameMetadataColorspace, &colorspace) == S_OK) {
+            m_lastFrame.hasMetadata = true;
+            switch (colorspace) {
+                case bmdColorspaceRec601:
+                    m_lastFrame.colorspace = Gamut::Rec601;
+                    break;
+                case bmdColorspaceRec709:
+                    m_lastFrame.colorspace = Gamut::Rec709;
+                    break;
+                case bmdColorspaceRec2020:
+                    m_lastFrame.colorspace = Gamut::Rec2020;
+                    break;
+            }
+        }
+
+        if (metadataExt->GetInt(bmdDeckLinkFrameMetadataHDRElectroOpticalTransferFunc, &eotf) == S_OK) {
+            m_lastFrame.hasMetadata = true;
+            switch (eotf) {
+                case kEOTF_SDR:
+                    m_lastFrame.eotf = Eotf::SDR;
+                    break;
+                case kEOTF_HDR_Traditional:
+                    m_lastFrame.eotf = Eotf::HDR_Traditional;
+                    break;
+                case kEOTF_PQ:
+                    m_lastFrame.eotf = Eotf::PQ;
+                    break;
+                case kEOTF_HLG:
+                    m_lastFrame.eotf = Eotf::HLG;
+                    break;
+            }
+        }
+
+        metadataExt->Release();
+    }
 
     void* frameBytes;
     if (videoFrame->GetBytes(&frameBytes) == S_OK) {
@@ -262,6 +333,7 @@ void DeckLinkInput::onFormatChanged(IDeckLinkDisplayMode* newDisplayMode, BMDDet
     }
 
     m_currentSettings.format = m_detectedSettings.format;
+    m_currentSettings.mode = m_detectedSettings.mode;
 
     if (m_deckLinkInput) {
         m_deckLinkInput->PauseStreams();

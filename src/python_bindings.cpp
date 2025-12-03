@@ -732,6 +732,7 @@ PYBIND11_MODULE(decklink_output, m) {
 
     py::enum_<DeckLinkOutput::Eotf>(m, "Eotf")
         .value("SDR", DeckLinkOutput::Eotf::SDR)
+        .value("HDR_Traditional", DeckLinkOutput::Eotf::HDR_Traditional)
         .value("PQ", DeckLinkOutput::Eotf::PQ)
         .value("HLG", DeckLinkOutput::Eotf::HLG);
 
@@ -857,6 +858,9 @@ PYBIND11_MODULE(decklink_output, m) {
         .def_readonly("height", &DeckLinkInput::CapturedFrame::height)
         .def_readonly("format", &DeckLinkInput::CapturedFrame::format)
         .def_readonly("mode", &DeckLinkInput::CapturedFrame::mode)
+        .def_readonly("colorspace", &DeckLinkInput::CapturedFrame::colorspace)
+        .def_readonly("eotf", &DeckLinkInput::CapturedFrame::eotf)
+        .def_readonly("has_metadata", &DeckLinkInput::CapturedFrame::hasMetadata)
         .def_readonly("valid", &DeckLinkInput::CapturedFrame::valid);
 
     // Input - DeckLinkInput class

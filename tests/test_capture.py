@@ -41,6 +41,12 @@ if input_device.capture_frame(frame, 10000):  # 10 second timeout
     print(f"  Data size: {len(frame.data)} bytes")
     print(f"  Valid: {frame.valid}")
 
+    print(f"\nFrame metadata:")
+    print(f"  Has metadata: {frame.has_metadata}")
+    if frame.has_metadata:
+        print(f"  Colorspace: {frame.colorspace}")
+        print(f"  EOTF: {frame.eotf}")
+
     # Get detected format
     detected = input_device.get_detected_format()
     print(f"\nDetected format:")

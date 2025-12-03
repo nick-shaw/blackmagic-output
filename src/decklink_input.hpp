@@ -25,6 +25,9 @@ public:
         int height;
         PixelFormat format;
         DisplayMode mode;
+        Gamut colorspace;
+        Eotf eotf;
+        bool hasMetadata;
         bool valid;
     };
 

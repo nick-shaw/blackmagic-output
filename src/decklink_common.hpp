@@ -153,6 +153,7 @@ enum class Gamut {
 
 enum class Eotf {
     SDR = 0,
+    HDR_Traditional = 1,
     PQ = 2,
     HLG = 3
 };
