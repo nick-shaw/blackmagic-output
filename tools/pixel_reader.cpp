@@ -7,7 +7,7 @@
 #ifdef __APPLE__
     #include <pthread.h>
     #include <CoreFoundation/CoreFoundation.h>
-    #include "decklink_sdk/Mac/include/DeckLinkAPI.h"
+    #include "DeckLinkAPI.h"
     typedef int32_t INT32;
     typedef uint32_t UINT32;
     typedef uint8_t UINT8;
@@ -31,8 +31,8 @@
         delete[] buffer;
     }
 #elif defined(__linux__)
-    #include "decklink_sdk/Linux/include/DeckLinkAPI.h"
-    #include "decklink_sdk/Linux/include/LinuxCOM.h"
+    #include "DeckLinkAPI.h"
+    #include "LinuxCOM.h"
     typedef int32_t INT32;
     typedef uint32_t UINT32;
     typedef uint8_t UINT8;
@@ -52,7 +52,7 @@
 #elif defined(_WIN32)
     #include <windows.h>
     #include <comutil.h>
-    #include "decklink_sdk/Win/include/DeckLinkAPI.h"
+    #include "DeckLinkAPI.h"
     typedef int32_t INT32;
     typedef uint32_t UINT32;
     typedef uint8_t UINT8;
@@ -76,6 +76,7 @@ bool doExit = false;
 int counter = 0;
 int x = 960;
 int y = 540;
+bool printHDRMetadata = false;
 BMDPixelFormat currentPixelFormat = bmdFormat10BitYUV;
 
 // Helper function to get pixel format name
@@ -468,6 +469,21 @@ public:
             std::string matrixStr = "";
             std::string eotfStr = "";
 
+            double redX = 0.0, redY = 0.0;
+            double greenX = 0.0, greenY = 0.0;
+            double blueX = 0.0, blueY = 0.0;
+            double whiteX = 0.0, whiteY = 0.0;
+            double maxMasteringLuminance = 0.0;
+            double minMasteringLuminance = 0.0;
+            double maxCLL = 0.0;
+            double maxFALL = 0.0;
+
+            bool hasDisplayPrimaries = false;
+            bool hasWhitePoint = false;
+            bool hasMasteringLuminance = false;
+            bool hasMaxCLL = false;
+            bool hasMaxFALL = false;
+
             if (result == S_OK && metadataExt != NULL) {
                 int64_t colorspace = 0;
                 int64_t eotf = 0;
@@ -511,6 +527,38 @@ public:
                     }
                 }
 
+                if (printHDRMetadata) {
+                    // Get display primaries
+                    if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesRedX, &redX) == S_OK &&
+                        metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesRedY, &redY) == S_OK &&
+                        metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesGreenX, &greenX) == S_OK &&
+                        metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesGreenY, &greenY) == S_OK &&
+                        metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesBlueX, &blueX) == S_OK &&
+                        metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesBlueY, &blueY) == S_OK) {
+                        hasDisplayPrimaries = true;
+                    }
+
+                    // Get white point
+                    if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRWhitePointX, &whiteX) == S_OK &&
+                        metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRWhitePointY, &whiteY) == S_OK) {
+                        hasWhitePoint = true;
+                    }
+
+                    // Get mastering display luminance
+                    if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMaxDisplayMasteringLuminance, &maxMasteringLuminance) == S_OK &&
+                        metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMinDisplayMasteringLuminance, &minMasteringLuminance) == S_OK) {
+                        hasMasteringLuminance = true;
+                    }
+
+                    // Get content light level
+                    if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMaximumContentLightLevel, &maxCLL) == S_OK) {
+                        hasMaxCLL = true;
+                    }
+                    if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMaximumFrameAverageLightLevel, &maxFALL) == S_OK) {
+                        hasMaxFALL = true;
+                    }
+                }
+
                 metadataExt->Release();
             }
 
@@ -545,7 +593,7 @@ public:
             }
 
             if (counter > 1) {
-                int numLines = 2;  // Start with 2 lines (blank + pixel values)
+                int numLines = 2;
 
                 printf("\n%s (%d, %d) = [%d, %d, %d]\x1b[K", pixel.format, x, y, pixel.comp1, pixel.comp2, pixel.comp3);
                 if (!matrixStr.empty() || !eotfStr.empty()) {
@@ -559,7 +607,44 @@ public:
                         printf("EOTF: %s\x1b[K", eotfStr.c_str());
                     }
                 }
-                printf("\n\x1b[%dA", numLines);  // Move cursor up by numLines
+
+                if (printHDRMetadata) {
+                    if (hasDisplayPrimaries) {
+                        printf("\n");
+                        numLines++;
+                        printf("Display Primaries: R(%.4f, %.4f) G(%.4f, %.4f) B(%.4f, %.4f)\x1b[K",
+                               redX, redY, greenX, greenY, blueX, blueY);
+                    }
+
+                    if (hasWhitePoint) {
+                        printf("\n");
+                        numLines++;
+                        printf("White Point: (%.4f, %.4f)\x1b[K", whiteX, whiteY);
+                    }
+
+                    if (hasMasteringLuminance) {
+                        printf("\n");
+                        numLines++;
+                        printf("Mastering Display: Max %.1f cd/m², Min %.4f cd/m²\x1b[K",
+                               maxMasteringLuminance, minMasteringLuminance);
+                    }
+
+                    if (hasMaxCLL || hasMaxFALL) {
+                        printf("\n");
+                        numLines++;
+                        printf("Content Light:");
+                        if (hasMaxCLL) {
+                            printf(" MaxCLL %.1f cd/m²", maxCLL);
+                        }
+                        if (hasMaxFALL) {
+                            if (hasMaxCLL) printf(",");
+                            printf(" MaxFALL %.1f cd/m²", maxFALL);
+                        }
+                        printf("\x1b[K");
+                    }
+                }
+
+                printf("\n\x1b[%dA", numLines);
                 fflush(stdout);
             }
         }
@@ -573,6 +658,7 @@ void print_usage(const char* programName) {
     printf("  -d <index>    Select DeckLink device by index (0-based, default: first with input capability)\n");
     printf("  -i <input>    Select input connection: sdi, hdmi, optical, component, composite, svideo\n");
     printf("                (default: uses currently active input)\n");
+    printf("  -m            Print all HDR metadata (primaries, white point, mastering display, content light)\n");
     printf("  -l            List available DeckLink devices and exit\n");
     printf("  -h            Show this help message\n");
     printf("\nArguments:\n");
@@ -583,6 +669,7 @@ void print_usage(const char* programName) {
     printf("  %s 100 200              # Use first input device, read pixel at (100, 200)\n", programName);
     printf("  %s -d 1 100 200         # Use second device, read pixel at (100, 200)\n", programName);
     printf("  %s -i hdmi              # Use HDMI input\n", programName);
+    printf("  %s -m                   # Print all HDR metadata\n", programName);
     printf("  %s -d 0 -i sdi 100 200  # Use first device, SDI input, pixel at (100, 200)\n", programName);
     printf("  %s -l                   # List all devices\n", programName);
 }
@@ -712,6 +799,9 @@ int main(int argc, char** argv)
                     print_usage(argv[0]);
                     return 1;
                 }
+            } else if (strcmp(argv[argIndex], "-m") == 0) {
+                printHDRMetadata = true;
+                argIndex++;
             } else if (strcmp(argv[argIndex], "-l") == 0) {
                 listDevicesFlag = true;
                 argIndex++;
