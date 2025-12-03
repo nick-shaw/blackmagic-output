@@ -115,6 +115,7 @@ pybind11_add_module(decklink_output
     src/python_bindings.cpp
     src/decklink_common.cpp
     src/decklink_output.cpp
+    src/decklink_input.cpp
     src/decklink_hdr_frame.cpp
     ${DECKLINK_SOURCES}
 )

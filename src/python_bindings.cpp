@@ -2,6 +2,7 @@
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 #include "decklink_output.hpp"
+#include "decklink_input.hpp"
 
 // Windows doesn't have ssize_t, but pybind11/numpy uses it for strides
 #ifdef _WIN32
@@ -848,6 +849,32 @@ PYBIND11_MODULE(decklink_output, m) {
           py::arg("rgb_array"), py::arg("width"), py::arg("height"),
           py::arg("output_narrow_range") = false);
 
+    // Input - CapturedFrame struct
+    py::class_<DeckLinkInput::CapturedFrame>(m, "CapturedFrame")
+        .def(py::init<>())
+        .def_readonly("data", &DeckLinkInput::CapturedFrame::data)
+        .def_readonly("width", &DeckLinkInput::CapturedFrame::width)
+        .def_readonly("height", &DeckLinkInput::CapturedFrame::height)
+        .def_readonly("format", &DeckLinkInput::CapturedFrame::format)
+        .def_readonly("mode", &DeckLinkInput::CapturedFrame::mode)
+        .def_readonly("valid", &DeckLinkInput::CapturedFrame::valid);
+
+    // Input - DeckLinkInput class
+    py::class_<DeckLinkInput>(m, "DeckLinkInput")
+        .def(py::init<>())
+        .def("initialize", &DeckLinkInput::initialize, "Initialize DeckLink device for input",
+             py::arg("device_index") = 0)
+        .def("start_capture", &DeckLinkInput::startCapture, "Start capturing with auto-detected format")
+        .def("capture_frame", &DeckLinkInput::captureFrame, "Capture a single frame",
+             py::arg("frame"), py::arg("timeout_ms") = 5000)
+        .def("stop_capture", &DeckLinkInput::stopCapture, "Stop video capture")
+        .def("cleanup", &DeckLinkInput::cleanup, "Cleanup and release resources")
+        .def("get_detected_format", &DeckLinkInput::getDetectedFormat, "Get the detected video format")
+        .def("get_detected_pixel_format", &DeckLinkInput::getDetectedPixelFormat, "Get the detected pixel format")
+        .def("get_device_list", &DeckLinkInput::getDeviceList, "Get list of DeckLink devices")
+        .def("get_video_settings", &DeckLinkInput::getVideoSettings, "Get video settings for display mode")
+        .def("get_supported_display_modes", &DeckLinkInput::getSupportedDisplayModes, "Get list of supported display modes");
+
     // Version info
-    m.attr("__version__") = "0.15.0b0";
+    m.attr("__version__") = "0.16.0b0";
 }
