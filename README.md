@@ -8,6 +8,7 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 
 ## Features
 
+### Output
 - **Static Frame Output**: Display static images from NumPy arrays
 - **Solid Color Output**: Display solid colors for testing and calibration
 - **Dynamic Updates**: Update currently displayed frame
@@ -16,6 +17,14 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 - **10 and 12-bit R'G'B' output**: 10 and 12-bit R'G'B' 4:4:4
 - **HDR Support**: SMPTE ST 2086 / CEA-861.3 HDR static metadata
 - **Y'CbCr matrix control**: Rec.601 (SD only), Rec.709 (HD+), and Rec.2020 (HD+) matrix support
+
+### Input
+- **Video Capture**: Capture video frames from DeckLink devices
+- **Automatic Format Conversion**: Convert all DeckLink pixel formats to RGB
+- **Format Detection**: Automatic detection of input signal format (resolution, frame rate, colorspace, EOTF)
+- **Metadata Access**: Access to format metadata (pixel format, colorspace, EOTF, range)
+
+### General
 - **Cross-Platform**: Works on Windows, macOS, and Linux (this is in theory – only macOS build fully tested so far)
 
 ## Requirements
@@ -73,6 +82,8 @@ pip install imageio pillow jsonschema
 
 ## Quick Start
 
+### Output Example
+
 ```python
 import numpy as np
 from blackmagic_io import BlackmagicOutput, DisplayMode
@@ -102,12 +113,61 @@ with BlackmagicOutput() as output:
     input("Press Enter to stop...")
 ```
 
+### Input Example
+
+```python
+from blackmagic_io import BlackmagicInput
+
+# Capture a frame from DeckLink input
+with BlackmagicInput() as input_device:
+    # Initialize device (uses first available device)
+    input_device.initialize()
+
+    # Capture frame as RGB float array (0.0-1.0 range)
+    rgb_frame = input_device.capture_frame_as_rgb(timeout_ms=5000)
+
+    if rgb_frame is not None:
+        print(f"Captured frame: {rgb_frame.shape}, dtype: {rgb_frame.dtype}")
+        print(f"Value range: {rgb_frame.min():.3f} - {rgb_frame.max():.3f}")
+        # Process frame data...
+    else:
+        print("No signal or timeout")
+```
+
+**Capture with metadata:**
+
+```python
+from blackmagic_io import BlackmagicInput
+
+with BlackmagicInput() as input_device:
+    input_device.initialize()
+
+    # Capture frame with format information
+    frame_data = input_device.capture_frame_with_metadata(timeout_ms=5000)
+
+    if frame_data is not None:
+        print(f"Resolution: {frame_data['width']}x{frame_data['height']}")
+        print(f"Format: {frame_data['format']}")
+        print(f"Colorspace: {frame_data['colorspace']}")
+        print(f"EOTF: {frame_data['eotf']}")
+        print(f"Narrow range source: {frame_data['input_narrow_range']}")
+
+        # Access RGB data
+        rgb = frame_data['rgb']  # float32 array (H×W×3)
+        # Process frame...
+```
+
 ## API Reference
 
-The library provides two APIs:
+The library provides APIs for both output and input:
 
-1. **High-level Python wrapper** (`blackmagic_io.BlackmagicOutput`) - Convenient API for most cases
-2. **Low-level direct access** (`decklink_io.DeckLinkOutput`) - For more fine-grained control
+**High-level Python wrappers:**
+- `blackmagic_io.BlackmagicOutput` - Convenient API for video output
+- `blackmagic_io.BlackmagicInput` - Convenient API for video capture
+
+**Low-level direct access:**
+- `decklink_io.DeckLinkOutput` - Fine-grained control for output
+- `decklink_io.DeckLinkInput` - Fine-grained control for capture
 
 ### High-Level API: BlackmagicOutput Class
 
@@ -234,6 +294,65 @@ Create test patterns for display testing and calibration.
 - `grad_start`: Float starting value for gradient pattern (default: 0.0, use <0.0 for sub-black)
 - `grad_end`: Float ending value for gradient pattern (default: 1.0, use >1.0 for super-white)
 - Returns: R'G'B' array (H×W×3), dtype float32
+
+### High-Level API: BlackmagicInput Class
+
+Convenient Python wrapper for video capture operations.
+
+#### Methods
+
+**`get_available_devices() -> List[str]`**
+Get list of available DeckLink device names.
+
+**`initialize(device_index=0) -> bool`**
+Initialize the specified DeckLink device for input.
+- `device_index`: Index of device to use (default: 0)
+- Returns: True if successful
+
+**`capture_frame_as_rgb(timeout_ms=5000) -> Optional[np.ndarray]`**
+Capture a single frame and convert to RGB.
+- `timeout_ms`: Timeout in milliseconds (default: 5000)
+- Returns: RGB float32 array (H×W×3) with values 0.0-1.0, or None if timeout/no signal
+- Automatically converts from any DeckLink pixel format to RGB
+- Output is always full range (0.0-1.0)
+
+**`capture_frame_with_metadata(timeout_ms=5000) -> Optional[dict]`**
+Capture a frame with format metadata.
+- `timeout_ms`: Timeout in milliseconds (default: 5000)
+- Returns: Dictionary with frame data and metadata, or None if timeout/no signal
+
+Dictionary keys:
+- `'rgb'`: RGB float32 array (H×W×3), values 0.0-1.0
+- `'width'`: Frame width in pixels
+- `'height'`: Frame height in pixels
+- `'format'`: Pixel format name (e.g., "YUV10", "RGB10")
+- `'mode'`: Display mode name (e.g., "1080p25")
+- `'colorspace'`: Color matrix name (e.g., "Rec709", "Rec2020")
+- `'eotf'`: Transfer function name (e.g., "SDR", "PQ", "HLG")
+- `'input_narrow_range'`: Boolean indicating if input was narrow range
+
+**`get_detected_format() -> Optional[dict]`**
+Get information about the detected input signal.
+- Returns: Dictionary with format information, or None if no signal
+
+Dictionary keys:
+- `'mode'`: Display mode name
+- `'width'`: Frame width in pixels
+- `'height'`: Frame height in pixels
+- `'framerate'`: Frame rate in fps
+
+**`cleanup()`**
+Cleanup resources and stop capture.
+
+**Context Manager Support:**
+```python
+with BlackmagicInput() as input_device:
+    input_device.initialize()
+    # ... use input ...
+# Automatic cleanup() called on exit
+```
+
+The context manager automatically calls `cleanup()` when exiting.
 
 ### Low-Level API: DeckLinkOutput Class
 
