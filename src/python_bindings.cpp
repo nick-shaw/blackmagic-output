@@ -579,6 +579,318 @@ py::array_t<uint8_t> rgb_float_to_rgb12(py::array_t<float> rgb_array, int width,
     return result;
 }
 
+py::array_t<uint16_t> yuv10_to_rgb_uint16(py::array_t<uint8_t> yuv_array, int width, int height, DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709, bool input_narrow_range = true, bool output_narrow_range = false) {
+    auto buf = yuv_array.request();
+
+    if (buf.ndim != 1) {
+        throw std::runtime_error("Input array must be 1D v210 format");
+    }
+
+    long expected_size = ((width + 47) / 48) * 128 * height;
+    if (buf.size < expected_size) {
+        throw std::runtime_error("Input array size too small for v210 format");
+    }
+
+    auto result = py::array_t<uint16_t>({height, width, 3});
+    auto res_buf = result.request();
+
+    const uint32_t* src = static_cast<const uint32_t*>(buf.ptr);
+    uint16_t* dst = static_cast<uint16_t*>(res_buf.ptr);
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x += 6) {
+            int groupIndex = (x / 6) * 4;
+            const uint32_t* group = src + (y * ((width + 5) / 6) * 4) + groupIndex;
+
+            uint32_t d0 = group[0];
+            uint32_t d1 = group[1];
+            uint32_t d2 = group[2];
+            uint32_t d3 = group[3];
+
+            for (int i = 0; i < 6 && (x + i) < width; i++) {
+                uint16_t y_val, cb_val, cr_val;
+
+                switch (i) {
+                    case 0:
+                        y_val = (d0 >> 10) & 0x3FF;
+                        cb_val = d0 & 0x3FF;
+                        cr_val = (d0 >> 20) & 0x3FF;
+                        break;
+                    case 1:
+                        y_val = d1 & 0x3FF;
+                        cb_val = d0 & 0x3FF;
+                        cr_val = (d0 >> 20) & 0x3FF;
+                        break;
+                    case 2:
+                        y_val = (d1 >> 20) & 0x3FF;
+                        cb_val = (d1 >> 10) & 0x3FF;
+                        cr_val = d2 & 0x3FF;
+                        break;
+                    case 3:
+                        y_val = (d2 >> 10) & 0x3FF;
+                        cb_val = (d1 >> 10) & 0x3FF;
+                        cr_val = d2 & 0x3FF;
+                        break;
+                    case 4:
+                        y_val = d3 & 0x3FF;
+                        cb_val = (d2 >> 20) & 0x3FF;
+                        cr_val = (d3 >> 10) & 0x3FF;
+                        break;
+                    case 5:
+                        y_val = (d3 >> 20) & 0x3FF;
+                        cb_val = (d2 >> 20) & 0x3FF;
+                        cr_val = (d3 >> 10) & 0x3FF;
+                        break;
+                }
+
+                float yf, cbf, crf;
+
+                if (input_narrow_range) {
+                    yf = (y_val - 64.0f) / 876.0f;
+                    cbf = (cb_val - 512.0f) / 896.0f;
+                    crf = (cr_val - 512.0f) / 896.0f;
+                } else {
+                    yf = y_val / 1023.0f;
+                    cbf = (cb_val - 512.0f) / 1023.0f;
+                    crf = (cr_val - 512.0f) / 1023.0f;
+                }
+
+                float rf, gf, bf;
+
+                if (matrix == DeckLinkOutput::Gamut::Rec601) {
+                    rf = yf + 1.402f * crf;
+                    gf = yf - 0.344136f * cbf - 0.714136f * crf;
+                    bf = yf + 1.772f * cbf;
+                } else if (matrix == DeckLinkOutput::Gamut::Rec2020) {
+                    rf = yf + 1.4746f * crf;
+                    gf = yf - 0.16455f * cbf - 0.57135f * crf;
+                    bf = yf + 1.8814f * cbf;
+                } else {
+                    rf = yf + 1.5748f * crf;
+                    gf = yf - 0.1873f * cbf - 0.4681f * crf;
+                    bf = yf + 1.8556f * cbf;
+                }
+
+                rf = std::max(0.0f, std::min(1.0f, rf));
+                gf = std::max(0.0f, std::min(1.0f, gf));
+                bf = std::max(0.0f, std::min(1.0f, bf));
+
+                uint16_t r16, g16, b16;
+
+                if (output_narrow_range) {
+                    r16 = (uint16_t)(rf * 876.0f * 64.0f + 64.0f * 64.0f);
+                    g16 = (uint16_t)(gf * 876.0f * 64.0f + 64.0f * 64.0f);
+                    b16 = (uint16_t)(bf * 876.0f * 64.0f + 64.0f * 64.0f);
+                } else {
+                    r16 = (uint16_t)(rf * 65535.0f);
+                    g16 = (uint16_t)(gf * 65535.0f);
+                    b16 = (uint16_t)(bf * 65535.0f);
+                }
+
+                int pixel_idx = (y * width + x + i) * 3;
+                dst[pixel_idx + 0] = r16;
+                dst[pixel_idx + 1] = g16;
+                dst[pixel_idx + 2] = b16;
+            }
+        }
+    }
+
+    return result;
+}
+
+py::array_t<float> yuv10_to_rgb_float(py::array_t<uint8_t> yuv_array, int width, int height, DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709, bool input_narrow_range = true) {
+    auto buf = yuv_array.request();
+
+    if (buf.ndim != 1) {
+        throw std::runtime_error("Input array must be 1D v210 format");
+    }
+
+    long expected_size = ((width + 47) / 48) * 128 * height;
+    if (buf.size < expected_size) {
+        throw std::runtime_error("Input array size too small for v210 format");
+    }
+
+    auto result = py::array_t<float>({height, width, 3});
+    auto res_buf = result.request();
+
+    const uint32_t* src = static_cast<const uint32_t*>(buf.ptr);
+    float* dst = static_cast<float*>(res_buf.ptr);
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x += 6) {
+            int groupIndex = (x / 6) * 4;
+            const uint32_t* group = src + (y * ((width + 5) / 6) * 4) + groupIndex;
+
+            uint32_t d0 = group[0];
+            uint32_t d1 = group[1];
+            uint32_t d2 = group[2];
+            uint32_t d3 = group[3];
+
+            for (int i = 0; i < 6 && (x + i) < width; i++) {
+                uint16_t y_val, cb_val, cr_val;
+
+                switch (i) {
+                    case 0:
+                        y_val = (d0 >> 10) & 0x3FF;
+                        cb_val = d0 & 0x3FF;
+                        cr_val = (d0 >> 20) & 0x3FF;
+                        break;
+                    case 1:
+                        y_val = d1 & 0x3FF;
+                        cb_val = d0 & 0x3FF;
+                        cr_val = (d0 >> 20) & 0x3FF;
+                        break;
+                    case 2:
+                        y_val = (d1 >> 20) & 0x3FF;
+                        cb_val = (d1 >> 10) & 0x3FF;
+                        cr_val = d2 & 0x3FF;
+                        break;
+                    case 3:
+                        y_val = (d2 >> 10) & 0x3FF;
+                        cb_val = (d1 >> 10) & 0x3FF;
+                        cr_val = d2 & 0x3FF;
+                        break;
+                    case 4:
+                        y_val = d3 & 0x3FF;
+                        cb_val = (d2 >> 20) & 0x3FF;
+                        cr_val = (d3 >> 10) & 0x3FF;
+                        break;
+                    case 5:
+                        y_val = (d3 >> 20) & 0x3FF;
+                        cb_val = (d2 >> 20) & 0x3FF;
+                        cr_val = (d3 >> 10) & 0x3FF;
+                        break;
+                }
+
+                float yf, cbf, crf;
+
+                if (input_narrow_range) {
+                    yf = (y_val - 64.0f) / 876.0f;
+                    cbf = (cb_val - 512.0f) / 896.0f;
+                    crf = (cr_val - 512.0f) / 896.0f;
+                } else {
+                    yf = y_val / 1023.0f;
+                    cbf = (cb_val - 512.0f) / 1023.0f;
+                    crf = (cr_val - 512.0f) / 1023.0f;
+                }
+
+                float rf, gf, bf;
+
+                if (matrix == DeckLinkOutput::Gamut::Rec601) {
+                    rf = yf + 1.402f * crf;
+                    gf = yf - 0.344136f * cbf - 0.714136f * crf;
+                    bf = yf + 1.772f * cbf;
+                } else if (matrix == DeckLinkOutput::Gamut::Rec2020) {
+                    rf = yf + 1.4746f * crf;
+                    gf = yf - 0.16455f * cbf - 0.57135f * crf;
+                    bf = yf + 1.8814f * cbf;
+                } else {
+                    rf = yf + 1.5748f * crf;
+                    gf = yf - 0.1873f * cbf - 0.4681f * crf;
+                    bf = yf + 1.8556f * cbf;
+                }
+
+                rf = std::max(0.0f, std::min(1.0f, rf));
+                gf = std::max(0.0f, std::min(1.0f, gf));
+                bf = std::max(0.0f, std::min(1.0f, bf));
+
+                int pixel_idx = (y * width + x + i) * 3;
+                dst[pixel_idx + 0] = rf;
+                dst[pixel_idx + 1] = gf;
+                dst[pixel_idx + 2] = bf;
+            }
+        }
+    }
+
+    return result;
+}
+
+py::dict unpack_v210(py::array_t<uint8_t> yuv_array, int width, int height) {
+    auto buf = yuv_array.request();
+
+    if (buf.ndim != 1) {
+        throw std::runtime_error("Input array must be 1D v210 format");
+    }
+
+    long expected_size = ((width + 47) / 48) * 128 * height;
+    if (buf.size < expected_size) {
+        throw std::runtime_error("Input array size too small for v210 format");
+    }
+
+    auto y_array = py::array_t<uint16_t>({height, width});
+    auto cb_array = py::array_t<uint16_t>({height, width});
+    auto cr_array = py::array_t<uint16_t>({height, width});
+
+    auto y_buf = y_array.request();
+    auto cb_buf = cb_array.request();
+    auto cr_buf = cr_array.request();
+
+    const uint32_t* src = static_cast<const uint32_t*>(buf.ptr);
+    uint16_t* y_dst = static_cast<uint16_t*>(y_buf.ptr);
+    uint16_t* cb_dst = static_cast<uint16_t*>(cb_buf.ptr);
+    uint16_t* cr_dst = static_cast<uint16_t*>(cr_buf.ptr);
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x += 6) {
+            int groupIndex = (x / 6) * 4;
+            const uint32_t* group = src + (y * ((width + 5) / 6) * 4) + groupIndex;
+
+            uint32_t d0 = group[0];
+            uint32_t d1 = group[1];
+            uint32_t d2 = group[2];
+            uint32_t d3 = group[3];
+
+            for (int i = 0; i < 6 && (x + i) < width; i++) {
+                uint16_t y_val, cb_val, cr_val;
+
+                switch (i) {
+                    case 0:
+                        y_val = (d0 >> 10) & 0x3FF;
+                        cb_val = d0 & 0x3FF;
+                        cr_val = (d0 >> 20) & 0x3FF;
+                        break;
+                    case 1:
+                        y_val = d1 & 0x3FF;
+                        cb_val = d0 & 0x3FF;
+                        cr_val = (d0 >> 20) & 0x3FF;
+                        break;
+                    case 2:
+                        y_val = (d1 >> 20) & 0x3FF;
+                        cb_val = (d1 >> 10) & 0x3FF;
+                        cr_val = d2 & 0x3FF;
+                        break;
+                    case 3:
+                        y_val = (d2 >> 10) & 0x3FF;
+                        cb_val = (d1 >> 10) & 0x3FF;
+                        cr_val = d2 & 0x3FF;
+                        break;
+                    case 4:
+                        y_val = d3 & 0x3FF;
+                        cb_val = (d2 >> 20) & 0x3FF;
+                        cr_val = (d3 >> 10) & 0x3FF;
+                        break;
+                    case 5:
+                        y_val = (d3 >> 20) & 0x3FF;
+                        cb_val = (d2 >> 20) & 0x3FF;
+                        cr_val = (d3 >> 10) & 0x3FF;
+                        break;
+                }
+
+                int pixel_idx = y * width + x + i;
+                y_dst[pixel_idx] = y_val;
+                cb_dst[pixel_idx] = cb_val;
+                cr_dst[pixel_idx] = cr_val;
+            }
+        }
+    }
+
+    py::dict result;
+    result["y"] = y_array;
+    result["cb"] = cb_array;
+    result["cr"] = cr_array;
+    return result;
+}
+
 PYBIND11_MODULE(decklink_output, m) {
     m.doc() = "Python bindings for Blackmagic DeckLink video output";
 
@@ -849,6 +1161,23 @@ PYBIND11_MODULE(decklink_output, m) {
           "Convert RGB float numpy array to 12-bit RGB format",
           py::arg("rgb_array"), py::arg("width"), py::arg("height"),
           py::arg("output_narrow_range") = false);
+
+    m.def("yuv10_to_rgb_uint16", &yuv10_to_rgb_uint16,
+          "Convert 10-bit YUV v210 format to RGB uint16 numpy array",
+          py::arg("yuv_array"), py::arg("width"), py::arg("height"),
+          py::arg("matrix") = DeckLinkOutput::Gamut::Rec709,
+          py::arg("input_narrow_range") = true,
+          py::arg("output_narrow_range") = false);
+
+    m.def("yuv10_to_rgb_float", &yuv10_to_rgb_float,
+          "Convert 10-bit YUV v210 format to RGB float numpy array",
+          py::arg("yuv_array"), py::arg("width"), py::arg("height"),
+          py::arg("matrix") = DeckLinkOutput::Gamut::Rec709,
+          py::arg("input_narrow_range") = true);
+
+    m.def("unpack_v210", &unpack_v210,
+          "Unpack 10-bit YUV v210 format to separate Y, Cb, Cr arrays (returns dict with 'y', 'cb', 'cr' keys)",
+          py::arg("yuv_array"), py::arg("width"), py::arg("height"));
 
     // Input - CapturedFrame struct
     py::class_<DeckLinkInput::CapturedFrame>(m, "CapturedFrame")
