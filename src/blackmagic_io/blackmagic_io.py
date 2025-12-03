@@ -214,11 +214,32 @@ class BlackmagicOutput:
     def get_available_devices(self) -> List[str]:
         """
         Get list of available DeckLink devices.
-        
+
         Returns:
             List of device names
         """
         return self._device.get_device_list()
+
+    def get_device_capabilities(self, device_index: int = 0) -> dict:
+        """
+        Get device capabilities (name and supported input/output).
+
+        Args:
+            device_index: Index of device to query (default: 0)
+
+        Returns:
+            Dictionary with:
+            - 'name': Device name
+            - 'supports_input': True if device can capture video
+            - 'supports_output': True if device can output video
+        """
+        import decklink_io as _decklink
+        caps = _decklink.get_device_capabilities(device_index)
+        return {
+            'name': caps.name,
+            'supports_input': caps.supports_input,
+            'supports_output': caps.supports_output
+        }
 
     def is_pixel_format_supported(self, display_mode: DisplayMode,
                                   pixel_format: PixelFormat) -> bool:
@@ -748,6 +769,27 @@ class BlackmagicInput:
             List of device names
         """
         return self._input.get_device_list()
+
+    def get_device_capabilities(self, device_index: int = 0) -> dict:
+        """
+        Get device capabilities (name and supported input/output).
+
+        Args:
+            device_index: Index of device to query (default: 0)
+
+        Returns:
+            Dictionary with:
+            - 'name': Device name
+            - 'supports_input': True if device can capture video
+            - 'supports_output': True if device can output video
+        """
+        import decklink_io as _decklink
+        caps = _decklink.get_device_capabilities(device_index)
+        return {
+            'name': caps.name,
+            'supports_input': caps.supports_input,
+            'supports_output': caps.supports_output
+        }
 
     def capture_frame_as_rgb(self,
                             timeout_ms: int = 5000,

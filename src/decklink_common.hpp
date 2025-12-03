@@ -176,7 +176,15 @@ struct DisplayModeInfo {
     double framerate;
 };
 
+struct DeviceCapabilities {
+    std::string name;
+    bool supports_input;
+    bool supports_output;
+};
+
 std::vector<std::string> getDeviceList();
+
+DeviceCapabilities getDeviceCapabilities(int deviceIndex);
 
 size_t calculateFrameBufferSize(const VideoSettings& settings);
 

@@ -45,7 +45,7 @@ jobs:
 
       - name: Test import
         run: |
-          python -c "import blackmagic_output; print(f'Successfully imported version {blackmagic_output.__version__}')"
+          python -c "import blackmagic_io; print(f'Successfully imported version {blackmagic_io.__version__}')"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

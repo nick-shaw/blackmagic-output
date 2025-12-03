@@ -1826,6 +1826,13 @@ PYBIND11_MODULE(decklink_io, m) {
         .def_readwrite("height", &DeckLinkOutput::DisplayModeInfo::height)
         .def_readwrite("framerate", &DeckLinkOutput::DisplayModeInfo::framerate);
 
+    // DeviceCapabilities struct
+    py::class_<DeckLink::DeviceCapabilities>(m, "DeviceCapabilities")
+        .def(py::init<>())
+        .def_readwrite("name", &DeckLink::DeviceCapabilities::name)
+        .def_readwrite("supports_input", &DeckLink::DeviceCapabilities::supports_input)
+        .def_readwrite("supports_output", &DeckLink::DeviceCapabilities::supports_output);
+
     // Main DeckLinkOutput class
     py::class_<DeckLinkOutput>(m, "DeckLinkOutput")
         .def(py::init<>())
@@ -1854,6 +1861,10 @@ PYBIND11_MODULE(decklink_io, m) {
         .def("get_supported_display_modes", &DeckLinkOutput::getSupportedDisplayModes, "Get list of supported display modes");
 
     // Utility functions
+    m.def("get_device_capabilities", &DeckLink::getDeviceCapabilities,
+          "Get device capabilities (name and supported input/output)",
+          py::arg("device_index") = 0);
+
     m.def("rgb_to_bgra", &rgb_to_bgra,
           "Convert RGB numpy array to BGRA format",
           py::arg("rgb_array"), py::arg("width"), py::arg("height"));

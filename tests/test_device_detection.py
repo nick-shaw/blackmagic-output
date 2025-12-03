@@ -103,7 +103,7 @@ def test_initialization_without_hardware():
     print("\nTesting initialization without hardware...")
 
     # Use low-level API for setup testing without displaying
-    output = decklink_output.DeckLinkOutput()
+    output = decklink_io.DeckLinkOutput()
     success = output.initialize(0)
 
     if not success:
@@ -113,8 +113,8 @@ def test_initialization_without_hardware():
 
         # Test setup without actually starting output
         try:
-            settings = output.get_video_settings(decklink_output.DisplayMode.HD1080p25)
-            settings.format = decklink_output.PixelFormat.YUV10
+            settings = output.get_video_settings(decklink_io.DisplayMode.HD1080p25)
+            settings.format = decklink_io.PixelFormat.YUV10
             settings_success = output.setup_output(settings)
             if settings_success:
                 print("  Setup succeeded!")

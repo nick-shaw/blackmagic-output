@@ -178,6 +178,27 @@ Convenient Python wrapper for most video output operations.
 **`get_available_devices() -> List[str]`**
 Get list of available DeckLink device names.
 
+**`get_device_capabilities(device_index=0) -> dict`**
+Get device capabilities (name and supported input/output).
+- `device_index`: Index of device to query (default: 0)
+- Returns: Dictionary with:
+  - `'name'`: Device name
+  - `'supports_input'`: True if device can capture video
+  - `'supports_output'`: True if device can output video
+
+**Example:**
+```python
+from blackmagic_io import BlackmagicOutput
+
+output = BlackmagicOutput()
+caps = output.get_device_capabilities(0)
+print(f"Device: {caps['name']}")
+print(f"Supports input: {caps['supports_input']}")
+print(f"Supports output: {caps['supports_output']}")
+```
+
+**Note:** Some DeckLink devices are single-direction only (e.g., UltraStudio Monitor 3G supports output only, UltraStudio Recorder 3G supports input only). Use this method to check device capabilities before attempting to use them for input or output.
+
 **`initialize(device_index=0) -> bool`**
 Initialize the specified DeckLink device.
 - `device_index`: Index of device to use (default: 0)
@@ -303,6 +324,14 @@ Convenient Python wrapper for video capture operations.
 
 **`get_available_devices() -> List[str]`**
 Get list of available DeckLink device names.
+
+**`get_device_capabilities(device_index=0) -> dict`**
+Get device capabilities (name and supported input/output).
+- `device_index`: Index of device to query (default: 0)
+- Returns: Dictionary with:
+  - `'name'`: Device name
+  - `'supports_input'`: True if device can capture video
+  - `'supports_output'`: True if device can output video
 
 **`initialize(device_index=0) -> bool`**
 Initialize the specified DeckLink device for input.

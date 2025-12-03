@@ -71,6 +71,83 @@ std::vector<std::string> getDeviceList()
     return devices;
 }
 
+DeviceCapabilities getDeviceCapabilities(int deviceIndex)
+{
+    DeviceCapabilities caps;
+    caps.name = "";
+    caps.supports_input = false;
+    caps.supports_output = false;
+
+    IDeckLinkIterator* deckLinkIterator = CreateDeckLinkIteratorInstance();
+    if (!deckLinkIterator) {
+        return caps;
+    }
+
+    IDeckLink* deckLink = nullptr;
+    int currentIndex = 0;
+
+    // Iterate to the requested device
+    while (deckLinkIterator->Next(&deckLink) == S_OK) {
+        if (currentIndex == deviceIndex) {
+            // Get device name
+#ifdef __APPLE__
+            CFStringRef deviceNameRef = nullptr;
+            if (deckLink->GetDisplayName(&deviceNameRef) == S_OK) {
+                CFIndex length = CFStringGetLength(deviceNameRef);
+                CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+                char* buffer = new char[maxSize];
+
+                if (CFStringGetCString(deviceNameRef, buffer, maxSize, kCFStringEncodingUTF8)) {
+                    caps.name = std::string(buffer);
+                }
+
+                delete[] buffer;
+                CFRelease(deviceNameRef);
+            }
+#elif defined(_WIN32)
+            BSTR deviceNameBSTR = nullptr;
+            if (deckLink->GetDisplayName(&deviceNameBSTR) == S_OK) {
+                _bstr_t bstr(deviceNameBSTR, false);
+                caps.name = std::string((const char*)bstr);
+                SysFreeString(deviceNameBSTR);
+            }
+#else
+            const char* deviceName = nullptr;
+            if (deckLink->GetDisplayName(&deviceName) == S_OK) {
+                caps.name = std::string(deviceName);
+                free((void*)deviceName);
+            }
+#endif
+
+            // Query device attributes
+            IDeckLinkProfileAttributes* attributes = nullptr;
+            if (deckLink->QueryInterface(IID_IDeckLinkProfileAttributes, (void**)&attributes) == S_OK) {
+                int64_t hasInput = 0;
+                int64_t hasOutput = 0;
+
+                if (attributes->GetInt(BMDDeckLinkVideoInputConnections, &hasInput) == S_OK) {
+                    caps.supports_input = (hasInput != 0);
+                }
+
+                if (attributes->GetInt(BMDDeckLinkVideoOutputConnections, &hasOutput) == S_OK) {
+                    caps.supports_output = (hasOutput != 0);
+                }
+
+                attributes->Release();
+            }
+
+            deckLink->Release();
+            break;
+        }
+
+        deckLink->Release();
+        currentIndex++;
+    }
+
+    deckLinkIterator->Release();
+    return caps;
+}
+
 size_t calculateFrameBufferSize(const VideoSettings& settings)
 {
     size_t frameSize;

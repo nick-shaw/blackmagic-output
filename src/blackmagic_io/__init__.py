@@ -27,9 +27,11 @@ try:
         HdrMetadataCustom,
         DisplayModeInfo,
         CapturedFrame,
+        DeviceCapabilities,
         Gamut,
         Eotf as _Eotf,
         Matrix as _Matrix,
+        get_device_capabilities,
     )
     # Import C++ conversion functions with underscore prefix
     from decklink_io import (
@@ -199,10 +201,15 @@ __all__ = [
     "create_test_pattern",
     # Low-level API
     "DeckLinkOutput",
+    "DeckLinkInput",
     "VideoSettings",
     "HdrMetadataCustom",
     "DisplayModeInfo",
+    "CapturedFrame",
+    "DeviceCapabilities",
     "Gamut",
+    # Device utilities
+    "get_device_capabilities",
     # Conversion utilities
     "rgb_to_bgra",
     "rgb_uint16_to_yuv10",
