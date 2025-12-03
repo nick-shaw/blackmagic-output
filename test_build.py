@@ -111,7 +111,7 @@ def main():
 
     # Test import
     if not run_command(
-        f"{sys.executable} -c \"import blackmagic_output; print(f'Successfully imported blackmagic_output version {{blackmagic_output.__version__}}')\"",
+        f"{sys.executable} -c \"import blackmagic_io; print(f'Successfully imported blackmagic_io version {{blackmagic_io.__version__}}')\"",
         "Testing import"
     ):
         print("\n✗ Build test failed at import test")

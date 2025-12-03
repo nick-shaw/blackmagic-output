@@ -5,8 +5,8 @@ Requires a BNC cable connecting output to input on the same device.
 Tests output -> capture -> conversion for all supported pixel formats.
 """
 
-import decklink_output
-from blackmagic_output import create_test_pattern
+import decklink_io
+from blackmagic_io import create_test_pattern
 import numpy as np
 import matplotlib.pyplot as plt
 import time
@@ -35,34 +35,34 @@ def test_pixel_format(output_device, input_device, pixel_format, display_mode, f
     rgb_pattern = create_test_pattern(width, height, pattern='bars') * 0.75
 
     # Convert to appropriate format
-    if pixel_format == decklink_output.PixelFormat.BGRA:
+    if pixel_format == decklink_io.PixelFormat.BGRA:
         # Convert float RGB to BGRA uint8 (hardware converts to YUV8)
         # Use proper rounding for float→uint8 conversion
         rgb_uint8 = np.round(rgb_pattern * 255).astype(np.uint8)
-        frame_data = decklink_output.rgb_to_bgra(
+        frame_data = decklink_io.rgb_to_bgra(
             rgb_uint8,
             width, height
         )
-    elif pixel_format == decklink_output.PixelFormat.YUV10:
+    elif pixel_format == decklink_io.PixelFormat.YUV10:
         # Convert to YUV10
         # Use proper rounding for float→uint16 conversion
         rgb_uint16 = np.round(rgb_pattern * 65535).astype(np.uint16)
-        frame_data = decklink_output.rgb_uint16_to_yuv10(
+        frame_data = decklink_io.rgb_uint16_to_yuv10(
             rgb_uint16, width, height,
-            matrix=decklink_output.Gamut.Rec709,
+            matrix=decklink_io.Gamut.Rec709,
             input_narrow_range=False,
             output_narrow_range=True
         )
-    elif pixel_format == decklink_output.PixelFormat.RGB10:
+    elif pixel_format == decklink_io.PixelFormat.RGB10:
         # Convert to RGB10 with narrow range for exact code values
-        frame_data = decklink_output.rgb_float_to_rgb10(
+        frame_data = decklink_io.rgb_float_to_rgb10(
             rgb_pattern, width, height,
             output_narrow_range=True
         )
-    elif pixel_format == decklink_output.PixelFormat.RGB12:
+    elif pixel_format == decklink_io.PixelFormat.RGB12:
         # Convert to RGB12 using narrow range for exact code values with 75% bars
         # Narrow range: 10-bit (64-940) and 12-bit (256-3760) align perfectly (4x scaling)
-        frame_data = decklink_output.rgb_float_to_rgb12(
+        frame_data = decklink_io.rgb_float_to_rgb12(
             rgb_pattern, width, height,
             output_narrow_range=True
         )
@@ -92,7 +92,7 @@ def test_pixel_format(output_device, input_device, pixel_format, display_mode, f
 
     # Capture frame
     print("Capturing frame...")
-    captured_frame = decklink_output.CapturedFrame()
+    captured_frame = decklink_io.CapturedFrame()
     if not input_device.capture_frame(captured_frame, 10000):
         print(f"ERROR: Failed to capture frame for {format_name}")
         input_device.stop_capture()
@@ -107,41 +107,41 @@ def test_pixel_format(output_device, input_device, pixel_format, display_mode, f
     print(f"  EOTF: {captured_frame.eotf}")
 
     # Convert captured frame to RGB for display
-    if captured_frame.format == decklink_output.PixelFormat.YUV8:
+    if captured_frame.format == decklink_io.PixelFormat.YUV8:
         print("Converting YUV8 to RGB...")
-        rgb_captured = decklink_output.yuv8_to_rgb_float(
+        rgb_captured = decklink_io.yuv8_to_rgb_float(
             np.array(captured_frame.data, dtype=np.uint8),
             captured_frame.width,
             captured_frame.height,
             matrix=captured_frame.colorspace,
             input_narrow_range=True
         )
-    elif captured_frame.format == decklink_output.PixelFormat.YUV10:
+    elif captured_frame.format == decklink_io.PixelFormat.YUV10:
         print("Converting YUV10 to RGB...")
-        rgb_captured = decklink_output.yuv10_to_rgb_float(
+        rgb_captured = decklink_io.yuv10_to_rgb_float(
             np.array(captured_frame.data, dtype=np.uint8),
             captured_frame.width,
             captured_frame.height,
             matrix=captured_frame.colorspace,
             input_narrow_range=True
         )
-    elif captured_frame.format == decklink_output.PixelFormat.RGB10:
+    elif captured_frame.format == decklink_io.PixelFormat.RGB10:
         print("Converting RGB10 to RGB...")
-        rgb_captured = decklink_output.rgb10_to_float(
+        rgb_captured = decklink_io.rgb10_to_float(
             np.array(captured_frame.data, dtype=np.uint8),
             captured_frame.width,
             captured_frame.height,
             input_narrow_range=True
         )
-    elif captured_frame.format == decklink_output.PixelFormat.RGB12:
+    elif captured_frame.format == decklink_io.PixelFormat.RGB12:
         print("Converting RGB12 to RGB...")
-        rgb_captured = decklink_output.rgb12_to_float(
+        rgb_captured = decklink_io.rgb12_to_float(
             np.array(captured_frame.data, dtype=np.uint8),
             captured_frame.width,
             captured_frame.height,
             input_narrow_range=True
         )
-    elif captured_frame.format == decklink_output.PixelFormat.BGRA:
+    elif captured_frame.format == decklink_io.PixelFormat.BGRA:
         print("Converting BGRA to RGB...")
         bgra_data = np.frombuffer(captured_frame.data, dtype=np.uint8).reshape(
             (captured_frame.height, captured_frame.width, 4)
@@ -175,12 +175,12 @@ def test_pixel_format(output_device, input_device, pixel_format, display_mode, f
 
     # For 4:2:2 formats, expect higher chroma error
     is_422 = captured_frame.format in [
-        decklink_output.PixelFormat.YUV8,
-        decklink_output.PixelFormat.YUV10
+        decklink_io.PixelFormat.YUV8,
+        decklink_io.PixelFormat.YUV10
     ]
 
     # Set acceptable thresholds
-    if captured_frame.format == decklink_output.PixelFormat.YUV8:
+    if captured_frame.format == decklink_io.PixelFormat.YUV8:
         # YUV8 (via BGRA→YUV8 hardware conversion) has higher error due to:
         # - 8-bit quantization (256 levels vs 1024/4096 for 10/12-bit)
         # - Hardware conversion may use different rounding/matrix than our YUV→RGB
@@ -245,8 +245,8 @@ def main():
     print("=" * 70)
 
     # Create output and input devices
-    output_device = decklink_output.DeckLinkOutput()
-    input_device = decklink_output.DeckLinkInput()
+    output_device = decklink_io.DeckLinkOutput()
+    input_device = decklink_io.DeckLinkInput()
 
     # Initialize devices (using device 0)
     print("\nInitializing output device...")
@@ -261,14 +261,14 @@ def main():
         return 1
 
     # Use HD1080p25 mode for testing
-    display_mode = decklink_output.DisplayMode.HD1080p25
+    display_mode = decklink_io.DisplayMode.HD1080p25
 
     # Test all formats: BGRA (→YUV8 in hardware), YUV10, RGB10, RGB12
     test_formats = [
-        (decklink_output.PixelFormat.BGRA, "8-bit BGRA (→YUV8)"),
-        (decklink_output.PixelFormat.YUV10, "10-bit YUV (v210)"),
-        (decklink_output.PixelFormat.RGB10, "10-bit RGB (R10l)"),
-        (decklink_output.PixelFormat.RGB12, "12-bit RGB (R12L)"),
+        (decklink_io.PixelFormat.BGRA, "8-bit BGRA (→YUV8)"),
+        (decklink_io.PixelFormat.YUV10, "10-bit YUV (v210)"),
+        (decklink_io.PixelFormat.RGB10, "10-bit RGB (R10l)"),
+        (decklink_io.PixelFormat.RGB12, "12-bit RGB (R12L)"),
     ]
 
     results = []

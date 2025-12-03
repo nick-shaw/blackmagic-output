@@ -6,8 +6,8 @@ Tests device enumeration and detection functionality.
 
 import sys
 import numpy as np
-from blackmagic_output import BlackmagicOutput, create_test_pattern
-import decklink_output
+from blackmagic_io import BlackmagicOutput, create_test_pattern
+import decklink_io
 
 def test_device_enumeration():
     """Test device enumeration"""

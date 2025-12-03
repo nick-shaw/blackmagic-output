@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15...3.27)
-project(blackmagic-output VERSION 0.16.0 LANGUAGES CXX C)
+project(blackmagic-io VERSION 0.16.0 LANGUAGES CXX C)
 
 # Find required packages
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
@@ -111,7 +111,7 @@ if(NOT EXISTS "${DECKLINK_INCLUDE_DIR}")
 endif()
 
 # Create the Python extension module
-pybind11_add_module(decklink_output
+pybind11_add_module(decklink_io
     src/python_bindings.cpp
     src/decklink_common.cpp
     src/decklink_output.cpp
@@ -122,26 +122,26 @@ pybind11_add_module(decklink_output
 
 
 # Set C++ standard
-target_compile_features(decklink_output PRIVATE cxx_std_17)
+target_compile_features(decklink_io PRIVATE cxx_std_17)
 
 # Include directories
-target_include_directories(decklink_output PRIVATE
+target_include_directories(decklink_io PRIVATE
     ${DECKLINK_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 # Link libraries
 if(PLATFORM_LIBS)
-    target_link_libraries(decklink_output PRIVATE ${PLATFORM_LIBS})
+    target_link_libraries(decklink_io PRIVATE ${PLATFORM_LIBS})
 endif()
 
 # Platform-specific compile options
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    target_compile_options(decklink_output PRIVATE -framework CoreFoundation)
-    target_link_options(decklink_output PRIVATE -framework CoreFoundation)
+    target_compile_options(decklink_io PRIVATE -framework CoreFoundation)
+    target_link_options(decklink_io PRIVATE -framework CoreFoundation)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_compile_definitions(decklink_output PRIVATE WIN32_LEAN_AND_MEAN)
+    target_compile_definitions(decklink_io PRIVATE WIN32_LEAN_AND_MEAN)
 endif()
 
 # Install the module
-install(TARGETS decklink_output DESTINATION .)
+install(TARGETS decklink_io DESTINATION .)

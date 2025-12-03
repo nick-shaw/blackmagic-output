@@ -3,7 +3,7 @@
 Test script for checking display mode and pixel format support
 """
 
-from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
+from blackmagic_io import BlackmagicOutput, DisplayMode, PixelFormat
 
 def main():
     output = BlackmagicOutput()

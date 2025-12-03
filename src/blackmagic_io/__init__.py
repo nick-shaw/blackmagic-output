@@ -1,13 +1,13 @@
 """
-Blackmagic DeckLink Output Library
+Blackmagic DeckLink I/O Library
 
-A Python library for outputting video frames to Blackmagic DeckLink devices.
-Supports static frame output, dynamic updates, and HDR.
+A Python library for video I/O with Blackmagic DeckLink devices.
+Supports video output and input, with automatic format conversion.
 """
 
 import numpy as np
 
-from .blackmagic_output import (
+from .blackmagic_io import (
     BlackmagicOutput,
     BlackmagicInput,
     DisplayMode,
@@ -19,18 +19,20 @@ from .blackmagic_output import (
 
 # Re-export low-level API for advanced use
 try:
-    import decklink_output
-    from decklink_output import (
+    import decklink_io
+    from decklink_io import (
         DeckLinkOutput,
+        DeckLinkInput,
         VideoSettings,
         HdrMetadataCustom,
         DisplayModeInfo,
+        CapturedFrame,
         Gamut,
         Eotf as _Eotf,
         Matrix as _Matrix,
     )
     # Import C++ conversion functions with underscore prefix
-    from decklink_output import (
+    from decklink_io import (
         rgb_to_bgra as _rgb_to_bgra,
         rgb_uint16_to_yuv10 as _rgb_uint16_to_yuv10,
         rgb_float_to_yuv10 as _rgb_float_to_yuv10,

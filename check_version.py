@@ -19,7 +19,7 @@ VERSION_FILE_PATTERNS = {
         r'project\([^)]+VERSION\s+(\d+\.\d+\.\d+)',
         "CMakeLists.txt version (base only, no beta suffix)"
     ),
-    "src/blackmagic_output/__init__.py": (
+    "src/blackmagic_io/__init__.py": (
         r'__version__\s*=\s*"([^"]+)"',
         "__init__.py version"
     ),

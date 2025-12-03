@@ -10,8 +10,8 @@ import json
 import sys
 import numpy as np
 
-import blackmagic_output as bmo
-from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
+import blackmagic_io as bmo
+from blackmagic_io import BlackmagicOutput, DisplayMode, PixelFormat
 from tpat.tpat import render_tpat
 
 # Supported display modes. Edit this list to add others, or aliases.

@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 try:
-    from blackmagic_output import rgb_uint16_to_yuv10, rgb_float_to_yuv10, Gamut
+    from blackmagic_io import rgb_uint16_to_yuv10, rgb_float_to_yuv10, Gamut
     CONVERSIONS_AVAILABLE = True
 except ImportError:
     CONVERSIONS_AVAILABLE = False
@@ -265,7 +265,7 @@ class TestRGBtoRGB10Conversions:
         # Narrow range white: 940 @ 10-bit = 60160 @ 16-bit
         rgb = np.full((height, width, 3), 60160, dtype=np.uint16)
 
-        from blackmagic_output import rgb_uint16_to_rgb10
+        from blackmagic_io import rgb_uint16_to_rgb10
 
         rgb10_buffer = rgb_uint16_to_rgb10(rgb, width, height)
 
@@ -285,7 +285,7 @@ class TestRGBtoRGB10Conversions:
         # Full range white: 65535 @ 16-bit
         rgb = np.full((height, width, 3), 65535, dtype=np.uint16)
 
-        from blackmagic_output import rgb_uint16_to_rgb10
+        from blackmagic_io import rgb_uint16_to_rgb10
 
         rgb10_buffer = rgb_uint16_to_rgb10(rgb, width, height,
                                           input_narrow_range=False, output_narrow_range=False)
@@ -305,7 +305,7 @@ class TestRGBtoRGB10Conversions:
         # Full range white: 65535 @ 16-bit
         rgb = np.full((height, width, 3), 65535, dtype=np.uint16)
 
-        from blackmagic_output import rgb_uint16_to_rgb10
+        from blackmagic_io import rgb_uint16_to_rgb10
 
         rgb10_buffer = rgb_uint16_to_rgb10(rgb, width, height,
                                           input_narrow_range=False, output_narrow_range=True)
@@ -325,7 +325,7 @@ class TestRGBtoRGB10Conversions:
         # Narrow range white: 940 @ 10-bit = 60160 @ 16-bit
         rgb = np.full((height, width, 3), 60160, dtype=np.uint16)
 
-        from blackmagic_output import rgb_uint16_to_rgb10
+        from blackmagic_io import rgb_uint16_to_rgb10
 
         rgb10_buffer = rgb_uint16_to_rgb10(rgb, width, height,
                                           input_narrow_range=True, output_narrow_range=False)
@@ -399,7 +399,7 @@ class TestRGBtoRGB12Conversions:
         # Full range white: 65535 @ 16-bit
         rgb = np.full((height, width, 3), 65535, dtype=np.uint16)
 
-        from blackmagic_output import rgb_uint16_to_rgb12
+        from blackmagic_io import rgb_uint16_to_rgb12
 
         rgb12_buffer = rgb_uint16_to_rgb12(rgb, width, height)
 
@@ -415,7 +415,7 @@ class TestRGBtoRGB12Conversions:
         # Full range white: 65535 @ 16-bit
         rgb = np.full((height, width, 3), 65535, dtype=np.uint16)
 
-        from blackmagic_output import rgb_uint16_to_rgb12
+        from blackmagic_io import rgb_uint16_to_rgb12
 
         rgb12_buffer = rgb_uint16_to_rgb12(rgb, width, height,
                                           input_narrow_range=False, output_narrow_range=False)
@@ -432,7 +432,7 @@ class TestRGBtoRGB12Conversions:
         # Full range white: 65535 @ 16-bit
         rgb = np.full((height, width, 3), 65535, dtype=np.uint16)
 
-        from blackmagic_output import rgb_uint16_to_rgb12
+        from blackmagic_io import rgb_uint16_to_rgb12
 
         rgb12_buffer = rgb_uint16_to_rgb12(rgb, width, height,
                                           input_narrow_range=False, output_narrow_range=True)
@@ -449,7 +449,7 @@ class TestRGBtoRGB12Conversions:
         # Narrow range white: 940 @ 10-bit = 60160 @ 16-bit
         rgb = np.full((height, width, 3), 60160, dtype=np.uint16)
 
-        from blackmagic_output import rgb_uint16_to_rgb12
+        from blackmagic_io import rgb_uint16_to_rgb12
 
         rgb12_buffer = rgb_uint16_to_rgb12(rgb, width, height,
                                           input_narrow_range=True, output_narrow_range=False)
@@ -466,7 +466,7 @@ class TestRGBtoRGB12Conversions:
         # Narrow range white: 940 @ 10-bit = 60160 @ 16-bit = 3760 @ 12-bit
         rgb = np.full((height, width, 3), 60160, dtype=np.uint16)
 
-        from blackmagic_output import rgb_uint16_to_rgb12
+        from blackmagic_io import rgb_uint16_to_rgb12
 
         rgb12_buffer = rgb_uint16_to_rgb12(rgb, width, height,
                                           input_narrow_range=True, output_narrow_range=True)
@@ -482,7 +482,7 @@ class TestRGBtoRGB12Conversions:
         width, height = 16, 2
         rgb = np.full((height, width, 3), 1.0, dtype=np.float32)
 
-        from blackmagic_output import rgb_float_to_rgb12
+        from blackmagic_io import rgb_float_to_rgb12
 
         rgb12_buffer = rgb_float_to_rgb12(rgb, width, height)
 
@@ -497,7 +497,7 @@ class TestRGBtoRGB12Conversions:
         width, height = 16, 2
         rgb = np.full((height, width, 3), 1.0, dtype=np.float32)
 
-        from blackmagic_output import rgb_float_to_rgb12
+        from blackmagic_io import rgb_float_to_rgb12
 
         rgb12_buffer = rgb_float_to_rgb12(rgb, width, height, output_narrow_range=True)
 

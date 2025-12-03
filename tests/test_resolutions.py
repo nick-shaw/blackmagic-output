@@ -2,7 +2,7 @@
 """Test dynamic resolution support by outputting test images in various resolutions"""
 
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode
+from blackmagic_io import BlackmagicOutput, DisplayMode
 import time
 
 # Test getting info for different resolutions

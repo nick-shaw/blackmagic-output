@@ -1,8 +1,8 @@
 """
-Blackmagic DeckLink Output Library
+Blackmagic DeckLink I/O Library
 
-A Python library for outputting video frames to Blackmagic DeckLink devices.
-Supports static frame output from NumPy arrays.
+A Python library for video I/O with Blackmagic DeckLink devices.
+Supports video output and input with automatic format conversion.
 """
 
 import numpy as np
@@ -10,10 +10,10 @@ from typing import Optional, Tuple, List
 from enum import Enum
 
 try:
-    import decklink_output as _decklink
+    import decklink_io as _decklink
 except ImportError:
     raise ImportError(
-        "DeckLink output module not found. Please build and install the C++ extension first. "
+        "DeckLink I/O module not found. Please build and install the C++ extension first. "
         "Run: pip install -e ."
     )
 

@@ -6,9 +6,9 @@ requires = [
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "blackmagic-output"
+name = "blackmagic-io"
 version = "0.16.0b0"
-description = "Python library for outputting video frames to Blackmagic DeckLink devices"
+description = "Python library for video I/O with Blackmagic DeckLink devices"
 readme = "README.md"
 requires-python = ">=3.7"
 authors = [
@@ -17,7 +17,7 @@ authors = [
 maintainers = [
     {name = "Nick Shaw", email = "nick@antlerpost.com"}
 ]
-keywords = ["blackmagic", "decklink", "video", "output", "sdi", "hdmi", "broadcast"]
+keywords = ["blackmagic", "decklink", "video", "output", "input", "io", "sdi", "hdmi", "broadcast"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",

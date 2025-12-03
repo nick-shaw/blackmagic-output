@@ -8,7 +8,7 @@ in 10-bit RGB format with both video range and full range mappings.
 
 import numpy as np
 import time
-from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
+from blackmagic_io import BlackmagicOutput, DisplayMode, PixelFormat
 
 
 def create_colorbars_float(width, height):

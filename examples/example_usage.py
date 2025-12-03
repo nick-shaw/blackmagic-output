@@ -11,7 +11,7 @@ This example demonstrates how to:
 
 import numpy as np
 import time
-from blackmagic_output import BlackmagicOutput, DisplayMode, create_test_pattern
+from blackmagic_io import BlackmagicOutput, DisplayMode, create_test_pattern
 
 def example_static_frame():
     """Example: Display a static frame from NumPy array"""

@@ -1620,8 +1620,8 @@ py::dict unpack_rgb12(py::array_t<uint8_t> rgb_array, int width, int height) {
     return result;
 }
 
-PYBIND11_MODULE(decklink_output, m) {
-    m.doc() = "Python bindings for Blackmagic DeckLink video output";
+PYBIND11_MODULE(decklink_io, m) {
+    m.doc() = "Python bindings for Blackmagic DeckLink video I/O";
 
     // Enums
     py::enum_<DeckLinkOutput::PixelFormat>(m, "PixelFormat")

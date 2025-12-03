@@ -7,21 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.16.0b0] - 2025-12-03
 
+### Added
+- **Video capture support**: New `BlackmagicInput` class for capturing video from DeckLink devices
+  - `capture_frame_as_rgb()`: Capture and convert to RGB float array
+  - `capture_frame_with_metadata()`: Capture with format metadata (resolution, colorspace, EOTF, etc.)
+  - `get_detected_format()`: Query detected input signal format
+  - Automatic format conversion from all DeckLink pixel formats to RGB
+  - Context manager support for automatic resource cleanup
+- Low-level `DeckLinkInput` C++ class for direct capture control
+- `CapturedFrame` data structure containing frame data and metadata
+
 ### Changed
-- **Internal refactoring**: Restructured C++ codebase to prepare for input/capture support
+- **BREAKING**: Library renamed from `blackmagic-output` to `blackmagic-io` to reflect input/output support
+  - Python package: `blackmagic_output` → `blackmagic_io`
+  - C++ module: `decklink_output` → `decklink_io`
+  - Import statements must be updated: `from blackmagic_io import ...` and `import decklink_io`
+- **Internal refactoring**: Restructured C++ codebase to support both input and output
   - Extracted shared code into `decklink_common.{hpp,cpp}` (device enumeration, format definitions, utility functions)
   - Renamed `decklink_wrapper.{hpp,cpp}` to `decklink_output.{hpp,cpp}` for clarity
+  - Added `decklink_input.{hpp,cpp}` for capture functionality
   - Consolidated platform-specific implementations (macOS, Windows, Linux) into unified source files
-  - No API changes - all existing functionality preserved and tested
+
+### Fixed
+- **RGB10 and RGB12 rounding**: Fixed rounding errors in float to 10-bit and 12-bit RGB conversions
+  - Now uses proper rounding (add 0.5 before truncation) instead of truncation
+  - Ensures correct code values, especially at boundaries (e.g., 0.5 → 512 not 511 for 10-bit)
 
 ### Removed
 - Removed internal platform-specific wrapper files (`decklink_wrapper_mac.cpp`)
   - Functionality consolidated into `decklink_output.cpp`
 
 ### Notes
-- No breaking changes to the Python API
-- All tests pass (device detection, format support, conversions, metadata, diagnostics)
-- This refactoring lays the groundwork for future input/capture functionality
+- Breaking change: Update import statements when upgrading
+- All existing output functionality preserved and tested
+- All tests pass (device detection, format support, conversions, metadata, diagnostics, loopback)
 
 ## [0.15.0b0] - 2025-01-22
 
@@ -98,7 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - **BREAKING**: Removed `setup_output()` method from high-level API (`BlackmagicOutput`)
   - The method had no practical use case - `display_static_frame()` and `display_solid_color()` handle setup automatically
-  - For applications that need to setup output without displaying (e.g., testing), use the low-level API (`decklink_output.DeckLinkOutput`)
+  - For applications that need to setup output without displaying (e.g., testing), use the low-level API (`decklink_io.DeckLinkOutput`)
   - Tests updated to use low-level API for setup-only operations
 
 ## [0.11.0-beta] - 2025-01-12

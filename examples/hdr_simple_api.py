@@ -10,7 +10,7 @@ import sys
 import numpy as np
 sys.path.insert(0, '../src')
 
-import blackmagic_output as bmo
+import blackmagic_io as bmo
 
 def main():
     # Create output instance
@@ -70,7 +70,7 @@ def example_with_custom_metadata():
     frame = np.ones((height, width, 3), dtype=np.float32) * 0.5
 
     # Create custom HDR metadata
-    import decklink_output as dl
+    import decklink_io as dl
     custom = dl.HdrMetadataCustom()
     custom.display_primaries_red_x = 0.68
     custom.display_primaries_red_y = 0.32

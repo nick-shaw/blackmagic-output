@@ -1,6 +1,6 @@
-# Blackmagic DeckLink Python Output Library
+# Blackmagic DeckLink Python I/O Library
 
-A Python library for outputting video frames to Blackmagic DeckLink devices using the official DeckLink SDK. This library provides a simple interface for displaying static frames, solid colors, and dynamic content from NumPy arrays.
+A Python library for video I/O with Blackmagic DeckLink devices using the official DeckLink SDK. This library provides a simple interface for displaying static frames, solid colors, and dynamic content from NumPy arrays, as well as for capturing frames to NumPy arrays.
 
 Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](https://www.claude.com/product/claude-code)!
 
@@ -49,8 +49,8 @@ The build system (CMake + scikit-build-core) automatically uses the correct plat
 
 ```bash
 # Clone or download the library files
-git clone https://github.com/nick-shaw/blackmagic-output.git
-cd blackmagic-output
+git clone https://github.com/nick-shaw/blackmagic-io.git
+cd blackmagic-io
 
 # Initialize submodules (required for advanced example using T-Pat test patterns)
 git submodule update --init --recursive
@@ -75,7 +75,7 @@ pip install imageio pillow jsonschema
 
 ```python
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode
+from blackmagic_io import BlackmagicOutput, DisplayMode
 
 # Create a simple test image (1080p R'G'B', normalized float)
 frame = np.ones((1080, 1920, 3), dtype=np.float32)
@@ -106,8 +106,8 @@ with BlackmagicOutput() as output:
 
 The library provides two APIs:
 
-1. **High-level Python wrapper** (`blackmagic_output.BlackmagicOutput`) - Convenient API for most cases
-2. **Low-level direct access** (`decklink_output.DeckLinkOutput`) - For more fine-grained control
+1. **High-level Python wrapper** (`blackmagic_io.BlackmagicOutput`) - Convenient API for most cases
+2. **Low-level direct access** (`decklink_io.DeckLinkOutput`) - For more fine-grained control
 
 ### High-Level API: BlackmagicOutput Class
 
@@ -141,7 +141,7 @@ Get list of supported display modes for the initialized device.
 
 **Example:**
 ```python
-from blackmagic_output import BlackmagicOutput
+from blackmagic_io import BlackmagicOutput
 
 with BlackmagicOutput() as output:
     output.initialize()
@@ -410,14 +410,14 @@ The library supports all display modes available on your DeckLink device. Displa
 - `HD720p50`: 1280×720 @ 50fps
 - `HD720p60`: 1280×720 @ 60fps
 
-Additional modes are available including SD (NTSC, PAL), 2K, 4K, 8K, and PC display modes. The complete list of DisplayMode values can be found in `src/blackmagic_output/blackmagic_output.py`.
+Additional modes are available including SD (NTSC, PAL), 2K, 4K, 8K, and PC display modes. The complete list of DisplayMode values can be found in `src/blackmagic_io/blackmagic_io.py`.
 
 **Querying Available Display Modes:**
 
 You can query which display modes are supported by your specific DeckLink device using `get_supported_display_modes()`:
 
 ```python
-from blackmagic_output import BlackmagicOutput
+from blackmagic_io import BlackmagicOutput
 
 with BlackmagicOutput() as output:
     output.initialize()
@@ -432,7 +432,7 @@ with BlackmagicOutput() as output:
 To determine which pixel formats are supported for a specific display mode, use `is_pixel_format_supported()`:
 
 ```python
-from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
+from blackmagic_io import BlackmagicOutput, DisplayMode, PixelFormat
 
 with BlackmagicOutput() as output:
     output.initialize()
@@ -492,7 +492,7 @@ The `output_narrow_range` parameter controls the **actual encoded values** in th
 ### Example 1: Color Bars Test Pattern
 
 ```python
-from blackmagic_output import BlackmagicOutput, DisplayMode, create_test_pattern
+from blackmagic_io import BlackmagicOutput, DisplayMode, create_test_pattern
 
 # Create color bars test pattern
 frame = create_test_pattern(1920, 1080, 'bars')
@@ -508,7 +508,7 @@ with BlackmagicOutput() as output:
 ```python
 import numpy as np
 import time
-from blackmagic_output import BlackmagicOutput, DisplayMode
+from blackmagic_io import BlackmagicOutput, DisplayMode
 
 with BlackmagicOutput() as output:
     # Start with black frame
@@ -531,7 +531,7 @@ with BlackmagicOutput() as output:
 ```python
 import imageio.v3 as iio
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode
+from blackmagic_io import BlackmagicOutput, DisplayMode
 
 # Load image (preserves bit depth for 16-bit TIFFs, etc.)
 # Note: Use TIFF for reliable 16-bit support (PNGs may convert to 8-bit)
@@ -558,7 +558,7 @@ with BlackmagicOutput() as output:
 
 ```python
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode
+from blackmagic_io import BlackmagicOutput, DisplayMode
 
 # Create float R'G'B' image (0.0-1.0 range)
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
@@ -582,7 +582,7 @@ with BlackmagicOutput() as output:
 
 ```python
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode
+from blackmagic_io import BlackmagicOutput, DisplayMode
 
 # Create uint16 R'G'B' image (0-65535 range)
 # Useful for 10-bit / 12-bit / 16-bit image processing pipelines
@@ -602,7 +602,7 @@ with BlackmagicOutput() as output:
 
 ```python
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
+from blackmagic_io import BlackmagicOutput, DisplayMode, PixelFormat
 
 # Create uint16 R'G'B' image (0-65535 range)
 frame = np.zeros((1080, 1920, 3), dtype=np.uint16)
@@ -621,7 +621,7 @@ with BlackmagicOutput() as output:
 
 ```python
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
+from blackmagic_io import BlackmagicOutput, DisplayMode, PixelFormat
 
 # Create float R'G'B' image (0.0-1.0 range)
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
@@ -645,7 +645,7 @@ with BlackmagicOutput() as output:
 
 ```python
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat
+from blackmagic_io import BlackmagicOutput, DisplayMode, PixelFormat
 
 # Create float R'G'B' image (0.0-1.0 range)
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
@@ -671,7 +671,7 @@ For simple applications or quick testing, 8-bit RGB data can be used directly wi
 
 ```python
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode
+from blackmagic_io import BlackmagicOutput, DisplayMode
 
 # Create 8-bit R'G'B' image (0-255 range, full range)
 frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
@@ -690,7 +690,7 @@ with BlackmagicOutput() as output:
 
 ```python
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode, Matrix, Eotf
+from blackmagic_io import BlackmagicOutput, DisplayMode, Matrix, Eotf
 
 # Create HDR content in normalised float (0.0-1.0 range)
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
@@ -722,7 +722,7 @@ with BlackmagicOutput() as output:
 
 ```python
 import numpy as np
-import decklink_output as dl
+import decklink_io as dl
 
 # Create HDR content
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
@@ -755,7 +755,7 @@ output.cleanup()
 
 ```python
 import numpy as np
-from blackmagic_output import BlackmagicOutput, DisplayMode, Matrix, Eotf
+from blackmagic_io import BlackmagicOutput, DisplayMode, Matrix, Eotf
 
 # Create HDR10 content with PQ transfer function applied
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
@@ -782,7 +782,7 @@ with BlackmagicOutput() as output:
 
 ```python
 import numpy as np
-import decklink_output as dl
+import decklink_io as dl
 
 # Create HDR10 content
 frame = np.zeros((1080, 1920, 3), dtype=np.float32)
@@ -818,7 +818,7 @@ The `display_solid_color()` method supports displaying color patches smaller tha
 
 ```python
 import time
-from blackmagic_output import BlackmagicOutput, DisplayMode
+from blackmagic_io import BlackmagicOutput, DisplayMode
 
 with BlackmagicOutput() as output:
     # Full screen white (default behavior)
@@ -921,8 +921,8 @@ Max Frame Average Light Level: 50 nits
 **High-level API:**
 
 ```python
-from blackmagic_output import BlackmagicOutput, DisplayMode, PixelFormat, Matrix, Eotf
-import decklink_output as dl
+from blackmagic_io import BlackmagicOutput, DisplayMode, PixelFormat, Matrix, Eotf
+import decklink_io as dl
 
 # Create custom metadata
 custom = dl.HdrMetadataCustom()
@@ -950,7 +950,7 @@ with BlackmagicOutput() as output:
 For precise control over HDR metadata with the low-level API, use `set_hdr_metadata_custom()`:
 
 ```python
-import decklink_output as dl
+import decklink_io as dl
 
 # Create custom metadata for specific mastering display
 custom = dl.HdrMetadataCustom()
@@ -1118,7 +1118,7 @@ The Blackmagic DeckLink SDK is © Blackmagic Design Pty. Ltd. All rights reserve
 
 ## Support
 
-- Check the [Issues](https://github.com/nick-shaw/blackmagic-output/issues) page for known problems
+- Check the [Issues](https://github.com/nick-shaw/blackmagic-io/issues) page for known problems
 - Review Blackmagic's official DeckLink SDK documentation
 - Ensure your DeckLink device is supported by the SDK version
 
