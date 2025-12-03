@@ -1,7 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
-#include "decklink_wrapper.hpp"
+#include "decklink_output.hpp"
 
 // Windows doesn't have ssize_t, but pybind11/numpy uses it for strides
 #ifdef _WIN32

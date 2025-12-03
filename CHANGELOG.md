@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0b0] - 2025-12-03
+
+### Changed
+- **Internal refactoring**: Restructured C++ codebase to prepare for input/capture support
+  - Extracted shared code into `decklink_common.{hpp,cpp}` (device enumeration, format definitions, utility functions)
+  - Renamed `decklink_wrapper.{hpp,cpp}` to `decklink_output.{hpp,cpp}` for clarity
+  - Consolidated platform-specific implementations (macOS, Windows, Linux) into unified source files
+  - No API changes - all existing functionality preserved and tested
+
+### Removed
+- Removed internal platform-specific wrapper files (`decklink_wrapper_mac.cpp`)
+  - Functionality consolidated into `decklink_output.cpp`
+
+### Notes
+- No breaking changes to the Python API
+- All tests pass (device detection, format support, conversions, metadata, diagnostics)
+- This refactoring lays the groundwork for future input/capture functionality
+
 ## [0.15.0b0] - 2025-01-22
 
 ### Added

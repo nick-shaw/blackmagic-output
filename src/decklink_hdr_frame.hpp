@@ -1,7 +1,7 @@
 #pragma once
 
 #include <atomic>
-#include "decklink_wrapper.hpp"
+#include "decklink_output.hpp"
 
 #ifdef _WIN32
     #include <windows.h>

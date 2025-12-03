@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15...3.27)
-project(blackmagic-output VERSION 0.15.0 LANGUAGES CXX C)
+project(blackmagic-output VERSION 0.16.0 LANGUAGES CXX C)
 
 # Find required packages
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
@@ -14,14 +14,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(DECKLINK_INCLUDE_DIR "${DECKLINK_SDK_PATH}/include")
     set(DECKLINK_SOURCES "${DECKLINK_INCLUDE_DIR}/DeckLinkAPIDispatch.cpp")
     set(PLATFORM_LIBS "-framework CoreFoundation")
-    set(WRAPPER_SOURCE "src/decklink_wrapper_mac.cpp")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # Linux
     set(DECKLINK_SDK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_vendor/decklink_sdk/Linux")
     set(DECKLINK_INCLUDE_DIR "${DECKLINK_SDK_PATH}/include")
     set(DECKLINK_SOURCES "${DECKLINK_INCLUDE_DIR}/DeckLinkAPIDispatch.cpp")
     set(PLATFORM_LIBS pthread dl)
-    set(WRAPPER_SOURCE "src/decklink_wrapper.cpp")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     # Windows
     set(DECKLINK_SDK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/_vendor/decklink_sdk/Win")
@@ -103,7 +101,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(DECKLINK_INCLUDE_DIR "${DECKLINK_GENERATED_DIR}")
     set(DECKLINK_SOURCES "${DECKLINK_GENERATED_DIR}/DeckLinkAPI_i.c")
     set(PLATFORM_LIBS ole32 oleaut32 comsuppw)
-    set(WRAPPER_SOURCE "src/decklink_wrapper.cpp")
 else()
     message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif()
@@ -116,7 +113,8 @@ endif()
 # Create the Python extension module
 pybind11_add_module(decklink_output
     src/python_bindings.cpp
-    ${WRAPPER_SOURCE}
+    src/decklink_common.cpp
+    src/decklink_output.cpp
     src/decklink_hdr_frame.cpp
     ${DECKLINK_SOURCES}
 )

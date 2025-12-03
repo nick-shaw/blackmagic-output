@@ -1,8 +1,11 @@
-#include "decklink_wrapper.hpp"
+#include "decklink_output.hpp"
 #include "decklink_hdr_frame.hpp"
 #include <iostream>
 #include <cstring>
-#include <CoreFoundation/CoreFoundation.h>
+
+#ifdef __APPLE__
+    #include <CoreFoundation/CoreFoundation.h>
+#endif
 
 DeckLinkOutput::DeckLinkOutput()
     : m_deckLink(nullptr)
@@ -24,13 +27,12 @@ DeckLinkOutput::~DeckLinkOutput()
 
 bool DeckLinkOutput::initialize(int deviceIndex)
 {
-    IDeckLinkIterator* deckLinkIterator = CreateDeckLinkIteratorInstance();
+    IDeckLinkIterator* deckLinkIterator = DeckLink::CreateDeckLinkIteratorInstance();
     if (!deckLinkIterator) {
         std::cerr << "Could not create DeckLink iterator" << std::endl;
         return false;
     }
 
-    // Get the specified device
     IDeckLink* deckLink = nullptr;
     for (int i = 0; i <= deviceIndex; i++) {
         if (deckLink) {
@@ -44,16 +46,14 @@ bool DeckLinkOutput::initialize(int deviceIndex)
     }
 
     deckLinkIterator->Release();
-    
+
     m_deckLink = deckLink;
 
-    // Get output interface
     if (m_deckLink->QueryInterface(IID_IDeckLinkOutput, (void**)&m_deckLinkOutput) != S_OK) {
         std::cerr << "Could not get IDeckLinkOutput interface" << std::endl;
         return false;
     }
 
-    // Get configuration interface
     if (m_deckLink->QueryInterface(IID_IDeckLinkConfiguration, (void**)&m_deckLinkConfiguration) != S_OK) {
         std::cerr << "Could not get IDeckLinkConfiguration interface" << std::endl;
         return false;
@@ -71,7 +71,6 @@ bool DeckLinkOutput::setupOutput(const VideoSettings& settings)
 
     m_currentSettings = settings;
 
-    // Get display mode iterator and find the mode
     IDeckLinkDisplayModeIterator* displayModeIterator = nullptr;
     if (m_deckLinkOutput->GetDisplayModeIterator(&displayModeIterator) != S_OK) {
         std::cerr << "Could not get display mode iterator" << std::endl;
@@ -80,7 +79,7 @@ bool DeckLinkOutput::setupOutput(const VideoSettings& settings)
 
     IDeckLinkDisplayMode* displayMode = nullptr;
     bool modeFound = false;
-    
+
     while (displayModeIterator->Next(&displayMode) == S_OK) {
         BMDDisplayMode mode = displayMode->GetDisplayMode();
         if (mode == static_cast<BMDDisplayMode>(settings.mode)) {
@@ -91,7 +90,7 @@ bool DeckLinkOutput::setupOutput(const VideoSettings& settings)
         }
         displayMode->Release();
     }
-    
+
     displayModeIterator->Release();
 
     if (!modeFound) {
@@ -99,27 +98,19 @@ bool DeckLinkOutput::setupOutput(const VideoSettings& settings)
         return false;
     }
 
-    // Configure RGB 4:4:4 mode if using RGB formats
     if (m_deckLinkConfiguration) {
         if (settings.format == PixelFormat::Format10BitRGB || settings.format == PixelFormat::Format12BitRGB) {
-            if (m_deckLinkConfiguration->SetFlag(bmdDeckLinkConfig444SDIVideoOutput, true) != S_OK) {
-                std::cerr << "Warning: Could not set RGB 4:4:4 mode" << std::endl;
-            }
+            m_deckLinkConfiguration->SetFlag(bmdDeckLinkConfig444SDIVideoOutput, true);
         } else {
-            // Set YCbCr 4:2:2 mode for non-RGB formats
-            if (m_deckLinkConfiguration->SetFlag(bmdDeckLinkConfig444SDIVideoOutput, false) != S_OK) {
-                std::cerr << "Warning: Could not set YCbCr 4:2:2 mode" << std::endl;
-            }
+            m_deckLinkConfiguration->SetFlag(bmdDeckLinkConfig444SDIVideoOutput, false);
         }
     }
 
-    // If already enabled with a different mode, disable first
     if (m_outputEnabled && m_currentSettings.mode != settings.mode) {
         m_deckLinkOutput->DisableVideoOutput();
         m_outputEnabled = false;
     }
 
-    // Enable video output only if not already enabled
     if (!m_outputEnabled) {
         if (m_deckLinkOutput->EnableVideoOutput(static_cast<BMDDisplayMode>(settings.mode),
                                                bmdVideoOutputFlagDefault) != S_OK) {
@@ -129,32 +120,9 @@ bool DeckLinkOutput::setupOutput(const VideoSettings& settings)
         m_outputEnabled = true;
     }
 
-    // Calculate frame buffer size
-    size_t frameSize;
-    switch (settings.format) {
-        case PixelFormat::Format8BitBGRA:
-            frameSize = settings.width * settings.height * 4;
-            break;
-        case PixelFormat::Format10BitYUV:
-            // v210 format: 6 pixels in 4 32-bit words (16 bytes)
-            frameSize = ((settings.width + 5) / 6) * 16 * settings.height;
-            break;
-        case PixelFormat::Format10BitRGB:
-            // bmdFormat10BitRGBXLE: 4 bytes per pixel
-            frameSize = settings.width * settings.height * 4;
-            break;
-        case PixelFormat::Format12BitRGB:
-            // bmdFormat12BitRGBLE: 36 bits per pixel, 8 pixels in 36 bytes
-            frameSize = ((settings.width + 7) / 8) * 36 * settings.height;
-            break;
-        case PixelFormat::Format8BitYUV:
-        default:
-            frameSize = settings.width * settings.height * 2;
-            break;
-    }
-
+    size_t frameSize = DeckLink::calculateFrameBufferSize(settings);
     m_frameBuffer.resize(frameSize);
-    
+
     return true;
 }
 
@@ -181,15 +149,12 @@ bool DeckLinkOutput::createFrame(IDeckLinkMutableVideoFrame** frame)
             rowBytes = m_currentSettings.width * 4;
             break;
         case PixelFormat::Format10BitYUV:
-            // v210 format: 6 pixels in 4 32-bit words (16 bytes)
             rowBytes = ((m_currentSettings.width + 5) / 6) * 16;
             break;
         case PixelFormat::Format10BitRGB:
-            // bmdFormat10BitRGBXLE: 4 bytes per pixel
             rowBytes = m_currentSettings.width * 4;
             break;
         case PixelFormat::Format12BitRGB:
-            // bmdFormat12BitRGBLE: 36 bits per pixel, 8 pixels in 36 bytes
             rowBytes = ((m_currentSettings.width + 7) / 8) * 36;
             break;
         case PixelFormat::Format8BitYUV:
@@ -223,7 +188,6 @@ bool DeckLinkOutput::displayFrame()
         return false;
     }
 
-    // Create frame with current buffer data
     IDeckLinkMutableVideoFrame* mutableFrame = nullptr;
     if (!createFrame(&mutableFrame)) {
         std::cerr << "Could not create frame" << std::endl;
@@ -232,13 +196,11 @@ bool DeckLinkOutput::displayFrame()
 
     IDeckLinkVideoFrame* frame = mutableFrame;
 
-    // Wrap with HDR metadata if needed
     if (m_useHdrMetadata) {
         frame = createHdrFrame(mutableFrame);
         mutableFrame->Release();
     }
 
-    // Display frame synchronously
     HRESULT result = m_deckLinkOutput->DisplayVideoFrameSync(frame);
     frame->Release();
 
@@ -256,7 +218,6 @@ bool DeckLinkOutput::stopOutput()
         m_deckLinkOutput->DisableVideoOutput();
         m_outputEnabled = false;
     }
-
     return true;
 }
 
@@ -286,12 +247,8 @@ void DeckLinkOutput::setHdrMetadata(Gamut colorimetry, Eotf eotf)
     m_hdrColorimetry = colorimetry;
     m_hdrEotf = eotf;
 
-    // PQ requires primaries and luminance metadata
-    // HLG only needs colorimetry and EOTF
     if (eotf == Eotf::PQ) {
-        // Set display primaries based on the matrix/colorimetry
         if (colorimetry == Gamut::Rec2020) {
-            // Rec.2020 primaries
             m_hdrCustom.displayPrimariesRedX = 0.708;
             m_hdrCustom.displayPrimariesRedY = 0.292;
             m_hdrCustom.displayPrimariesGreenX = 0.170;
@@ -299,7 +256,6 @@ void DeckLinkOutput::setHdrMetadata(Gamut colorimetry, Eotf eotf)
             m_hdrCustom.displayPrimariesBlueX = 0.131;
             m_hdrCustom.displayPrimariesBlueY = 0.046;
         } else {
-            // Rec.709 primaries
             m_hdrCustom.displayPrimariesRedX = 0.64;
             m_hdrCustom.displayPrimariesRedY = 0.33;
             m_hdrCustom.displayPrimariesGreenX = 0.30;
@@ -308,17 +264,14 @@ void DeckLinkOutput::setHdrMetadata(Gamut colorimetry, Eotf eotf)
             m_hdrCustom.displayPrimariesBlueY = 0.06;
         }
 
-        // D65 white point (same for both Rec.709 and Rec.2020)
         m_hdrCustom.whitePointX = 0.3127;
         m_hdrCustom.whitePointY = 0.3290;
 
-        // Set luminance values for PQ
         m_hdrCustom.maxMasteringLuminance = 1000.0;
         m_hdrCustom.minMasteringLuminance = 0.0001;
         m_hdrCustom.maxContentLightLevel = 1000.0;
         m_hdrCustom.maxFrameAverageLightLevel = 50.0;
     } else {
-        // For HLG and SDR, set neutral/zero values for primaries and luminance
         m_hdrCustom.displayPrimariesRedX = 0.0;
         m_hdrCustom.displayPrimariesRedY = 0.0;
         m_hdrCustom.displayPrimariesGreenX = 0.0;
@@ -347,7 +300,6 @@ void DeckLinkOutput::clearHdrMetadata()
     m_useHdrMetadata = false;
     m_hdrColorimetry = Gamut::Rec709;
     m_hdrEotf = Eotf::SDR;
-    // Zero out custom metadata
     m_hdrCustom.displayPrimariesRedX = 0.0;
     m_hdrCustom.displayPrimariesRedY = 0.0;
     m_hdrCustom.displayPrimariesGreenX = 0.0;
@@ -390,34 +342,7 @@ IDeckLinkVideoFrame* DeckLinkOutput::createHdrFrame(IDeckLinkMutableVideoFrame* 
 
 std::vector<std::string> DeckLinkOutput::getDeviceList()
 {
-    std::vector<std::string> devices;
-    
-    IDeckLinkIterator* deckLinkIterator = CreateDeckLinkIteratorInstance();
-    if (!deckLinkIterator) {
-        return devices;
-    }
-
-    IDeckLink* deckLink = nullptr;
-    while (deckLinkIterator->Next(&deckLink) == S_OK) {
-        CFStringRef deviceNameRef = nullptr;
-        if (deckLink->GetDisplayName(&deviceNameRef) == S_OK) {
-            // Convert CFString to std::string
-            CFIndex length = CFStringGetLength(deviceNameRef);
-            CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
-            char* buffer = new char[maxSize];
-            
-            if (CFStringGetCString(deviceNameRef, buffer, maxSize, kCFStringEncodingUTF8)) {
-                devices.push_back(std::string(buffer));
-            }
-            
-            delete[] buffer;
-            CFRelease(deviceNameRef);
-        }
-        deckLink->Release();
-    }
-    
-    deckLinkIterator->Release();
-    return devices;
+    return DeckLink::getDeviceList();
 }
 
 DeckLinkOutput::VideoSettings DeckLinkOutput::getVideoSettings(DisplayMode mode)
@@ -426,7 +351,6 @@ DeckLinkOutput::VideoSettings DeckLinkOutput::getVideoSettings(DisplayMode mode)
     settings.mode = mode;
     settings.format = PixelFormat::Format8BitBGRA;
 
-    // Query the hardware for display mode information dynamically
     if (m_deckLinkOutput) {
         IDeckLinkDisplayMode* displayMode = nullptr;
         if (m_deckLinkOutput->GetDisplayMode(static_cast<BMDDisplayMode>(mode), &displayMode) == S_OK) {
@@ -462,8 +386,11 @@ bool DeckLinkOutput::isPixelFormatSupported(DisplayMode mode, PixelFormat format
         return false;
     }
 
-    // Check if the mode/format combination is supported
+#ifdef _WIN32
+    BOOL supported = FALSE;
+#else
     bool supported = false;
+#endif
     BMDDisplayMode actualMode;
 
     HRESULT result = m_deckLinkOutput->DoesSupportVideoMode(
@@ -476,9 +403,12 @@ bool DeckLinkOutput::isPixelFormatSupported(DisplayMode mode, PixelFormat format
         &supported
     );
 
+#ifdef _WIN32
+    return (result == S_OK && supported != FALSE);
+#else
     return (result == S_OK && supported);
+#endif
 }
-
 
 DeckLinkOutput::OutputInfo DeckLinkOutput::getCurrentOutputInfo()
 {
@@ -491,22 +421,27 @@ DeckLinkOutput::OutputInfo DeckLinkOutput::getCurrentOutputInfo()
     info.framerate = m_currentSettings.framerate;
     info.rgb444ModeEnabled = false;
 
-    // Query RGB 4:4:4 mode status
     if (m_deckLinkConfiguration) {
+#ifdef _WIN32
+        BOOL flagValue = FALSE;
+        if (m_deckLinkConfiguration->GetFlag(bmdDeckLinkConfig444SDIVideoOutput, &flagValue) == S_OK) {
+            info.rgb444ModeEnabled = (flagValue != FALSE);
+        }
+#else
         bool flagValue = false;
         if (m_deckLinkConfiguration->GetFlag(bmdDeckLinkConfig444SDIVideoOutput, &flagValue) == S_OK) {
             info.rgb444ModeEnabled = flagValue;
         }
+#endif
     }
 
-    // Get display mode name
     BMDDisplayMode bmdMode = static_cast<BMDDisplayMode>(m_currentSettings.mode);
-    // Get a human-readable name from the display mode
     IDeckLinkDisplayModeIterator* displayModeIterator = nullptr;
     if (m_deckLinkOutput && m_deckLinkOutput->GetDisplayModeIterator(&displayModeIterator) == S_OK) {
         IDeckLinkDisplayMode* displayMode = nullptr;
         while (displayModeIterator->Next(&displayMode) == S_OK) {
             if (displayMode->GetDisplayMode() == bmdMode) {
+#ifdef __APPLE__
                 CFStringRef modeName;
                 if (displayMode->GetName(&modeName) == S_OK) {
                     char buffer[256];
@@ -514,6 +449,20 @@ DeckLinkOutput::OutputInfo DeckLinkOutput::getCurrentOutputInfo()
                     info.displayModeName = buffer;
                     CFRelease(modeName);
                 }
+#elif defined(_WIN32)
+                BSTR modeName = nullptr;
+                if (displayMode->GetName(&modeName) == S_OK) {
+                    _bstr_t bstr(modeName, false);
+                    info.displayModeName = std::string((const char*)bstr);
+                    SysFreeString(modeName);
+                }
+#else
+                const char* modeName = nullptr;
+                if (displayMode->GetName(&modeName) == S_OK) {
+                    info.displayModeName = modeName;
+                    free((void*)modeName);
+                }
+#endif
                 displayMode->Release();
                 break;
             }
@@ -526,7 +475,6 @@ DeckLinkOutput::OutputInfo DeckLinkOutput::getCurrentOutputInfo()
         info.displayModeName = "Unknown mode";
     }
 
-    // Get pixel format name
     BMDPixelFormat bmdFormat = static_cast<BMDPixelFormat>(m_currentSettings.format);
     switch (bmdFormat) {
         case bmdFormat8BitYUV:
@@ -580,6 +528,7 @@ std::vector<DeckLinkOutput::DisplayModeInfo> DeckLinkOutput::getSupportedDisplay
         displayMode->GetFrameRate(&frameDuration, &timeScale);
         modeInfo.framerate = (double)timeScale / (double)frameDuration;
 
+#ifdef __APPLE__
         CFStringRef nameString;
         if (displayMode->GetName(&nameString) == S_OK) {
             CFIndex nameLen = CFStringGetLength(nameString);
@@ -590,6 +539,23 @@ std::vector<DeckLinkOutput::DisplayModeInfo> DeckLinkOutput::getSupportedDisplay
             }
             CFRelease(nameString);
         }
+#elif defined(_WIN32)
+        BSTR nameString;
+        if (displayMode->GetName(&nameString) == S_OK) {
+            int nameLen = WideCharToMultiByte(CP_UTF8, 0, nameString, -1, nullptr, 0, nullptr, nullptr);
+            if (nameLen > 0) {
+                std::vector<char> nameBuffer(nameLen);
+                WideCharToMultiByte(CP_UTF8, 0, nameString, -1, nameBuffer.data(), nameLen, nullptr, nullptr);
+                modeInfo.name = std::string(nameBuffer.data());
+            }
+            SysFreeString(nameString);
+        }
+#else
+        const char* nameString;
+        if (displayMode->GetName(&nameString) == S_OK) {
+            modeInfo.name = std::string(nameString);
+        }
+#endif
 
         modes.push_back(modeInfo);
         displayMode->Release();
