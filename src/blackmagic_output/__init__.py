@@ -9,6 +9,7 @@ import numpy as np
 
 from .blackmagic_output import (
     BlackmagicOutput,
+    BlackmagicInput,
     DisplayMode,
     PixelFormat,
     Matrix,
@@ -188,6 +189,7 @@ __author__ = "Nick Shaw"
 __all__ = [
     # High-level API
     "BlackmagicOutput",
+    "BlackmagicInput",
     "DisplayMode",
     "PixelFormat",
     "Matrix",

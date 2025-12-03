@@ -697,3 +697,255 @@ def create_test_pattern(width: int, height: int, pattern: str = 'gradient', grad
                     frame[y, x] = [0.0, 0.0, 0.0]      # Black
 
     return frame
+
+
+class BlackmagicInput:
+    """
+    High-level interface for capturing video from Blackmagic DeckLink devices.
+
+    This class provides simplified video capture with automatic format detection
+    and conversion to RGB float arrays.
+
+    Usage:
+        with BlackmagicInput() as input:
+            input.initialize()
+            rgb_frame = input.capture_frame_as_rgb()
+    """
+
+    def __init__(self):
+        """Initialize the BlackmagicInput interface."""
+        self._input = _decklink.DeckLinkInput()
+        self._initialized = False
+        self._capturing = False
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - cleanup resources."""
+        self.cleanup()
+        return False
+
+    def initialize(self, device_index: int = 0) -> bool:
+        """Initialize DeckLink device for input.
+
+        Args:
+            device_index: Index of device to use (default: 0)
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if self._input.initialize(device_index):
+            self._initialized = True
+            return True
+        return False
+
+    def get_available_devices(self) -> List[str]:
+        """Get list of available DeckLink devices.
+
+        Returns:
+            List of device names
+        """
+        return self._input.get_device_list()
+
+    def capture_frame_as_rgb(self,
+                            timeout_ms: int = 5000,
+                            input_narrow_range: bool = True) -> Optional[np.ndarray]:
+        """Capture a frame and convert to RGB float array.
+
+        Automatically detects pixel format and converts to RGB float (0.0-1.0).
+        Uses colorspace metadata from the captured frame for YUV conversion.
+
+        Args:
+            timeout_ms: Capture timeout in milliseconds (default: 5000)
+            input_narrow_range: Whether input uses narrow range encoding (default: True)
+                - YUV8: True = 16-235/16-240 (standard)
+                - YUV10: True = 64-940/64-960 (standard)
+                - RGB10: True = 64-940 (convention)
+                - RGB12: False = 0-4095 (convention) - override to False for RGB12 full range
+
+        Returns:
+            RGB array (H×W×3), dtype float32, range 0.0-1.0, or None if capture failed
+        """
+        # Start capture if not already started
+        if not self._capturing:
+            if not self._input.start_capture():
+                return None
+            self._capturing = True
+
+        # Capture frame
+        captured_frame = _decklink.CapturedFrame()
+        if not self._input.capture_frame(captured_frame, timeout_ms):
+            return None
+
+        # Convert to RGB based on format
+        return self._convert_frame_to_rgb(captured_frame, input_narrow_range)
+
+    def capture_frame_with_metadata(self,
+                                   timeout_ms: int = 5000,
+                                   input_narrow_range: bool = True) -> Optional[dict]:
+        """Capture a frame with full metadata.
+
+        Args:
+            timeout_ms: Capture timeout in milliseconds (default: 5000)
+            input_narrow_range: Whether input uses narrow range encoding (default: True)
+
+        Returns:
+            Dictionary with:
+                - 'rgb': RGB array (H×W×3), dtype float32, range 0.0-1.0
+                - 'width': int
+                - 'height': int
+                - 'format': PixelFormat
+                - 'mode': DisplayMode
+                - 'colorspace': Matrix (Rec.601/709/2020)
+                - 'eotf': Eotf (SDR/PQ/HLG)
+                - 'input_narrow_range': bool (what was used for conversion)
+            Or None if capture failed
+        """
+        # Start capture if not already started
+        if not self._capturing:
+            if not self._input.start_capture():
+                return None
+            self._capturing = True
+
+        # Capture frame
+        captured_frame = _decklink.CapturedFrame()
+        if not self._input.capture_frame(captured_frame, timeout_ms):
+            return None
+
+        # Convert to RGB
+        rgb_array = self._convert_frame_to_rgb(captured_frame, input_narrow_range)
+        if rgb_array is None:
+            return None
+
+        # Map low-level enums to high-level enums
+        pixel_format = PixelFormat(captured_frame.format)
+        colorspace = Matrix(captured_frame.colorspace)
+        eotf = Eotf(captured_frame.eotf)
+
+        # Find matching DisplayMode
+        display_mode = None
+        for mode in DisplayMode:
+            if mode.value == captured_frame.mode:
+                display_mode = mode
+                break
+
+        return {
+            'rgb': rgb_array,
+            'width': captured_frame.width,
+            'height': captured_frame.height,
+            'format': pixel_format,
+            'mode': display_mode,
+            'colorspace': colorspace,
+            'eotf': eotf,
+            'input_narrow_range': input_narrow_range
+        }
+
+    def get_detected_format(self) -> Optional[dict]:
+        """Get detected format information.
+
+        Must be called after start_capture() has detected a signal.
+
+        Returns:
+            Dictionary with 'mode', 'width', 'height', 'framerate', or None if not available
+        """
+        if not self._capturing:
+            return None
+
+        try:
+            detected = self._input.get_detected_format()
+            return {
+                'mode': DisplayMode(detected.mode),
+                'width': detected.width,
+                'height': detected.height,
+                'framerate': detected.framerate
+            }
+        except:
+            return None
+
+    def stop_capture(self) -> bool:
+        """Stop video capture.
+
+        Returns:
+            True if successful
+        """
+        if self._capturing:
+            result = self._input.stop_capture()
+            self._capturing = False
+            return result
+        return True
+
+    def cleanup(self):
+        """Cleanup and release all resources.
+
+        Stops capture if running and releases the device.
+        """
+        if self._capturing:
+            self.stop_capture()
+        if self._initialized:
+            self._input.cleanup()
+            self._initialized = False
+
+    def _convert_frame_to_rgb(self, captured_frame, input_narrow_range: bool) -> Optional[np.ndarray]:
+        """Convert captured frame to RGB float array.
+
+        Args:
+            captured_frame: CapturedFrame object from low-level API
+            input_narrow_range: Whether to interpret input as narrow range
+
+        Returns:
+            RGB array (H×W×3), dtype float32, or None if conversion failed
+        """
+        frame_data = np.array(captured_frame.data, dtype=np.uint8)
+        width = captured_frame.width
+        height = captured_frame.height
+        pixel_format = captured_frame.format
+
+        try:
+            if pixel_format == _decklink.PixelFormat.YUV8:
+                # Convert YUV8 (2vuy) to RGB
+                return _decklink.yuv8_to_rgb_float(
+                    frame_data, width, height,
+                    matrix=captured_frame.colorspace,
+                    input_narrow_range=input_narrow_range
+                )
+
+            elif pixel_format == _decklink.PixelFormat.YUV10:
+                # Convert YUV10 (v210) to RGB
+                return _decklink.yuv10_to_rgb_float(
+                    frame_data, width, height,
+                    matrix=captured_frame.colorspace,
+                    input_narrow_range=input_narrow_range
+                )
+
+            elif pixel_format == _decklink.PixelFormat.RGB10:
+                # Convert RGB10 to float
+                return _decklink.rgb10_to_float(
+                    frame_data, width, height,
+                    input_narrow_range=input_narrow_range
+                )
+
+            elif pixel_format == _decklink.PixelFormat.RGB12:
+                # Convert RGB12 to float
+                return _decklink.rgb12_to_float(
+                    frame_data, width, height,
+                    input_narrow_range=input_narrow_range
+                )
+
+            elif pixel_format == _decklink.PixelFormat.BGRA:
+                # Convert BGRA to RGB float
+                bgra_data = np.frombuffer(frame_data, dtype=np.uint8).reshape(
+                    (height, width, 4)
+                )
+                rgb_array = np.zeros((height, width, 3), dtype=np.float32)
+                rgb_array[:, :, 0] = bgra_data[:, :, 2] / 255.0  # R
+                rgb_array[:, :, 1] = bgra_data[:, :, 1] / 255.0  # G
+                rgb_array[:, :, 2] = bgra_data[:, :, 0] / 255.0  # B
+                return rgb_array
+
+            else:
+                return None
+
+        except Exception:
+            return None
