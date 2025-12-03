@@ -120,9 +120,9 @@ py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int wi
 
                     int y10;
                     if (output_narrow_range) {
-                        y10 = (int)(yf * 876.0f + 64.0f);
+                        y10 = (int)(yf * 876.0f + 64.0f + 0.5f);
                     } else {
-                        y10 = (int)(yf * 1023.0f);
+                        y10 = (int)(yf * 1023.0f + 0.5f);
                     }
                     y_values[i] = (uint16_t)(y10 < 0 ? 0 : (y10 > 1023 ? 1023 : y10));
                     u_temp[i] = uf;
@@ -140,11 +140,11 @@ py::array_t<uint8_t> rgb_uint16_to_yuv10(py::array_t<uint16_t> rgb_array, int wi
                 float v_avg = (v_temp[i*2] + v_temp[i*2+1]) * 0.5f;
                 int u10, v10;
                 if (output_narrow_range) {
-                    u10 = (int)((u_avg + 0.5f) * 896.0f + 64.0f);
-                    v10 = (int)((v_avg + 0.5f) * 896.0f + 64.0f);
+                    u10 = (int)((u_avg + 0.5f) * 896.0f + 64.0f + 0.5f);
+                    v10 = (int)((v_avg + 0.5f) * 896.0f + 64.0f + 0.5f);
                 } else {
-                    u10 = (int)(512.0f + 1023.0f * u_avg);
-                    v10 = (int)(512.0f + 1023.0f * v_avg);
+                    u10 = (int)(512.0f + 1023.0f * u_avg + 0.5f);
+                    v10 = (int)(512.0f + 1023.0f * v_avg + 0.5f);
                 }
                 u_values[i] = (uint16_t)(u10 < 0 ? 0 : (u10 > 1023 ? 1023 : u10));
                 v_values[i] = (uint16_t)(v10 < 0 ? 0 : (v10 > 1023 ? 1023 : v10));
@@ -225,9 +225,9 @@ py::array_t<uint8_t> rgb_float_to_yuv10(py::array_t<float> rgb_array, int width,
 
                     int y10;
                     if (output_narrow_range) {
-                        y10 = (int)(yf * 876.0f + 64.0f);
+                        y10 = (int)(yf * 876.0f + 64.0f + 0.5f);
                     } else {
-                        y10 = (int)(yf * 1023.0f);
+                        y10 = (int)(yf * 1023.0f + 0.5f);
                     }
                     y_values[i] = (uint16_t)(y10 < 0 ? 0 : (y10 > 1023 ? 1023 : y10));
                     u_temp[i] = uf;
@@ -245,11 +245,11 @@ py::array_t<uint8_t> rgb_float_to_yuv10(py::array_t<float> rgb_array, int width,
                 float v_avg = (v_temp[i*2] + v_temp[i*2+1]) * 0.5f;
                 int u10, v10;
                 if (output_narrow_range) {
-                    u10 = (int)((u_avg + 0.5f) * 896.0f + 64.0f);
-                    v10 = (int)((v_avg + 0.5f) * 896.0f + 64.0f);
+                    u10 = (int)((u_avg + 0.5f) * 896.0f + 64.0f + 0.5f);
+                    v10 = (int)((v_avg + 0.5f) * 896.0f + 64.0f + 0.5f);
                 } else {
-                    u10 = (int)(512.0f + 1023.0f * u_avg);
-                    v10 = (int)(512.0f + 1023.0f * v_avg);
+                    u10 = (int)(512.0f + 1023.0f * u_avg + 0.5f);
+                    v10 = (int)(512.0f + 1023.0f * v_avg + 0.5f);
                 }
                 u_values[i] = (uint16_t)(u10 < 0 ? 0 : (u10 > 1023 ? 1023 : u10));
                 v_values[i] = (uint16_t)(v10 < 0 ? 0 : (v10 > 1023 ? 1023 : v10));
@@ -324,14 +324,14 @@ py::array_t<uint8_t> rgb_uint16_to_rgb10(py::array_t<uint16_t> rgb_array, int wi
                 int r10_int, g10_int, b10_int;
                 if (output_narrow_range) {
                     // Narrow 10-bit output: 64-940
-                    r10_int = (int)(rf * 876.0f + 64.0f);
-                    g10_int = (int)(gf * 876.0f + 64.0f);
-                    b10_int = (int)(bf * 876.0f + 64.0f);
+                    r10_int = (int)(rf * 876.0f + 64.0f + 0.5f);
+                    g10_int = (int)(gf * 876.0f + 64.0f + 0.5f);
+                    b10_int = (int)(bf * 876.0f + 64.0f + 0.5f);
                 } else {
                     // Full 10-bit output: 0-1023
-                    r10_int = (int)(rf * 1023.0f);
-                    g10_int = (int)(gf * 1023.0f);
-                    b10_int = (int)(bf * 1023.0f);
+                    r10_int = (int)(rf * 1023.0f + 0.5f);
+                    g10_int = (int)(gf * 1023.0f + 0.5f);
+                    b10_int = (int)(bf * 1023.0f + 0.5f);
                 }
 
                 // Clamp to valid 10-bit range before packing
@@ -383,10 +383,10 @@ py::array_t<uint8_t> rgb_float_to_rgb10(py::array_t<float> rgb_array, int width,
             const float* pixel = reinterpret_cast<const float*>(
                 src_base + y * stride_y + x * stride_x);
 
-            // Convert float (0.0-1.0) to 10-bit with clamping
-            int r10 = (int)(pixel[0] * scale + offset);
-            int g10 = (int)(pixel[1] * scale + offset);
-            int b10 = (int)(pixel[2] * scale + offset);
+            // Convert float (0.0-1.0) to 10-bit with rounding and clamping
+            int r10 = (int)(pixel[0] * scale + offset + 0.5f);
+            int g10 = (int)(pixel[1] * scale + offset + 0.5f);
+            int b10 = (int)(pixel[2] * scale + offset + 0.5f);
 
             // Clamp to valid range
             r10 = r10 < 0 ? 0 : (r10 > 1023 ? 1023 : r10);
@@ -463,18 +463,18 @@ py::array_t<uint8_t> rgb_uint16_to_rgb12(py::array_t<uint16_t> rgb_array, int wi
                             bf = pixel[2] / 65535.0f;
                         }
 
-                        // Output conversion from 0.0-1.0
+                        // Output conversion from 0.0-1.0 with rounding
                         int r12, g12, b12;
                         if (output_narrow_range) {
                             // Narrow range: 256-3760
-                            r12 = (int)(rf * 3504.0f + 256.0f);
-                            g12 = (int)(gf * 3504.0f + 256.0f);
-                            b12 = (int)(bf * 3504.0f + 256.0f);
+                            r12 = (int)(rf * 3504.0f + 256.0f + 0.5f);
+                            g12 = (int)(gf * 3504.0f + 256.0f + 0.5f);
+                            b12 = (int)(bf * 3504.0f + 256.0f + 0.5f);
                         } else {
                             // Full range: 0-4095
-                            r12 = (int)(rf * 4095.0f);
-                            g12 = (int)(gf * 4095.0f);
-                            b12 = (int)(bf * 4095.0f);
+                            r12 = (int)(rf * 4095.0f + 0.5f);
+                            g12 = (int)(gf * 4095.0f + 0.5f);
+                            b12 = (int)(bf * 4095.0f + 0.5f);
                         }
                         // Clamp to valid 12-bit range before packing
                         r[i] = (uint16_t)(r12 < 0 ? 0 : (r12 > 4095 ? 4095 : r12));
@@ -546,10 +546,10 @@ py::array_t<uint8_t> rgb_float_to_rgb12(py::array_t<float> rgb_array, int width,
                     const float* pixel = reinterpret_cast<const float*>(
                         src_base + y * stride_y + pixel_x * stride_x);
 
-                    // Convert float (0.0-1.0) to 12-bit with clamping
-                    int r12 = (int)(pixel[0] * scale + offset);
-                    int g12 = (int)(pixel[1] * scale + offset);
-                    int b12 = (int)(pixel[2] * scale + offset);
+                    // Convert float (0.0-1.0) to 12-bit with rounding and clamping
+                    int r12 = (int)(pixel[0] * scale + offset + 0.5f);
+                    int g12 = (int)(pixel[1] * scale + offset + 0.5f);
+                    int b12 = (int)(pixel[2] * scale + offset + 0.5f);
 
                     // Clamp to valid range
                     r[i] = (uint16_t)(r12 < 0 ? 0 : (r12 > 4095 ? 4095 : r12));
@@ -891,12 +891,742 @@ py::dict unpack_v210(py::array_t<uint8_t> yuv_array, int width, int height) {
     return result;
 }
 
+// YUV8 (2vuy) to RGB conversion functions
+py::array_t<uint16_t> yuv8_to_rgb_uint16(py::array_t<uint8_t> yuv_array, int width, int height,
+                                          DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709,
+                                          bool input_narrow_range = true, bool output_narrow_range = false) {
+    auto buf = yuv_array.request();
+
+    if (buf.ndim != 1) {
+        throw std::runtime_error("Input array must be 1D 2vuy format");
+    }
+
+    long expected_size = width * height * 2;
+    if (buf.size < expected_size) {
+        throw std::runtime_error("Input array size too small for 2vuy format");
+    }
+
+    auto rgb_array = py::array_t<uint16_t>({height, width, 3});
+    auto rgb_buf = rgb_array.request();
+
+    const uint8_t* src = static_cast<const uint8_t*>(buf.ptr);
+    uint16_t* rgb_dst = static_cast<uint16_t*>(rgb_buf.ptr);
+
+    // Conversion matrices (same as YUV10)
+    double Kr, Kb;
+    switch (matrix) {
+        case DeckLinkOutput::Gamut::Rec601:
+            Kr = 0.299; Kb = 0.114;
+            break;
+        case DeckLinkOutput::Gamut::Rec709:
+            Kr = 0.2126; Kb = 0.0722;
+            break;
+        case DeckLinkOutput::Gamut::Rec2020:
+            Kr = 0.2627; Kb = 0.0593;
+            break;
+        default:
+            Kr = 0.2126; Kb = 0.0722;
+    }
+    double Kg = 1.0 - Kr - Kb;
+
+    // Input range scaling
+    double y_min, y_range, c_range, c_mid;
+    if (input_narrow_range) {
+        y_min = 16.0;
+        y_range = 219.0;
+        c_range = 224.0;
+        c_mid = 128.0;
+    } else {
+        y_min = 0.0;
+        y_range = 255.0;
+        c_range = 255.0;
+        c_mid = 128.0;
+    }
+
+    // Output range
+    double out_min, out_range;
+    if (output_narrow_range) {
+        out_min = 4096.0;
+        out_range = 56064.0;
+    } else {
+        out_min = 0.0;
+        out_range = 65535.0;
+    }
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x += 2) {
+            int src_idx = (y * width + x) * 2;
+
+            uint8_t u_byte = src[src_idx];
+            uint8_t y0_byte = src[src_idx + 1];
+            uint8_t v_byte = src[src_idx + 2];
+            uint8_t y1_byte = src[src_idx + 3];
+
+            // Normalize to 0.0-1.0
+            double y0 = (y0_byte - y_min) / y_range;
+            double y1 = (y1_byte - y_min) / y_range;
+            double cb = (u_byte - c_mid) / (c_range / 2.0);
+            double cr = (v_byte - c_mid) / (c_range / 2.0);
+
+            // YCbCr to RGB conversion
+            double r_factor = cr * (2.0 - 2.0 * Kr);
+            double g_factor = -cb * (2.0 - 2.0 * Kb) * Kb / Kg - cr * (2.0 - 2.0 * Kr) * Kr / Kg;
+            double b_factor = cb * (2.0 - 2.0 * Kb);
+
+            // First pixel
+            double r0 = y0 + r_factor;
+            double g0 = y0 + g_factor;
+            double b0 = y0 + b_factor;
+
+            // Clamp and scale
+            r0 = std::max(0.0, std::min(1.0, r0));
+            g0 = std::max(0.0, std::min(1.0, g0));
+            b0 = std::max(0.0, std::min(1.0, b0));
+
+            int pixel0_idx = (y * width + x) * 3;
+            rgb_dst[pixel0_idx] = static_cast<uint16_t>(r0 * out_range + out_min);
+            rgb_dst[pixel0_idx + 1] = static_cast<uint16_t>(g0 * out_range + out_min);
+            rgb_dst[pixel0_idx + 2] = static_cast<uint16_t>(b0 * out_range + out_min);
+
+            // Second pixel (if exists)
+            if (x + 1 < width) {
+                double r1 = y1 + r_factor;
+                double g1 = y1 + g_factor;
+                double b1 = y1 + b_factor;
+
+                r1 = std::max(0.0, std::min(1.0, r1));
+                g1 = std::max(0.0, std::min(1.0, g1));
+                b1 = std::max(0.0, std::min(1.0, b1));
+
+                int pixel1_idx = (y * width + x + 1) * 3;
+                rgb_dst[pixel1_idx] = static_cast<uint16_t>(r1 * out_range + out_min);
+                rgb_dst[pixel1_idx + 1] = static_cast<uint16_t>(g1 * out_range + out_min);
+                rgb_dst[pixel1_idx + 2] = static_cast<uint16_t>(b1 * out_range + out_min);
+            }
+        }
+    }
+
+    return rgb_array;
+}
+
+py::array_t<float> yuv8_to_rgb_float(py::array_t<uint8_t> yuv_array, int width, int height,
+                                       DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709,
+                                       bool input_narrow_range = true) {
+    auto buf = yuv_array.request();
+
+    if (buf.ndim != 1) {
+        throw std::runtime_error("Input array must be 1D 2vuy format");
+    }
+
+    long expected_size = width * height * 2;
+    if (buf.size < expected_size) {
+        throw std::runtime_error("Input array size too small for 2vuy format");
+    }
+
+    auto rgb_array = py::array_t<float>({height, width, 3});
+    auto rgb_buf = rgb_array.request();
+
+    const uint8_t* src = static_cast<const uint8_t*>(buf.ptr);
+    float* rgb_dst = static_cast<float*>(rgb_buf.ptr);
+
+    // Conversion matrices
+    double Kr, Kb;
+    switch (matrix) {
+        case DeckLinkOutput::Gamut::Rec601:
+            Kr = 0.299; Kb = 0.114;
+            break;
+        case DeckLinkOutput::Gamut::Rec709:
+            Kr = 0.2126; Kb = 0.0722;
+            break;
+        case DeckLinkOutput::Gamut::Rec2020:
+            Kr = 0.2627; Kb = 0.0593;
+            break;
+        default:
+            Kr = 0.2126; Kb = 0.0722;
+    }
+    double Kg = 1.0 - Kr - Kb;
+
+    // Input range scaling
+    double y_min, y_range, c_range, c_mid;
+    if (input_narrow_range) {
+        y_min = 16.0;
+        y_range = 219.0;
+        c_range = 224.0;
+        c_mid = 128.0;
+    } else {
+        y_min = 0.0;
+        y_range = 255.0;
+        c_range = 255.0;
+        c_mid = 128.0;
+    }
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x += 2) {
+            int src_idx = (y * width + x) * 2;
+
+            uint8_t u_byte = src[src_idx];
+            uint8_t y0_byte = src[src_idx + 1];
+            uint8_t v_byte = src[src_idx + 2];
+            uint8_t y1_byte = src[src_idx + 3];
+
+            // Normalize to 0.0-1.0
+            double y0 = (y0_byte - y_min) / y_range;
+            double y1 = (y1_byte - y_min) / y_range;
+            double cb = (u_byte - c_mid) / (c_range / 2.0);
+            double cr = (v_byte - c_mid) / (c_range / 2.0);
+
+            // YCbCr to RGB conversion
+            double r_factor = cr * (2.0 - 2.0 * Kr);
+            double g_factor = -cb * (2.0 - 2.0 * Kb) * Kb / Kg - cr * (2.0 - 2.0 * Kr) * Kr / Kg;
+            double b_factor = cb * (2.0 - 2.0 * Kb);
+
+            // First pixel
+            double r0 = y0 + r_factor;
+            double g0 = y0 + g_factor;
+            double b0 = y0 + b_factor;
+
+            // Clamp to 0.0-1.0
+            r0 = std::max(0.0, std::min(1.0, r0));
+            g0 = std::max(0.0, std::min(1.0, g0));
+            b0 = std::max(0.0, std::min(1.0, b0));
+
+            int pixel0_idx = (y * width + x) * 3;
+            rgb_dst[pixel0_idx] = static_cast<float>(r0);
+            rgb_dst[pixel0_idx + 1] = static_cast<float>(g0);
+            rgb_dst[pixel0_idx + 2] = static_cast<float>(b0);
+
+            // Second pixel (if exists)
+            if (x + 1 < width) {
+                double r1 = y1 + r_factor;
+                double g1 = y1 + g_factor;
+                double b1 = y1 + b_factor;
+
+                r1 = std::max(0.0, std::min(1.0, r1));
+                g1 = std::max(0.0, std::min(1.0, g1));
+                b1 = std::max(0.0, std::min(1.0, b1));
+
+                int pixel1_idx = (y * width + x + 1) * 3;
+                rgb_dst[pixel1_idx] = static_cast<float>(r1);
+                rgb_dst[pixel1_idx + 1] = static_cast<float>(g1);
+                rgb_dst[pixel1_idx + 2] = static_cast<float>(b1);
+            }
+        }
+    }
+
+    return rgb_array;
+}
+
+py::dict unpack_2vuy(py::array_t<uint8_t> yuv_array, int width, int height) {
+    auto buf = yuv_array.request();
+
+    if (buf.ndim != 1) {
+        throw std::runtime_error("Input array must be 1D 2vuy format");
+    }
+
+    long expected_size = width * height * 2;
+    if (buf.size < expected_size) {
+        throw std::runtime_error("Input array size too small for 2vuy format");
+    }
+
+    auto y_array = py::array_t<uint8_t>({height, width});
+    auto cb_array = py::array_t<uint8_t>({height, width});
+    auto cr_array = py::array_t<uint8_t>({height, width});
+
+    auto y_buf = y_array.request();
+    auto cb_buf = cb_array.request();
+    auto cr_buf = cr_array.request();
+
+    const uint8_t* src = static_cast<const uint8_t*>(buf.ptr);
+    uint8_t* y_dst = static_cast<uint8_t*>(y_buf.ptr);
+    uint8_t* cb_dst = static_cast<uint8_t*>(cb_buf.ptr);
+    uint8_t* cr_dst = static_cast<uint8_t*>(cr_buf.ptr);
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x += 2) {
+            int src_idx = (y * width + x) * 2;
+
+            uint8_t u_val = src[src_idx];
+            uint8_t y0_val = src[src_idx + 1];
+            uint8_t v_val = src[src_idx + 2];
+            uint8_t y1_val = src[src_idx + 3];
+
+            int pixel0_idx = y * width + x;
+            y_dst[pixel0_idx] = y0_val;
+            cb_dst[pixel0_idx] = u_val;
+            cr_dst[pixel0_idx] = v_val;
+
+            if (x + 1 < width) {
+                int pixel1_idx = y * width + x + 1;
+                y_dst[pixel1_idx] = y1_val;
+                cb_dst[pixel1_idx] = u_val;
+                cr_dst[pixel1_idx] = v_val;
+            }
+        }
+    }
+
+    py::dict result;
+    result["y"] = y_array;
+    result["cb"] = cb_array;
+    result["cr"] = cr_array;
+    return result;
+}
+
+// RGB10 unpacking functions
+py::array_t<uint16_t> rgb10_to_uint16(py::array_t<uint8_t> rgb_array, int width, int height,
+                                       bool input_narrow_range = true, bool output_narrow_range = false) {
+    auto buf = rgb_array.request();
+
+    if (buf.ndim != 1) {
+        throw std::runtime_error("Input array must be 1D RGB10 format");
+    }
+
+    long expected_size = width * height * 4;
+    if (buf.size < expected_size) {
+        throw std::runtime_error("Input array size too small for RGB10 format");
+    }
+
+    auto result = py::array_t<uint16_t>({height, width, 3});
+    auto res_buf = result.request();
+
+    const uint32_t* src = static_cast<const uint32_t*>(buf.ptr);
+    uint16_t* dst = static_cast<uint16_t*>(res_buf.ptr);
+
+    // Input range parameters
+    double in_min, in_range;
+    if (input_narrow_range) {
+        in_min = 64.0;
+        in_range = 876.0;
+    } else {
+        in_min = 0.0;
+        in_range = 1023.0;
+    }
+
+    // Output range parameters
+    double out_min, out_range;
+    if (output_narrow_range) {
+        out_min = 4096.0;
+        out_range = 56064.0;
+    } else {
+        out_min = 0.0;
+        out_range = 65535.0;
+    }
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            uint32_t word = src[y * width + x];
+
+            // Unpack: R bits 22-31, G bits 12-21, B bits 2-11
+            uint16_t r10 = (word >> 22) & 0x3FF;
+            uint16_t g10 = (word >> 12) & 0x3FF;
+            uint16_t b10 = (word >> 2) & 0x3FF;
+
+            // Convert to output range
+            double r_norm = (r10 - in_min) / in_range;
+            double g_norm = (g10 - in_min) / in_range;
+            double b_norm = (b10 - in_min) / in_range;
+
+            // Clamp to 0.0-1.0
+            r_norm = std::max(0.0, std::min(1.0, r_norm));
+            g_norm = std::max(0.0, std::min(1.0, g_norm));
+            b_norm = std::max(0.0, std::min(1.0, b_norm));
+
+            int pixel_idx = (y * width + x) * 3;
+            dst[pixel_idx] = static_cast<uint16_t>(r_norm * out_range + out_min);
+            dst[pixel_idx + 1] = static_cast<uint16_t>(g_norm * out_range + out_min);
+            dst[pixel_idx + 2] = static_cast<uint16_t>(b_norm * out_range + out_min);
+        }
+    }
+
+    return result;
+}
+
+py::array_t<float> rgb10_to_float(py::array_t<uint8_t> rgb_array, int width, int height,
+                                    bool input_narrow_range = true) {
+    auto buf = rgb_array.request();
+
+    if (buf.ndim != 1) {
+        throw std::runtime_error("Input array must be 1D RGB10 format");
+    }
+
+    long expected_size = width * height * 4;
+    if (buf.size < expected_size) {
+        throw std::runtime_error("Input array size too small for RGB10 format");
+    }
+
+    auto result = py::array_t<float>({height, width, 3});
+    auto res_buf = result.request();
+
+    const uint32_t* src = static_cast<const uint32_t*>(buf.ptr);
+    float* dst = static_cast<float*>(res_buf.ptr);
+
+    // Input range parameters
+    double in_min, in_range;
+    if (input_narrow_range) {
+        in_min = 64.0;
+        in_range = 876.0;
+    } else {
+        in_min = 0.0;
+        in_range = 1023.0;
+    }
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            uint32_t word = src[y * width + x];
+
+            // Unpack: R bits 22-31, G bits 12-21, B bits 2-11
+            uint16_t r10 = (word >> 22) & 0x3FF;
+            uint16_t g10 = (word >> 12) & 0x3FF;
+            uint16_t b10 = (word >> 2) & 0x3FF;
+
+            // Convert to 0.0-1.0
+            double r_norm = (r10 - in_min) / in_range;
+            double g_norm = (g10 - in_min) / in_range;
+            double b_norm = (b10 - in_min) / in_range;
+
+            // Clamp to 0.0-1.0
+            r_norm = std::max(0.0, std::min(1.0, r_norm));
+            g_norm = std::max(0.0, std::min(1.0, g_norm));
+            b_norm = std::max(0.0, std::min(1.0, b_norm));
+
+            int pixel_idx = (y * width + x) * 3;
+            dst[pixel_idx] = static_cast<float>(r_norm);
+            dst[pixel_idx + 1] = static_cast<float>(g_norm);
+            dst[pixel_idx + 2] = static_cast<float>(b_norm);
+        }
+    }
+
+    return result;
+}
+
+py::dict unpack_rgb10(py::array_t<uint8_t> rgb_array, int width, int height) {
+    auto buf = rgb_array.request();
+
+    if (buf.ndim != 1) {
+        throw std::runtime_error("Input array must be 1D RGB10 format");
+    }
+
+    long expected_size = width * height * 4;
+    if (buf.size < expected_size) {
+        throw std::runtime_error("Input array size too small for RGB10 format");
+    }
+
+    auto r_array = py::array_t<uint16_t>({height, width});
+    auto g_array = py::array_t<uint16_t>({height, width});
+    auto b_array = py::array_t<uint16_t>({height, width});
+
+    auto r_buf = r_array.request();
+    auto g_buf = g_array.request();
+    auto b_buf = b_array.request();
+
+    const uint32_t* src = static_cast<const uint32_t*>(buf.ptr);
+    uint16_t* r_dst = static_cast<uint16_t*>(r_buf.ptr);
+    uint16_t* g_dst = static_cast<uint16_t*>(g_buf.ptr);
+    uint16_t* b_dst = static_cast<uint16_t*>(b_buf.ptr);
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            uint32_t word = src[y * width + x];
+            int pixel_idx = y * width + x;
+
+            // Unpack: R bits 22-31, G bits 12-21, B bits 2-11
+            r_dst[pixel_idx] = (word >> 22) & 0x3FF;
+            g_dst[pixel_idx] = (word >> 12) & 0x3FF;
+            b_dst[pixel_idx] = (word >> 2) & 0x3FF;
+        }
+    }
+
+    py::dict result;
+    result["r"] = r_array;
+    result["g"] = g_array;
+    result["b"] = b_array;
+    return result;
+}
+
+// RGB12 unpacking functions
+py::array_t<uint16_t> rgb12_to_uint16(py::array_t<uint8_t> rgb_array, int width, int height,
+                                       bool input_narrow_range = false, bool output_narrow_range = false) {
+    auto buf = rgb_array.request();
+
+    if (buf.ndim != 1) {
+        throw std::runtime_error("Input array must be 1D RGB12 format");
+    }
+
+    long expected_size = ((width + 7) / 8) * 36 * height;
+    if (buf.size < expected_size) {
+        throw std::runtime_error("Input array size too small for RGB12 format");
+    }
+
+    auto result = py::array_t<uint16_t>({height, width, 3});
+    auto res_buf = result.request();
+
+    const uint32_t* src = static_cast<const uint32_t*>(buf.ptr);
+    uint16_t* dst = static_cast<uint16_t*>(res_buf.ptr);
+
+    // Input range parameters
+    double in_min, in_range;
+    if (input_narrow_range) {
+        in_min = 256.0;
+        in_range = 3504.0;
+    } else {
+        in_min = 0.0;
+        in_range = 4095.0;
+    }
+
+    // Output range parameters
+    double out_min, out_range;
+    if (output_narrow_range) {
+        out_min = 4096.0;
+        out_range = 56064.0;
+    } else {
+        out_min = 0.0;
+        out_range = 65535.0;
+    }
+
+    for (int y = 0; y < height; y++) {
+        const uint32_t* row_src = src + (y * ((width + 7) / 8) * 9);
+
+        for (int x = 0; x < width; x += 8) {
+            int group_idx = x / 8;
+            const uint32_t* group = row_src + (group_idx * 9);
+
+            uint16_t r[8], g[8], b[8];
+
+            // Unpack 8 pixels from 9 DWORDs (reverse of packing)
+            r[0] = group[0] & 0xFFF;
+            g[0] = (group[0] >> 12) & 0xFFF;
+            b[0] = ((group[0] >> 24) & 0xFF) | ((group[1] & 0xF) << 8);
+
+            r[1] = (group[1] >> 4) & 0xFFF;
+            g[1] = (group[1] >> 16) & 0xFFF;
+            b[1] = ((group[1] >> 28) & 0xF) | ((group[2] & 0xFF) << 4);
+
+            r[2] = (group[2] >> 8) & 0xFFF;
+            g[2] = (group[2] >> 20) & 0xFFF;
+            b[2] = group[3] & 0xFFF;
+
+            r[3] = (group[3] >> 12) & 0xFFF;
+            g[3] = ((group[3] >> 24) & 0xFF) | ((group[4] & 0xF) << 8);
+            b[3] = (group[4] >> 4) & 0xFFF;
+
+            r[4] = (group[4] >> 16) & 0xFFF;
+            g[4] = ((group[4] >> 28) & 0xF) | ((group[5] & 0xFF) << 4);
+            b[4] = (group[5] >> 8) & 0xFFF;
+
+            r[5] = (group[5] >> 20) & 0xFFF;
+            g[5] = group[6] & 0xFFF;
+            b[5] = (group[6] >> 12) & 0xFFF;
+
+            r[6] = ((group[6] >> 24) & 0xFF) | ((group[7] & 0xF) << 8);
+            g[6] = (group[7] >> 4) & 0xFFF;
+            b[6] = (group[7] >> 16) & 0xFFF;
+
+            r[7] = ((group[7] >> 28) & 0xF) | ((group[8] & 0xFF) << 4);
+            g[7] = (group[8] >> 8) & 0xFFF;
+            b[7] = (group[8] >> 20) & 0xFFF;
+
+            // Convert to output range
+            for (int i = 0; i < 8 && (x + i) < width; i++) {
+                double r_norm = (r[i] - in_min) / in_range;
+                double g_norm = (g[i] - in_min) / in_range;
+                double b_norm = (b[i] - in_min) / in_range;
+
+                r_norm = std::max(0.0, std::min(1.0, r_norm));
+                g_norm = std::max(0.0, std::min(1.0, g_norm));
+                b_norm = std::max(0.0, std::min(1.0, b_norm));
+
+                int pixel_idx = (y * width + x + i) * 3;
+                dst[pixel_idx] = static_cast<uint16_t>(r_norm * out_range + out_min);
+                dst[pixel_idx + 1] = static_cast<uint16_t>(g_norm * out_range + out_min);
+                dst[pixel_idx + 2] = static_cast<uint16_t>(b_norm * out_range + out_min);
+            }
+        }
+    }
+
+    return result;
+}
+
+py::array_t<float> rgb12_to_float(py::array_t<uint8_t> rgb_array, int width, int height,
+                                    bool input_narrow_range = false) {
+    auto buf = rgb_array.request();
+
+    if (buf.ndim != 1) {
+        throw std::runtime_error("Input array must be 1D RGB12 format");
+    }
+
+    long expected_size = ((width + 7) / 8) * 36 * height;
+    if (buf.size < expected_size) {
+        throw std::runtime_error("Input array size too small for RGB12 format");
+    }
+
+    auto result = py::array_t<float>({height, width, 3});
+    auto res_buf = result.request();
+
+    const uint32_t* src = static_cast<const uint32_t*>(buf.ptr);
+    float* dst = static_cast<float*>(res_buf.ptr);
+
+    // Input range parameters
+    double in_min, in_range;
+    if (input_narrow_range) {
+        in_min = 256.0;
+        in_range = 3504.0;
+    } else {
+        in_min = 0.0;
+        in_range = 4095.0;
+    }
+
+    for (int y = 0; y < height; y++) {
+        const uint32_t* row_src = src + (y * ((width + 7) / 8) * 9);
+
+        for (int x = 0; x < width; x += 8) {
+            int group_idx = x / 8;
+            const uint32_t* group = row_src + (group_idx * 9);
+
+            uint16_t r[8], g[8], b[8];
+
+            // Unpack 8 pixels from 9 DWORDs
+            r[0] = group[0] & 0xFFF;
+            g[0] = (group[0] >> 12) & 0xFFF;
+            b[0] = ((group[0] >> 24) & 0xFF) | ((group[1] & 0xF) << 8);
+
+            r[1] = (group[1] >> 4) & 0xFFF;
+            g[1] = (group[1] >> 16) & 0xFFF;
+            b[1] = ((group[1] >> 28) & 0xF) | ((group[2] & 0xFF) << 4);
+
+            r[2] = (group[2] >> 8) & 0xFFF;
+            g[2] = (group[2] >> 20) & 0xFFF;
+            b[2] = group[3] & 0xFFF;
+
+            r[3] = (group[3] >> 12) & 0xFFF;
+            g[3] = ((group[3] >> 24) & 0xFF) | ((group[4] & 0xF) << 8);
+            b[3] = (group[4] >> 4) & 0xFFF;
+
+            r[4] = (group[4] >> 16) & 0xFFF;
+            g[4] = ((group[4] >> 28) & 0xF) | ((group[5] & 0xFF) << 4);
+            b[4] = (group[5] >> 8) & 0xFFF;
+
+            r[5] = (group[5] >> 20) & 0xFFF;
+            g[5] = group[6] & 0xFFF;
+            b[5] = (group[6] >> 12) & 0xFFF;
+
+            r[6] = ((group[6] >> 24) & 0xFF) | ((group[7] & 0xF) << 8);
+            g[6] = (group[7] >> 4) & 0xFFF;
+            b[6] = (group[7] >> 16) & 0xFFF;
+
+            r[7] = ((group[7] >> 28) & 0xF) | ((group[8] & 0xFF) << 4);
+            g[7] = (group[8] >> 8) & 0xFFF;
+            b[7] = (group[8] >> 20) & 0xFFF;
+
+            // Convert to 0.0-1.0
+            for (int i = 0; i < 8 && (x + i) < width; i++) {
+                double r_norm = (r[i] - in_min) / in_range;
+                double g_norm = (g[i] - in_min) / in_range;
+                double b_norm = (b[i] - in_min) / in_range;
+
+                r_norm = std::max(0.0, std::min(1.0, r_norm));
+                g_norm = std::max(0.0, std::min(1.0, g_norm));
+                b_norm = std::max(0.0, std::min(1.0, b_norm));
+
+                int pixel_idx = (y * width + x + i) * 3;
+                dst[pixel_idx] = static_cast<float>(r_norm);
+                dst[pixel_idx + 1] = static_cast<float>(g_norm);
+                dst[pixel_idx + 2] = static_cast<float>(b_norm);
+            }
+        }
+    }
+
+    return result;
+}
+
+py::dict unpack_rgb12(py::array_t<uint8_t> rgb_array, int width, int height) {
+    auto buf = rgb_array.request();
+
+    if (buf.ndim != 1) {
+        throw std::runtime_error("Input array must be 1D RGB12 format");
+    }
+
+    long expected_size = ((width + 7) / 8) * 36 * height;
+    if (buf.size < expected_size) {
+        throw std::runtime_error("Input array size too small for RGB12 format");
+    }
+
+    auto r_array = py::array_t<uint16_t>({height, width});
+    auto g_array = py::array_t<uint16_t>({height, width});
+    auto b_array = py::array_t<uint16_t>({height, width});
+
+    auto r_buf = r_array.request();
+    auto g_buf = g_array.request();
+    auto b_buf = b_array.request();
+
+    const uint32_t* src = static_cast<const uint32_t*>(buf.ptr);
+    uint16_t* r_dst = static_cast<uint16_t*>(r_buf.ptr);
+    uint16_t* g_dst = static_cast<uint16_t*>(g_buf.ptr);
+    uint16_t* b_dst = static_cast<uint16_t*>(b_buf.ptr);
+
+    for (int y = 0; y < height; y++) {
+        const uint32_t* row_src = src + (y * ((width + 7) / 8) * 9);
+
+        for (int x = 0; x < width; x += 8) {
+            int group_idx = x / 8;
+            const uint32_t* group = row_src + (group_idx * 9);
+
+            uint16_t r[8], g[8], b[8];
+
+            // Unpack 8 pixels from 9 DWORDs
+            r[0] = group[0] & 0xFFF;
+            g[0] = (group[0] >> 12) & 0xFFF;
+            b[0] = ((group[0] >> 24) & 0xFF) | ((group[1] & 0xF) << 8);
+
+            r[1] = (group[1] >> 4) & 0xFFF;
+            g[1] = (group[1] >> 16) & 0xFFF;
+            b[1] = ((group[1] >> 28) & 0xF) | ((group[2] & 0xFF) << 4);
+
+            r[2] = (group[2] >> 8) & 0xFFF;
+            g[2] = (group[2] >> 20) & 0xFFF;
+            b[2] = group[3] & 0xFFF;
+
+            r[3] = (group[3] >> 12) & 0xFFF;
+            g[3] = ((group[3] >> 24) & 0xFF) | ((group[4] & 0xF) << 8);
+            b[3] = (group[4] >> 4) & 0xFFF;
+
+            r[4] = (group[4] >> 16) & 0xFFF;
+            g[4] = ((group[4] >> 28) & 0xF) | ((group[5] & 0xFF) << 4);
+            b[4] = (group[5] >> 8) & 0xFFF;
+
+            r[5] = (group[5] >> 20) & 0xFFF;
+            g[5] = group[6] & 0xFFF;
+            b[5] = (group[6] >> 12) & 0xFFF;
+
+            r[6] = ((group[6] >> 24) & 0xFF) | ((group[7] & 0xF) << 8);
+            g[6] = (group[7] >> 4) & 0xFFF;
+            b[6] = (group[7] >> 16) & 0xFFF;
+
+            r[7] = ((group[7] >> 28) & 0xF) | ((group[8] & 0xFF) << 4);
+            g[7] = (group[8] >> 8) & 0xFFF;
+            b[7] = (group[8] >> 20) & 0xFFF;
+
+            for (int i = 0; i < 8 && (x + i) < width; i++) {
+                int pixel_idx = y * width + x + i;
+                r_dst[pixel_idx] = r[i];
+                g_dst[pixel_idx] = g[i];
+                b_dst[pixel_idx] = b[i];
+            }
+        }
+    }
+
+    py::dict result;
+    result["r"] = r_array;
+    result["g"] = g_array;
+    result["b"] = b_array;
+    return result;
+}
+
 PYBIND11_MODULE(decklink_output, m) {
     m.doc() = "Python bindings for Blackmagic DeckLink video output";
 
     // Enums
     py::enum_<DeckLinkOutput::PixelFormat>(m, "PixelFormat")
         .value("BGRA", DeckLinkOutput::PixelFormat::Format8BitBGRA)
+        .value("YUV8", DeckLinkOutput::PixelFormat::Format8BitYUV)
         .value("YUV10", DeckLinkOutput::PixelFormat::Format10BitYUV)
         .value("RGB10", DeckLinkOutput::PixelFormat::Format10BitRGB)
         .value("RGB12", DeckLinkOutput::PixelFormat::Format12BitRGB);
@@ -1178,6 +1908,53 @@ PYBIND11_MODULE(decklink_output, m) {
     m.def("unpack_v210", &unpack_v210,
           "Unpack 10-bit YUV v210 format to separate Y, Cb, Cr arrays (returns dict with 'y', 'cb', 'cr' keys)",
           py::arg("yuv_array"), py::arg("width"), py::arg("height"));
+
+    m.def("yuv8_to_rgb_uint16", &yuv8_to_rgb_uint16,
+          "Convert 8-bit YUV 2vuy format to RGB uint16 numpy array",
+          py::arg("yuv_array"), py::arg("width"), py::arg("height"),
+          py::arg("matrix") = DeckLinkOutput::Gamut::Rec709,
+          py::arg("input_narrow_range") = true,
+          py::arg("output_narrow_range") = false);
+
+    m.def("yuv8_to_rgb_float", &yuv8_to_rgb_float,
+          "Convert 8-bit YUV 2vuy format to RGB float numpy array",
+          py::arg("yuv_array"), py::arg("width"), py::arg("height"),
+          py::arg("matrix") = DeckLinkOutput::Gamut::Rec709,
+          py::arg("input_narrow_range") = true);
+
+    m.def("unpack_2vuy", &unpack_2vuy,
+          "Unpack 8-bit YUV 2vuy format to separate Y, Cb, Cr arrays (returns dict with 'y', 'cb', 'cr' keys)",
+          py::arg("yuv_array"), py::arg("width"), py::arg("height"));
+
+    m.def("rgb10_to_uint16", &rgb10_to_uint16,
+          "Convert 10-bit RGB (R10l) format to RGB uint16 numpy array",
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"),
+          py::arg("input_narrow_range") = true,
+          py::arg("output_narrow_range") = false);
+
+    m.def("rgb10_to_float", &rgb10_to_float,
+          "Convert 10-bit RGB (R10l) format to RGB float numpy array",
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"),
+          py::arg("input_narrow_range") = true);
+
+    m.def("unpack_rgb10", &unpack_rgb10,
+          "Unpack 10-bit RGB (R10l) format to separate R, G, B arrays (returns dict with 'r', 'g', 'b' keys)",
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"));
+
+    m.def("rgb12_to_uint16", &rgb12_to_uint16,
+          "Convert 12-bit RGB (R12L) format to RGB uint16 numpy array",
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"),
+          py::arg("input_narrow_range") = false,
+          py::arg("output_narrow_range") = false);
+
+    m.def("rgb12_to_float", &rgb12_to_float,
+          "Convert 12-bit RGB (R12L) format to RGB float numpy array",
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"),
+          py::arg("input_narrow_range") = false);
+
+    m.def("unpack_rgb12", &unpack_rgb12,
+          "Unpack 12-bit RGB (R12L) format to separate R, G, B arrays (returns dict with 'r', 'g', 'b' keys)",
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"));
 
     // Input - CapturedFrame struct
     py::class_<DeckLinkInput::CapturedFrame>(m, "CapturedFrame")
