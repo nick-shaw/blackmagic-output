@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Context manager support for automatic resource cleanup
 - Low-level `DeckLinkInput` C++ class for direct capture control
 - `CapturedFrame` data structure containing frame data and metadata
+- **Full HDR metadata capture**: `capture_frame_with_metadata()` now includes complete SMPTE ST 2086 / CEA-861.3 HDR static metadata when present in the input signal
+  - Display primaries (red, green, blue X/Y chromaticity coordinates)
+  - White point (X/Y chromaticity coordinates)
+  - Mastering display luminance (max/min in cd/m²)
+  - Content light levels (MaxCLL and MaxFALL in cd/m²)
+  - All metadata fields are optional and only included when present in the signal
+  - Accessible via `'hdr_metadata'` dictionary key in returned frame data
 
 ### Changed
 - **BREAKING**: Library renamed from `blackmagic-output` to `blackmagic-io` to reflect input/output support

@@ -152,6 +152,21 @@ with BlackmagicInput() as input_device:
         print(f"EOTF: {frame_data['eotf']}")
         print(f"Narrow range source: {frame_data['input_narrow_range']}")
 
+        # Access HDR metadata if present
+        if 'hdr_metadata' in frame_data:
+            hdr = frame_data['hdr_metadata']
+            if 'display_primaries' in hdr:
+                print(f"Display Primaries:")
+                print(f"  Red:   ({hdr['display_primaries']['red']['x']:.4f}, "
+                      f"{hdr['display_primaries']['red']['y']:.4f})")
+                print(f"  Green: ({hdr['display_primaries']['green']['x']:.4f}, "
+                      f"{hdr['display_primaries']['green']['y']:.4f})")
+                print(f"  Blue:  ({hdr['display_primaries']['blue']['x']:.4f}, "
+                      f"{hdr['display_primaries']['blue']['y']:.4f})")
+            if 'mastering_luminance' in hdr:
+                print(f"Mastering Luminance: {hdr['mastering_luminance']['max']:.1f} / "
+                      f"{hdr['mastering_luminance']['min']:.4f} cd/m²")
+
         # Access RGB data
         rgb = frame_data['rgb']  # float32 array (H×W×3)
         # Process frame...
@@ -364,6 +379,16 @@ Dictionary keys:
 - `'colorspace'`: Color matrix name (e.g., "Rec709", "Rec2020")
 - `'eotf'`: Transfer function name (e.g., "SDR", "PQ", "HLG")
 - `'input_narrow_range'`: Boolean indicating if input was narrow range
+- `'hdr_metadata'`: Dictionary with HDR metadata (only present if HDR metadata is in the signal)
+  - `'display_primaries'`: Dictionary with display primaries (if present)
+    - `'red'`: Dictionary with `'x'` and `'y'` chromaticity coordinates
+    - `'green'`: Dictionary with `'x'` and `'y'` chromaticity coordinates
+    - `'blue'`: Dictionary with `'x'` and `'y'` chromaticity coordinates
+  - `'white_point'`: Dictionary with `'x'` and `'y'` chromaticity coordinates (if present)
+  - `'mastering_luminance'`: Dictionary with `'max'` and `'min'` luminance in cd/m² (if present)
+  - `'content_light'`: Dictionary with content light levels (if present)
+    - `'max_cll'`: Maximum content light level in cd/m² (MaxCLL) (if present)
+    - `'max_fall'`: Maximum frame average light level in cd/m² (MaxFALL) (if present)
 
 **`get_detected_format() -> Optional[dict]`**
 Get information about the detected input signal.
