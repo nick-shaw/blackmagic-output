@@ -85,25 +85,25 @@ try:
         rgb_array = np.ascontiguousarray(rgb_array)
         return _rgb_to_bgra(rgb_array, width, height)
 
-    def rgb_uint8_to_yuv8(rgb_array, width, height, matrix=Gamut.Rec709):
+    def rgb_uint8_to_yuv8(rgb_array, width, height, matrix=Gamut.Rec709,
+                          input_narrow_range=False, output_narrow_range=True):
         """Convert RGB uint8 numpy array to 8-bit YUV 2vuy format.
 
         Automatically converts input array to C-contiguous layout if needed.
 
-        Note: uint8 input is always interpreted as full range (0-255) and output is always
-        narrow range (Y: 16-235, CbCr: 16-240) as per broadcast standards.
-
         Args:
-            rgb_array: HxWx3 RGB array (uint8, 0-255 full range)
+            rgb_array: HxWx3 RGB array (uint8)
             width: Image width
             height: Image height
             matrix: Color matrix (Rec601, Rec709, or Rec2020)
+            input_narrow_range: If True, input is narrow range (16-235); if False, full range (0-255)
+            output_narrow_range: If True, output is narrow range (Y: 16-235, CbCr: 16-240); if False, full range
 
         Returns:
             Flat uint8 array in 2vuy format
         """
         rgb_array = np.ascontiguousarray(rgb_array)
-        return _rgb_uint8_to_yuv8(rgb_array, width, height, matrix)
+        return _rgb_uint8_to_yuv8(rgb_array, width, height, matrix, input_narrow_range, output_narrow_range)
 
     def rgb_uint16_to_yuv8(rgb_array, width, height, matrix=Gamut.Rec709, input_narrow_range=False, output_narrow_range=True):
         """Convert RGB uint16 numpy array to 8-bit YUV 2vuy format.

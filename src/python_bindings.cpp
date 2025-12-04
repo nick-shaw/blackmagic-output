@@ -1118,7 +1118,8 @@ py::array_t<float> yuv8_to_rgb_float(py::array_t<uint8_t> yuv_array, int width, 
 
 // RGB to YUV8 (2vuy) conversion functions
 py::array_t<uint8_t> rgb_uint8_to_yuv8(py::array_t<uint8_t> rgb_array, int width, int height,
-                                        DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709) {
+                                        DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709,
+                                        bool input_narrow_range = false, bool output_narrow_range = true) {
     auto buf = rgb_array.request();
 
     if (buf.ndim != 3 || buf.shape[2] != 3) {
@@ -1156,32 +1157,49 @@ py::array_t<uint8_t> rgb_uint8_to_yuv8(py::array_t<uint8_t> rgb_array, int width
                 int pixel_x = x + i;
                 if (pixel_x < width) {
                     const uint8_t* pixel = src_base + y * stride_y + pixel_x * stride_x;
-                    float r = pixel[0] / 255.0f;
-                    float g = pixel[1] / 255.0f;
-                    float b = pixel[2] / 255.0f;
+                    uint8_t r = pixel[0];
+                    uint8_t g = pixel[1];
+                    uint8_t b = pixel[2];
+
+                    float rf, gf, bf;
+                    if (input_narrow_range) {
+                        rf = (r - 16) / 219.0f;
+                        gf = (g - 16) / 219.0f;
+                        bf = (b - 16) / 219.0f;
+                    } else {
+                        rf = r / 255.0f;
+                        gf = g / 255.0f;
+                        bf = b / 255.0f;
+                    }
 
                     float yf, uf, vf;
                     if (matrix == DeckLinkOutput::Gamut::Rec601) {
-                        yf = 0.299f * r + 0.587f * g + 0.114f * b;
-                        uf = -0.1687f * r - 0.3313f * g + 0.5000f * b;
-                        vf = 0.5000f * r - 0.4187f * g - 0.0813f * b;
+                        yf = 0.299f * rf + 0.587f * gf + 0.114f * bf;
+                        uf = -0.1687f * rf - 0.3313f * gf + 0.5000f * bf;
+                        vf = 0.5000f * rf - 0.4187f * gf - 0.0813f * bf;
                     } else if (matrix == DeckLinkOutput::Gamut::Rec2020) {
-                        yf = 0.2627f * r + 0.6780f * g + 0.0593f * b;
-                        uf = -0.1396f * r - 0.3604f * g + 0.5000f * b;
-                        vf = 0.5000f * r - 0.4598f * g - 0.0402f * b;
+                        yf = 0.2627f * rf + 0.6780f * gf + 0.0593f * bf;
+                        uf = -0.1396f * rf - 0.3604f * gf + 0.5000f * bf;
+                        vf = 0.5000f * rf - 0.4598f * gf - 0.0402f * bf;
                     } else {
-                        yf = 0.2126f * r + 0.7152f * g + 0.0722f * b;
-                        uf = -0.1146f * r - 0.3854f * g + 0.5000f * b;
-                        vf = 0.5000f * r - 0.4542f * g - 0.0458f * b;
+                        yf = 0.2126f * rf + 0.7152f * gf + 0.0722f * bf;
+                        uf = -0.1146f * rf - 0.3854f * gf + 0.5000f * bf;
+                        vf = 0.5000f * rf - 0.4542f * gf - 0.0458f * bf;
                     }
 
-                    int y8 = (int)(yf * 219.0f + 16.0f + 0.5f);
-                    y8 = (y8 < Y_NARROW_MIN) ? Y_NARROW_MIN : ((y8 > Y_NARROW_MAX) ? Y_NARROW_MAX : y8);
+                    int y8;
+                    if (output_narrow_range) {
+                        y8 = (int)(yf * 219.0f + 16.0f + 0.5f);
+                        y8 = (y8 < Y_NARROW_MIN) ? Y_NARROW_MIN : ((y8 > Y_NARROW_MAX) ? Y_NARROW_MAX : y8);
+                    } else {
+                        y8 = (int)(yf * 255.0f + 0.5f);
+                        y8 = (y8 < 0) ? 0 : ((y8 > 255) ? 255 : y8);
+                    }
                     y_values[i] = (uint8_t)y8;
                     u_temp[i] = uf;
                     v_temp[i] = vf;
                 } else {
-                    y_values[i] = Y_NARROW_MIN;
+                    y_values[i] = output_narrow_range ? Y_NARROW_MIN : 0;
                     u_temp[i] = 0.0f;
                     v_temp[i] = 0.0f;
                 }
@@ -1191,10 +1209,18 @@ py::array_t<uint8_t> rgb_uint8_to_yuv8(py::array_t<uint8_t> rgb_array, int width
             float u_avg = (u_temp[0] + u_temp[1]) * 0.5f;
             float v_avg = (v_temp[0] + v_temp[1]) * 0.5f;
 
-            int u8 = (int)((u_avg + 0.5f) * 224.0f + 16.0f + 0.5f);
-            int v8 = (int)((v_avg + 0.5f) * 224.0f + 16.0f + 0.5f);
-            u8 = (u8 < C_NARROW_MIN) ? C_NARROW_MIN : ((u8 > C_NARROW_MAX) ? C_NARROW_MAX : u8);
-            v8 = (v8 < C_NARROW_MIN) ? C_NARROW_MIN : ((v8 > C_NARROW_MAX) ? C_NARROW_MAX : v8);
+            int u8, v8;
+            if (output_narrow_range) {
+                u8 = (int)((u_avg + 0.5f) * 224.0f + 16.0f + 0.5f);
+                v8 = (int)((v_avg + 0.5f) * 224.0f + 16.0f + 0.5f);
+                u8 = (u8 < C_NARROW_MIN) ? C_NARROW_MIN : ((u8 > C_NARROW_MAX) ? C_NARROW_MAX : u8);
+                v8 = (v8 < C_NARROW_MIN) ? C_NARROW_MIN : ((v8 > C_NARROW_MAX) ? C_NARROW_MAX : v8);
+            } else {
+                u8 = (int)(128.0f + 255.0f * u_avg + 0.5f);
+                v8 = (int)(128.0f + 255.0f * v_avg + 0.5f);
+                u8 = (u8 < 0) ? 0 : ((u8 > 255) ? 255 : u8);
+                v8 = (v8 < 0) ? 0 : ((v8 > 255) ? 255 : v8);
+            }
 
             // Pack into 2vuy format: U Y0 V Y1
             int dst_idx = (y * width + x) * 2;
@@ -2281,7 +2307,9 @@ PYBIND11_MODULE(decklink_io, m) {
     m.def("rgb_uint8_to_yuv8", &rgb_uint8_to_yuv8,
           "Convert RGB uint8 numpy array to 8-bit YUV 2vuy format",
           py::arg("rgb_array"), py::arg("width"), py::arg("height"),
-          py::arg("matrix") = DeckLinkOutput::Gamut::Rec709);
+          py::arg("matrix") = DeckLinkOutput::Gamut::Rec709,
+          py::arg("input_narrow_range") = false,
+          py::arg("output_narrow_range") = true);
 
     m.def("rgb_uint16_to_yuv8", &rgb_uint16_to_yuv8,
           "Convert RGB uint16 numpy array to 8-bit YUV 2vuy format",

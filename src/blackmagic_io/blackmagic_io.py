@@ -554,7 +554,7 @@ class BlackmagicOutput:
 
             if frame_data.dtype == np.uint8:
                 return _decklink.rgb_uint8_to_yuv8(frame_data, settings.width, settings.height,
-                                                   internal_matrix)
+                                                   internal_matrix, input_narrow_range, output_narrow_range)
             elif frame_data.dtype == np.uint16:
                 return _decklink.rgb_uint16_to_yuv8(frame_data, settings.width, settings.height,
                                                     internal_matrix, input_narrow_range, output_narrow_range)

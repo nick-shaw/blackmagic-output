@@ -646,6 +646,29 @@ Convert RGB to BGRA format.
 - 8-bit data is always treated as full range, but 8-bit Y'CbCr output will always be narrow range
 - Returns: BGRA array (H×W×4), dtype uint8
 
+**`rgb_uint8_to_yuv8(rgb_array, width, height, matrix=Matrix.Rec709, input_narrow_range=False, output_narrow_range=True) -> np.ndarray`**
+Convert R'G'B' uint8 to 8-bit Y'CbCr 2vuy format.
+- `rgb_array`: NumPy array (H×W×3), dtype uint8 (0-255 range)
+- `matrix`: R'G'B' to Y'CbCr conversion matrix (Matrix.Rec601, Matrix.Rec709 or Matrix.Rec2020). Default: Matrix.Rec709
+- `input_narrow_range`: Whether to interpret the `rgb_array` as narrow range (16-235). Default: False
+- `output_narrow_range`: Whether to encode the Y'CbCr as narrow range (Y: 16-235, CbCr: 16-240). Default: True
+- Returns: Packed 2vuy array
+
+**`rgb_uint16_to_yuv8(rgb_array, width, height, matrix=Matrix.Rec709, input_narrow_range=False, output_narrow_range=True) -> np.ndarray`**
+Convert R'G'B' uint16 to 8-bit Y'CbCr 2vuy format.
+- `rgb_array`: NumPy array (H×W×3), dtype uint16 (0-65535 range)
+- `matrix`: R'G'B' to Y'CbCr conversion matrix (Matrix.Rec601, Matrix.Rec709 or Matrix.Rec2020). Default: Matrix.Rec709
+- `input_narrow_range`: Whether to interpret the `rgb_array` as narrow range. Default: False
+- `output_narrow_range`: Whether to encode the Y'CbCr as narrow range (Y: 16-235, CbCr: 16-240). Default: True
+- Returns: Packed 2vuy array
+
+**`rgb_float_to_yuv8(rgb_array, width, height, matrix=Matrix.Rec709, output_narrow_range=True) -> np.ndarray`**
+Convert R'G'B' float to 8-bit Y'CbCr 2vuy format.
+- `rgb_array`: NumPy array (H×W×3), dtype float32 (0.0-1.0 range)
+- `matrix`: R'G'B' to Y'CbCr conversion matrix (Matrix.Rec601, Matrix.Rec709 or Matrix.Rec2020). Default: Matrix.Rec709
+- `output_narrow_range`: Whether to encode the Y'CbCr as narrow range (Y: 16-235, CbCr: 16-240). Default: True
+- Returns: Packed 2vuy array
+
 **`rgb_uint16_to_yuv10(rgb_array, width, height, matrix=Matrix.Rec709, input_narrow_range=False, output_narrow_range=True) -> np.ndarray`**
 Convert R'G'B' uint16 to 10-bit Y'CbCr v210 format.
 - `rgb_array`: NumPy array (H×W×3), dtype uint16 (0-65535 range)
@@ -834,6 +857,13 @@ with BlackmagicOutput() as output:
 **`PixelFormat`**
 - `BGRA`: 8-bit BGRA (automatically used for uint8 data)
   - **Note**: Over SDI, BGRA data is output as narrow range 8-bit Y'CbCr 4:2:2, not RGB. The BGRA name refers to the input buffer format, not the SDI wire format.
+- `YUV8`: 8-bit Y'CbCr 4:2:2 (2vuy) - direct 8-bit Y'CbCr output
+  - uint8 input: Configurable interpretation via `input_narrow_range` parameter
+  - uint16 input: Configurable interpretation via `input_narrow_range` parameter
+  - float input: Always interpreted as full range (0.0-1.0)
+  - Output range configurable via `output_narrow_range` parameter
+  - Defaults: `input_narrow_range=False, output_narrow_range=True`
+  - More efficient than BGRA for 8-bit Y'CbCr workflows (avoids hardware conversion)
 - `YUV10`: 10-bit Y'CbCr 4:2:2 (v210) - default for uint16 / float data
   - Defaults to narrow range: Y: 64-940, UV: 64-960. Supports full range Y'CbCr (0-1023, as per [Rec. ITU-T H.273](https://www.itu.int/rec/T-REC-H.273)) if `output_narrow_range` is False in the high level API
 - `RGB10`: 10-bit R'G'B' (bmdFormat10BitRGBXLE) - native R'G'B' output without Y'CbCr conversion
