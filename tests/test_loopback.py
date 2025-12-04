@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-def test_pixel_format(output_device, input_device, pixel_format, display_mode, format_name):
+def test_pixel_format(output_device, input_device, pixel_format, display_mode, format_name, test_hdr_metadata=False):
     """Test a single pixel format with loopback."""
     print(f"\n{'=' * 70}")
     print(f"Testing {format_name} ({pixel_format})")
@@ -24,6 +24,34 @@ def test_pixel_format(output_device, input_device, pixel_format, display_mode, f
 
     print(f"Resolution: {width}x{height}")
     print(f"Framerate: {settings.framerate} fps")
+
+    # Set HDR metadata if requested
+    if test_hdr_metadata:
+        print("Setting HDR metadata (PQ, Rec.2020, custom values)...")
+        # Create custom HDR metadata
+        hdr_metadata = decklink_io.HdrMetadataCustom()
+        # Display primaries (Rec.2020)
+        hdr_metadata.display_primaries_red_x = 0.708
+        hdr_metadata.display_primaries_red_y = 0.292
+        hdr_metadata.display_primaries_green_x = 0.170
+        hdr_metadata.display_primaries_green_y = 0.797
+        hdr_metadata.display_primaries_blue_x = 0.131
+        hdr_metadata.display_primaries_blue_y = 0.046
+        # White point (D65)
+        hdr_metadata.white_point_x = 0.3127
+        hdr_metadata.white_point_y = 0.3290
+        # Mastering display luminance
+        hdr_metadata.max_mastering_luminance = 1000.0  # 1000 nits
+        hdr_metadata.min_mastering_luminance = 0.005   # 0.005 nits
+        # Content light level
+        hdr_metadata.max_content_light_level = 800.0           # 800 nits
+        hdr_metadata.max_frame_average_light_level = 400.0     # 400 nits
+
+        output_device.set_hdr_metadata_custom(
+            decklink_io.Gamut.Rec2020,
+            decklink_io.Eotf.PQ,
+            hdr_metadata
+        )
 
     # Setup output
     settings.format = pixel_format
@@ -113,6 +141,92 @@ def test_pixel_format(output_device, input_device, pixel_format, display_mode, f
     print(f"  Data size: {len(captured_frame.data)} bytes")
     print(f"  Colorspace: {captured_frame.colorspace}")
     print(f"  EOTF: {captured_frame.eotf}")
+
+    # Verify HDR metadata if it was set
+    if test_hdr_metadata:
+        print("\n--- HDR Metadata Verification ---")
+        metadata_passed = True
+
+        # Check EOTF and colorspace
+        if captured_frame.eotf != decklink_io.Eotf.PQ:
+            print(f"  ✗ EOTF mismatch: expected PQ, got {captured_frame.eotf}")
+            metadata_passed = False
+        else:
+            print(f"  ✓ EOTF: {captured_frame.eotf}")
+
+        if captured_frame.colorspace != decklink_io.Gamut.Rec2020:
+            print(f"  ✗ Colorspace mismatch: expected Rec2020, got {captured_frame.colorspace}")
+            metadata_passed = False
+        else:
+            print(f"  ✓ Colorspace: {captured_frame.colorspace}")
+
+        # Check display primaries
+        if captured_frame.has_display_primaries:
+            print(f"  ✓ Display primaries present:")
+            print(f"    Red:   ({captured_frame.display_primaries_red_x:.4f}, {captured_frame.display_primaries_red_y:.4f})")
+            print(f"    Green: ({captured_frame.display_primaries_green_x:.4f}, {captured_frame.display_primaries_green_y:.4f})")
+            print(f"    Blue:  ({captured_frame.display_primaries_blue_x:.4f}, {captured_frame.display_primaries_blue_y:.4f})")
+            # Verify values (allow small tolerance for rounding)
+            tolerance = 0.0001
+            if abs(captured_frame.display_primaries_red_x - 0.708) > tolerance or \
+               abs(captured_frame.display_primaries_red_y - 0.292) > tolerance:
+                print(f"    ✗ Red primary mismatch (expected 0.708, 0.292)")
+                metadata_passed = False
+        else:
+            print(f"  ✗ Display primaries missing")
+            metadata_passed = False
+
+        # Check white point
+        if captured_frame.has_white_point:
+            print(f"  ✓ White point: ({captured_frame.white_point_x:.4f}, {captured_frame.white_point_y:.4f})")
+            tolerance = 0.0001
+            if abs(captured_frame.white_point_x - 0.3127) > tolerance or \
+               abs(captured_frame.white_point_y - 0.3290) > tolerance:
+                print(f"    ✗ White point mismatch (expected 0.3127, 0.3290)")
+                metadata_passed = False
+        else:
+            print(f"  ✗ White point missing")
+            metadata_passed = False
+
+        # Check mastering luminance
+        if captured_frame.has_mastering_luminance:
+            print(f"  ✓ Mastering luminance:")
+            print(f"    Max: {captured_frame.max_mastering_luminance:.1f} nits")
+            print(f"    Min: {captured_frame.min_mastering_luminance:.4f} nits")
+            if abs(captured_frame.max_mastering_luminance - 1000.0) > 1.0 or \
+               abs(captured_frame.min_mastering_luminance - 0.005) > 0.001:
+                print(f"    ✗ Mastering luminance mismatch (expected 1000.0, 0.005)")
+                metadata_passed = False
+        else:
+            print(f"  ✗ Mastering luminance missing")
+            metadata_passed = False
+
+        # Check content light level
+        if captured_frame.has_max_cll:
+            print(f"  ✓ Max content light level: {captured_frame.max_content_light_level:.1f} nits")
+            if abs(captured_frame.max_content_light_level - 800.0) > 1.0:
+                print(f"    ✗ MaxCLL mismatch (expected 800.0)")
+                metadata_passed = False
+        else:
+            print(f"  ✗ Max content light level missing")
+            metadata_passed = False
+
+        if captured_frame.has_max_fall:
+            print(f"  ✓ Max frame average light level: {captured_frame.max_frame_average_light_level:.1f} nits")
+            if abs(captured_frame.max_frame_average_light_level - 400.0) > 1.0:
+                print(f"    ✗ MaxFALL mismatch (expected 400.0)")
+                metadata_passed = False
+        else:
+            print(f"  ✗ Max frame average light level missing")
+            metadata_passed = False
+
+        if not metadata_passed:
+            print("\n  ✗ HDR Metadata verification FAILED")
+            input_device.stop_capture()
+            output_device.stop_output()
+            return False
+        else:
+            print("\n  ✓ HDR Metadata verification PASSED")
 
     # Convert captured frame to RGB for display
     if captured_frame.format == decklink_io.PixelFormat.YUV8:
@@ -272,19 +386,20 @@ def main():
     display_mode = decklink_io.DisplayMode.HD1080p25
 
     # Test all formats: BGRA (→YUV8 in hardware), YUV8 (direct), YUV10, RGB10, RGB12
+    # RGB10 includes HDR metadata verification
     test_formats = [
-        (decklink_io.PixelFormat.BGRA, "8-bit BGRA (→YUV8 hardware)"),
-        (decklink_io.PixelFormat.YUV8, "8-bit YUV (2vuy direct)"),
-        (decklink_io.PixelFormat.YUV10, "10-bit YUV (v210)"),
-        (decklink_io.PixelFormat.RGB10, "10-bit RGB (R10l)"),
-        (decklink_io.PixelFormat.RGB12, "12-bit RGB (R12L)"),
+        (decklink_io.PixelFormat.BGRA, "8-bit BGRA (→YUV8 hardware)", False),
+        (decklink_io.PixelFormat.YUV8, "8-bit YUV (2vuy direct)", False),
+        (decklink_io.PixelFormat.YUV10, "10-bit YUV (v210)", False),
+        (decklink_io.PixelFormat.RGB10, "10-bit RGB (R10l) + HDR metadata", True),
+        (decklink_io.PixelFormat.RGB12, "12-bit RGB (R12L)", False),
     ]
 
     results = []
-    for pixel_format, format_name in test_formats:
+    for pixel_format, format_name, test_hdr in test_formats:
         success = test_pixel_format(
             output_device, input_device,
-            pixel_format, display_mode, format_name
+            pixel_format, display_mode, format_name, test_hdr
         )
         results.append((format_name, success))
 
