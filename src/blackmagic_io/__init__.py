@@ -43,6 +43,9 @@ try:
     from decklink_io import (
         # Packing (RGB -> format)
         rgb_to_bgra as _rgb_to_bgra,
+        rgb_uint8_to_yuv8 as _rgb_uint8_to_yuv8,
+        rgb_uint16_to_yuv8 as _rgb_uint16_to_yuv8,
+        rgb_float_to_yuv8 as _rgb_float_to_yuv8,
         rgb_uint16_to_yuv10 as _rgb_uint16_to_yuv10,
         rgb_float_to_yuv10 as _rgb_float_to_yuv10,
         rgb_uint16_to_rgb10 as _rgb_uint16_to_rgb10,
@@ -81,6 +84,68 @@ try:
         """
         rgb_array = np.ascontiguousarray(rgb_array)
         return _rgb_to_bgra(rgb_array, width, height)
+
+    def rgb_uint8_to_yuv8(rgb_array, width, height, matrix=Gamut.Rec709):
+        """Convert RGB uint8 numpy array to 8-bit YUV 2vuy format.
+
+        Automatically converts input array to C-contiguous layout if needed.
+
+        Note: uint8 input is always interpreted as full range (0-255) and output is always
+        narrow range (Y: 16-235, CbCr: 16-240) as per broadcast standards.
+
+        Args:
+            rgb_array: HxWx3 RGB array (uint8, 0-255 full range)
+            width: Image width
+            height: Image height
+            matrix: Color matrix (Rec601, Rec709, or Rec2020)
+
+        Returns:
+            Flat uint8 array in 2vuy format
+        """
+        rgb_array = np.ascontiguousarray(rgb_array)
+        return _rgb_uint8_to_yuv8(rgb_array, width, height, matrix)
+
+    def rgb_uint16_to_yuv8(rgb_array, width, height, matrix=Gamut.Rec709, input_narrow_range=False, output_narrow_range=True):
+        """Convert RGB uint16 numpy array to 8-bit YUV 2vuy format.
+
+        Automatically converts input array to C-contiguous layout if needed.
+
+        Args:
+            rgb_array: HxWx3 RGB array (uint16)
+            width: Image width
+            height: Image height
+            matrix: Color matrix (Rec601, Rec709, or Rec2020)
+            input_narrow_range: If True, input is narrow range (64-940 @10-bit, i.e., 4096-60160 @16-bit).
+                              If False, input is full range (0-65535). Default: False
+            output_narrow_range: If True, output YUV is narrow range (Y: 16-235, CbCr: 16-240).
+                               If False, output is full range (0-255). Default: True
+
+        Returns:
+            Flat uint8 array in 2vuy format
+        """
+        rgb_array = np.ascontiguousarray(rgb_array)
+        return _rgb_uint16_to_yuv8(rgb_array, width, height, matrix, input_narrow_range, output_narrow_range)
+
+    def rgb_float_to_yuv8(rgb_array, width, height, matrix=Gamut.Rec709, output_narrow_range=True):
+        """Convert RGB float numpy array to 8-bit YUV 2vuy format.
+
+        Automatically converts input array to C-contiguous layout if needed.
+
+        Note: Float input is always interpreted as full range (0.0-1.0).
+
+        Args:
+            rgb_array: HxWx3 RGB array (float, 0.0-1.0 full range)
+            width: Image width
+            height: Image height
+            matrix: Color matrix (Rec601, Rec709, or Rec2020)
+            output_narrow_range: If True, output YUV is narrow range (Y: 16-235, CbCr: 16-240).
+                               If False, output is full range (0-255). Default: True
+
+        Returns:
+            Flat uint8 array in 2vuy format
+        """
+        rgb_array = np.ascontiguousarray(rgb_array)
+        return _rgb_float_to_yuv8(rgb_array, width, height, matrix, output_narrow_range)
 
     def rgb_uint16_to_yuv10(rgb_array, width, height, matrix=Gamut.Rec709, input_narrow_range=False, output_narrow_range=True):
         """Convert RGB uint16 numpy array to 10-bit YUV v210 format.
@@ -420,6 +485,9 @@ __all__ = [
     "get_device_capabilities",
     # Conversion utilities - Packing (RGB -> format)
     "rgb_to_bgra",
+    "rgb_uint8_to_yuv8",
+    "rgb_uint16_to_yuv8",
+    "rgb_float_to_yuv8",
     "rgb_uint16_to_yuv10",
     "rgb_float_to_yuv10",
     "rgb_uint16_to_rgb10",

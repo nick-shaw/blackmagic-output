@@ -35,6 +35,7 @@ class Eotf(Enum):
 class PixelFormat(Enum):
     """Supported pixel formats for DeckLink output"""
     BGRA = _decklink.PixelFormat.BGRA
+    YUV8 = _decklink.PixelFormat.YUV8
     YUV10 = _decklink.PixelFormat.YUV10
     RGB10 = _decklink.PixelFormat.RGB10
     RGB12 = _decklink.PixelFormat.RGB12
@@ -471,6 +472,8 @@ class BlackmagicOutput:
 
         if self._current_settings.format == _decklink.PixelFormat.BGRA:
             pixel_format = PixelFormat.BGRA
+        elif self._current_settings.format == _decklink.PixelFormat.YUV8:
+            pixel_format = PixelFormat.YUV8
         elif self._current_settings.format == _decklink.PixelFormat.YUV10:
             pixel_format = PixelFormat.YUV10
         elif self._current_settings.format == _decklink.PixelFormat.RGB10:
@@ -542,6 +545,24 @@ class BlackmagicOutput:
                 return frame_data
             else:
                 raise ValueError("For BGRA format, frame data must be HxWx3 (RGB) or HxWx4 (BGRA)")
+
+        elif pixel_format == PixelFormat.YUV8:
+            if frame_data.ndim != 3 or frame_data.shape[2] != 3:
+                raise ValueError("For YUV8 format, frame data must be HxWx3 (RGB)")
+
+            internal_matrix = matrix.value
+
+            if frame_data.dtype == np.uint8:
+                return _decklink.rgb_uint8_to_yuv8(frame_data, settings.width, settings.height,
+                                                   internal_matrix)
+            elif frame_data.dtype == np.uint16:
+                return _decklink.rgb_uint16_to_yuv8(frame_data, settings.width, settings.height,
+                                                    internal_matrix, input_narrow_range, output_narrow_range)
+            elif frame_data.dtype in (np.float32, np.float64):
+                return _decklink.rgb_float_to_yuv8(frame_data.astype(np.float32), settings.width, settings.height,
+                                                   internal_matrix, output_narrow_range)
+            else:
+                raise ValueError("For YUV8 format, frame data must be uint8, uint16 or float dtype")
 
         elif pixel_format == PixelFormat.YUV10:
             if frame_data.ndim != 3 or frame_data.shape[2] != 3:

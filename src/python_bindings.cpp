@@ -1116,6 +1116,323 @@ py::array_t<float> yuv8_to_rgb_float(py::array_t<uint8_t> yuv_array, int width, 
     return rgb_array;
 }
 
+// RGB to YUV8 (2vuy) conversion functions
+py::array_t<uint8_t> rgb_uint8_to_yuv8(py::array_t<uint8_t> rgb_array, int width, int height,
+                                        DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709) {
+    auto buf = rgb_array.request();
+
+    if (buf.ndim != 3 || buf.shape[2] != 3) {
+        throw std::runtime_error("Input array must be HxWx3 RGB format");
+    }
+
+    if (buf.shape[0] != height || buf.shape[1] != width) {
+        throw std::runtime_error("Array dimensions don't match specified width/height");
+    }
+
+    // 2vuy format: 2 bytes per pixel (4:2:2 chroma subsampling)
+    int row_bytes = width * 2;
+    auto result = py::array_t<uint8_t>(height * row_bytes);
+    auto res_buf = result.request();
+
+    const uint8_t* src_base = static_cast<const uint8_t*>(buf.ptr);
+    uint8_t* dst = static_cast<uint8_t*>(res_buf.ptr);
+
+    // Get strides in bytes
+    ssize_t stride_y = buf.strides[0];
+    ssize_t stride_x = buf.strides[1];
+
+    const uint8_t Y_NARROW_MIN = 16;
+    const uint8_t Y_NARROW_MAX = 235;
+    const uint8_t C_NARROW_MIN = 16;
+    const uint8_t C_NARROW_MAX = 240;
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x += 2) {
+            float u_temp[2], v_temp[2];
+            uint8_t y_values[2];
+
+            // Convert RGB to YUV for 2 pixels
+            for (int i = 0; i < 2; i++) {
+                int pixel_x = x + i;
+                if (pixel_x < width) {
+                    const uint8_t* pixel = src_base + y * stride_y + pixel_x * stride_x;
+                    float r = pixel[0] / 255.0f;
+                    float g = pixel[1] / 255.0f;
+                    float b = pixel[2] / 255.0f;
+
+                    float yf, uf, vf;
+                    if (matrix == DeckLinkOutput::Gamut::Rec601) {
+                        yf = 0.299f * r + 0.587f * g + 0.114f * b;
+                        uf = -0.1687f * r - 0.3313f * g + 0.5000f * b;
+                        vf = 0.5000f * r - 0.4187f * g - 0.0813f * b;
+                    } else if (matrix == DeckLinkOutput::Gamut::Rec2020) {
+                        yf = 0.2627f * r + 0.6780f * g + 0.0593f * b;
+                        uf = -0.1396f * r - 0.3604f * g + 0.5000f * b;
+                        vf = 0.5000f * r - 0.4598f * g - 0.0402f * b;
+                    } else {
+                        yf = 0.2126f * r + 0.7152f * g + 0.0722f * b;
+                        uf = -0.1146f * r - 0.3854f * g + 0.5000f * b;
+                        vf = 0.5000f * r - 0.4542f * g - 0.0458f * b;
+                    }
+
+                    int y8 = (int)(yf * 219.0f + 16.0f + 0.5f);
+                    y8 = (y8 < Y_NARROW_MIN) ? Y_NARROW_MIN : ((y8 > Y_NARROW_MAX) ? Y_NARROW_MAX : y8);
+                    y_values[i] = (uint8_t)y8;
+                    u_temp[i] = uf;
+                    v_temp[i] = vf;
+                } else {
+                    y_values[i] = Y_NARROW_MIN;
+                    u_temp[i] = 0.0f;
+                    v_temp[i] = 0.0f;
+                }
+            }
+
+            // Average U/V samples for 4:2:2 chroma subsampling
+            float u_avg = (u_temp[0] + u_temp[1]) * 0.5f;
+            float v_avg = (v_temp[0] + v_temp[1]) * 0.5f;
+
+            int u8 = (int)((u_avg + 0.5f) * 224.0f + 16.0f + 0.5f);
+            int v8 = (int)((v_avg + 0.5f) * 224.0f + 16.0f + 0.5f);
+            u8 = (u8 < C_NARROW_MIN) ? C_NARROW_MIN : ((u8 > C_NARROW_MAX) ? C_NARROW_MAX : u8);
+            v8 = (v8 < C_NARROW_MIN) ? C_NARROW_MIN : ((v8 > C_NARROW_MAX) ? C_NARROW_MAX : v8);
+
+            // Pack into 2vuy format: U Y0 V Y1
+            int dst_idx = (y * width + x) * 2;
+            dst[dst_idx + 0] = (uint8_t)u8;
+            dst[dst_idx + 1] = y_values[0];
+            dst[dst_idx + 2] = (uint8_t)v8;
+            dst[dst_idx + 3] = y_values[1];
+        }
+    }
+
+    return result;
+}
+
+py::array_t<uint8_t> rgb_uint16_to_yuv8(py::array_t<uint16_t> rgb_array, int width, int height,
+                                         DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709,
+                                         bool input_narrow_range = false, bool output_narrow_range = true) {
+    auto buf = rgb_array.request();
+
+    if (buf.ndim != 3 || buf.shape[2] != 3) {
+        throw std::runtime_error("Input array must be HxWx3 RGB format");
+    }
+
+    if (buf.shape[0] != height || buf.shape[1] != width) {
+        throw std::runtime_error("Array dimensions don't match specified width/height");
+    }
+
+    // 2vuy format: 2 bytes per pixel (4:2:2 chroma subsampling)
+    int row_bytes = width * 2;
+    auto result = py::array_t<uint8_t>(height * row_bytes);
+    auto res_buf = result.request();
+
+    const uint8_t* src_base = static_cast<const uint8_t*>(buf.ptr);
+    uint8_t* dst = static_cast<uint8_t*>(res_buf.ptr);
+
+    // Get strides in bytes
+    ssize_t stride_y = buf.strides[0];
+    ssize_t stride_x = buf.strides[1];
+
+    const uint8_t Y_NARROW_MIN = 16;
+    const uint8_t Y_NARROW_MAX = 235;
+    const uint8_t C_NARROW_MIN = 16;
+    const uint8_t C_NARROW_MAX = 240;
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x += 2) {
+            float u_temp[2], v_temp[2];
+            uint8_t y_values[2];
+
+            // Convert RGB to YUV for 2 pixels
+            for (int i = 0; i < 2; i++) {
+                int pixel_x = x + i;
+                if (pixel_x < width) {
+                    const uint16_t* pixel = reinterpret_cast<const uint16_t*>(
+                        src_base + y * stride_y + pixel_x * stride_x);
+                    uint16_t r = pixel[0];
+                    uint16_t g = pixel[1];
+                    uint16_t b = pixel[2];
+
+                    float rf, gf, bf;
+                    if (input_narrow_range) {
+                        rf = (r - (64 << 6)) / (float)(876 << 6);
+                        gf = (g - (64 << 6)) / (float)(876 << 6);
+                        bf = (b - (64 << 6)) / (float)(876 << 6);
+                    } else {
+                        rf = r / 65535.0f;
+                        gf = g / 65535.0f;
+                        bf = b / 65535.0f;
+                    }
+
+                    float yf, uf, vf;
+                    if (matrix == DeckLinkOutput::Gamut::Rec601) {
+                        yf = 0.299f * rf + 0.587f * gf + 0.114f * bf;
+                        uf = -0.1687f * rf - 0.3313f * gf + 0.5000f * bf;
+                        vf = 0.5000f * rf - 0.4187f * gf - 0.0813f * bf;
+                    } else if (matrix == DeckLinkOutput::Gamut::Rec2020) {
+                        yf = 0.2627f * rf + 0.6780f * gf + 0.0593f * bf;
+                        uf = -0.1396f * rf - 0.3604f * gf + 0.5000f * bf;
+                        vf = 0.5000f * rf - 0.4598f * gf - 0.0402f * bf;
+                    } else {
+                        yf = 0.2126f * rf + 0.7152f * gf + 0.0722f * bf;
+                        uf = -0.1146f * rf - 0.3854f * gf + 0.5000f * bf;
+                        vf = 0.5000f * rf - 0.4542f * gf - 0.0458f * bf;
+                    }
+
+                    int y8;
+                    if (output_narrow_range) {
+                        y8 = (int)(yf * 219.0f + 16.0f + 0.5f);
+                        y8 = (y8 < Y_NARROW_MIN) ? Y_NARROW_MIN : ((y8 > Y_NARROW_MAX) ? Y_NARROW_MAX : y8);
+                    } else {
+                        y8 = (int)(yf * 255.0f + 0.5f);
+                        y8 = (y8 < 0) ? 0 : ((y8 > 255) ? 255 : y8);
+                    }
+                    y_values[i] = (uint8_t)y8;
+                    u_temp[i] = uf;
+                    v_temp[i] = vf;
+                } else {
+                    y_values[i] = output_narrow_range ? Y_NARROW_MIN : 0;
+                    u_temp[i] = 0.0f;
+                    v_temp[i] = 0.0f;
+                }
+            }
+
+            // Average U/V samples for 4:2:2 chroma subsampling
+            float u_avg = (u_temp[0] + u_temp[1]) * 0.5f;
+            float v_avg = (v_temp[0] + v_temp[1]) * 0.5f;
+
+            int u8, v8;
+            if (output_narrow_range) {
+                u8 = (int)((u_avg + 0.5f) * 224.0f + 16.0f + 0.5f);
+                v8 = (int)((v_avg + 0.5f) * 224.0f + 16.0f + 0.5f);
+                u8 = (u8 < C_NARROW_MIN) ? C_NARROW_MIN : ((u8 > C_NARROW_MAX) ? C_NARROW_MAX : u8);
+                v8 = (v8 < C_NARROW_MIN) ? C_NARROW_MIN : ((v8 > C_NARROW_MAX) ? C_NARROW_MAX : v8);
+            } else {
+                u8 = (int)(128.0f + 255.0f * u_avg + 0.5f);
+                v8 = (int)(128.0f + 255.0f * v_avg + 0.5f);
+                u8 = (u8 < 0) ? 0 : ((u8 > 255) ? 255 : u8);
+                v8 = (v8 < 0) ? 0 : ((v8 > 255) ? 255 : v8);
+            }
+
+            // Pack into 2vuy format: U Y0 V Y1
+            int dst_idx = (y * width + x) * 2;
+            dst[dst_idx + 0] = (uint8_t)u8;
+            dst[dst_idx + 1] = y_values[0];
+            dst[dst_idx + 2] = (uint8_t)v8;
+            dst[dst_idx + 3] = y_values[1];
+        }
+    }
+
+    return result;
+}
+
+py::array_t<uint8_t> rgb_float_to_yuv8(py::array_t<float> rgb_array, int width, int height,
+                                        DeckLinkOutput::Gamut matrix = DeckLinkOutput::Gamut::Rec709,
+                                        bool output_narrow_range = true) {
+    auto buf = rgb_array.request();
+
+    if (buf.ndim != 3 || buf.shape[2] != 3) {
+        throw std::runtime_error("Input array must be HxWx3 RGB format");
+    }
+
+    if (buf.shape[0] != height || buf.shape[1] != width) {
+        throw std::runtime_error("Array dimensions don't match specified width/height");
+    }
+
+    // 2vuy format: 2 bytes per pixel (4:2:2 chroma subsampling)
+    int row_bytes = width * 2;
+    auto result = py::array_t<uint8_t>(height * row_bytes);
+    auto res_buf = result.request();
+
+    const uint8_t* src_base = static_cast<const uint8_t*>(buf.ptr);
+    uint8_t* dst = static_cast<uint8_t*>(res_buf.ptr);
+
+    // Get strides in bytes
+    ssize_t stride_y = buf.strides[0];
+    ssize_t stride_x = buf.strides[1];
+
+    const uint8_t Y_NARROW_MIN = 16;
+    const uint8_t Y_NARROW_MAX = 235;
+    const uint8_t C_NARROW_MIN = 16;
+    const uint8_t C_NARROW_MAX = 240;
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x += 2) {
+            float u_temp[2], v_temp[2];
+            uint8_t y_values[2];
+
+            // Convert RGB to YUV for 2 pixels
+            for (int i = 0; i < 2; i++) {
+                int pixel_x = x + i;
+                if (pixel_x < width) {
+                    const float* pixel = reinterpret_cast<const float*>(
+                        src_base + y * stride_y + pixel_x * stride_x);
+                    float r = pixel[0];
+                    float g = pixel[1];
+                    float b = pixel[2];
+
+                    float yf, uf, vf;
+                    if (matrix == DeckLinkOutput::Gamut::Rec601) {
+                        yf = 0.299f * r + 0.587f * g + 0.114f * b;
+                        uf = -0.1687f * r - 0.3313f * g + 0.5000f * b;
+                        vf = 0.5000f * r - 0.4187f * g - 0.0813f * b;
+                    } else if (matrix == DeckLinkOutput::Gamut::Rec2020) {
+                        yf = 0.2627f * r + 0.6780f * g + 0.0593f * b;
+                        uf = -0.1396f * r - 0.3604f * g + 0.5000f * b;
+                        vf = 0.5000f * r - 0.4598f * g - 0.0402f * b;
+                    } else {
+                        yf = 0.2126f * r + 0.7152f * g + 0.0722f * b;
+                        uf = -0.1146f * r - 0.3854f * g + 0.5000f * b;
+                        vf = 0.5000f * r - 0.4542f * g - 0.0458f * b;
+                    }
+
+                    int y8;
+                    if (output_narrow_range) {
+                        y8 = (int)(yf * 219.0f + 16.0f + 0.5f);
+                        y8 = (y8 < Y_NARROW_MIN) ? Y_NARROW_MIN : ((y8 > Y_NARROW_MAX) ? Y_NARROW_MAX : y8);
+                    } else {
+                        y8 = (int)(yf * 255.0f + 0.5f);
+                        y8 = (y8 < 0) ? 0 : ((y8 > 255) ? 255 : y8);
+                    }
+                    y_values[i] = (uint8_t)y8;
+                    u_temp[i] = uf;
+                    v_temp[i] = vf;
+                } else {
+                    y_values[i] = output_narrow_range ? Y_NARROW_MIN : 0;
+                    u_temp[i] = 0.0f;
+                    v_temp[i] = 0.0f;
+                }
+            }
+
+            // Average U/V samples for 4:2:2 chroma subsampling
+            float u_avg = (u_temp[0] + u_temp[1]) * 0.5f;
+            float v_avg = (v_temp[0] + v_temp[1]) * 0.5f;
+
+            int u8, v8;
+            if (output_narrow_range) {
+                u8 = (int)((u_avg + 0.5f) * 224.0f + 16.0f + 0.5f);
+                v8 = (int)((v_avg + 0.5f) * 224.0f + 16.0f + 0.5f);
+                u8 = (u8 < C_NARROW_MIN) ? C_NARROW_MIN : ((u8 > C_NARROW_MAX) ? C_NARROW_MAX : u8);
+                v8 = (v8 < C_NARROW_MIN) ? C_NARROW_MIN : ((v8 > C_NARROW_MAX) ? C_NARROW_MAX : v8);
+            } else {
+                u8 = (int)(128.0f + 255.0f * u_avg + 0.5f);
+                v8 = (int)(128.0f + 255.0f * v_avg + 0.5f);
+                u8 = (u8 < 0) ? 0 : ((u8 > 255) ? 255 : u8);
+                v8 = (v8 < 0) ? 0 : ((v8 > 255) ? 255 : v8);
+            }
+
+            // Pack into 2vuy format: U Y0 V Y1
+            int dst_idx = (y * width + x) * 2;
+            dst[dst_idx + 0] = (uint8_t)u8;
+            dst[dst_idx + 1] = y_values[0];
+            dst[dst_idx + 2] = (uint8_t)v8;
+            dst[dst_idx + 3] = y_values[1];
+        }
+    }
+
+    return result;
+}
+
 py::dict unpack_2vuy(py::array_t<uint8_t> yuv_array, int width, int height) {
     auto buf = yuv_array.request();
 
@@ -1960,6 +2277,24 @@ PYBIND11_MODULE(decklink_io, m) {
           py::arg("yuv_array"), py::arg("width"), py::arg("height"),
           py::arg("matrix") = DeckLinkOutput::Gamut::Rec709,
           py::arg("input_narrow_range") = true);
+
+    m.def("rgb_uint8_to_yuv8", &rgb_uint8_to_yuv8,
+          "Convert RGB uint8 numpy array to 8-bit YUV 2vuy format",
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"),
+          py::arg("matrix") = DeckLinkOutput::Gamut::Rec709);
+
+    m.def("rgb_uint16_to_yuv8", &rgb_uint16_to_yuv8,
+          "Convert RGB uint16 numpy array to 8-bit YUV 2vuy format",
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"),
+          py::arg("matrix") = DeckLinkOutput::Gamut::Rec709,
+          py::arg("input_narrow_range") = false,
+          py::arg("output_narrow_range") = true);
+
+    m.def("rgb_float_to_yuv8", &rgb_float_to_yuv8,
+          "Convert RGB float numpy array to 8-bit YUV 2vuy format",
+          py::arg("rgb_array"), py::arg("width"), py::arg("height"),
+          py::arg("matrix") = DeckLinkOutput::Gamut::Rec709,
+          py::arg("output_narrow_range") = true);
 
     m.def("unpack_2vuy", &unpack_2vuy,
           "Unpack 8-bit YUV 2vuy format to separate Y, Cb, Cr arrays (returns dict with 'y', 'cb', 'cr' keys)",

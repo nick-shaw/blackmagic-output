@@ -43,6 +43,14 @@ def test_pixel_format(output_device, input_device, pixel_format, display_mode, f
             rgb_uint8,
             width, height
         )
+    elif pixel_format == decklink_io.PixelFormat.YUV8:
+        # Convert to YUV8 directly (2vuy format)
+        # Use proper rounding for float→uint8 conversion
+        rgb_uint8 = np.round(rgb_pattern * 255).astype(np.uint8)
+        frame_data = decklink_io.rgb_uint8_to_yuv8(
+            rgb_uint8, width, height,
+            matrix=decklink_io.Gamut.Rec709
+        )
     elif pixel_format == decklink_io.PixelFormat.YUV10:
         # Convert to YUV10
         # Use proper rounding for float→uint16 conversion
@@ -181,10 +189,10 @@ def test_pixel_format(output_device, input_device, pixel_format, display_mode, f
 
     # Set acceptable thresholds
     if captured_frame.format == decklink_io.PixelFormat.YUV8:
-        # YUV8 (via BGRA→YUV8 hardware conversion) has higher error due to:
+        # YUV8 has higher error due to:
         # - 8-bit quantization (256 levels vs 1024/4096 for 10/12-bit)
-        # - Hardware conversion may use different rounding/matrix than our YUV→RGB
         # - 4:2:2 chroma subsampling
+        # Both BGRA→YUV8 hardware and direct YUV8 show similar error characteristics
         acceptable_mean = 0.10  # 10% average error
         acceptable_max = 0.35   # 35% max error
     elif is_422:
@@ -263,9 +271,10 @@ def main():
     # Use HD1080p25 mode for testing
     display_mode = decklink_io.DisplayMode.HD1080p25
 
-    # Test all formats: BGRA (→YUV8 in hardware), YUV10, RGB10, RGB12
+    # Test all formats: BGRA (→YUV8 in hardware), YUV8 (direct), YUV10, RGB10, RGB12
     test_formats = [
-        (decklink_io.PixelFormat.BGRA, "8-bit BGRA (→YUV8)"),
+        (decklink_io.PixelFormat.BGRA, "8-bit BGRA (→YUV8 hardware)"),
+        (decklink_io.PixelFormat.YUV8, "8-bit YUV (2vuy direct)"),
         (decklink_io.PixelFormat.YUV10, "10-bit YUV (v210)"),
         (decklink_io.PixelFormat.RGB10, "10-bit RGB (R10l)"),
         (decklink_io.PixelFormat.RGB12, "12-bit RGB (R12L)"),
