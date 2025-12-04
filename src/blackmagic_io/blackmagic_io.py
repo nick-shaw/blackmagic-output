@@ -307,9 +307,7 @@ class BlackmagicOutput:
         if pixel_format == PixelFormat.YUV10 and frame_data.dtype == np.uint8:
             pixel_format = PixelFormat.BGRA
 
-        # Auto-detect matrix based on display mode if not specified
         if matrix is None:
-            # SD modes (NTSC, PAL) require Rec.601
             SD_MODES = {DisplayMode.NTSC, DisplayMode.NTSC2398, DisplayMode.PAL,
                        DisplayMode.NTSCp, DisplayMode.PALp}
             if display_mode in SD_MODES:
@@ -748,7 +746,7 @@ class BlackmagicInput:
         self.cleanup()
         return False
 
-    def initialize(self, device_index: int = 0) -> bool:
+    def initialize(self, device_index: int = 0, input_connection=None) -> bool:
         """Initialize DeckLink device for input and start capture.
 
         Immediately activates capture mode, which will:
@@ -758,13 +756,15 @@ class BlackmagicInput:
 
         Args:
             device_index: Index of device to use (default: 0)
+            input_connection: Optional InputConnection enum to select specific input
+                (e.g., InputConnection.SDI, InputConnection.HDMI). If None, uses
+                the device's current/default input.
 
         Returns:
             True if successful, False otherwise
         """
-        if self._input.initialize(device_index):
+        if self._input.initialize(device_index, input_connection):
             self._initialized = True
-            # Start capture immediately so front panel shows signal
             if self._input.start_capture():
                 self._capturing = True
                 return True
@@ -800,6 +800,17 @@ class BlackmagicInput:
             'supports_output': caps.supports_output
         }
 
+    def get_available_input_connections(self, device_index: int = 0) -> List:
+        """Get available input connections for a DeckLink device.
+
+        Args:
+            device_index: Index of device to query (default: 0)
+
+        Returns:
+            List of InputConnection enum values (e.g., [InputConnection.SDI, InputConnection.HDMI])
+        """
+        return self._input.get_available_input_connections(device_index)
+
     def capture_frame_as_rgb(self,
                             timeout_ms: int = 5000,
                             input_narrow_range: bool = True) -> Optional[np.ndarray]:
@@ -819,18 +830,15 @@ class BlackmagicInput:
         Returns:
             RGB array (H×W×3), dtype float32, range 0.0-1.0, or None if capture failed
         """
-        # Start capture if not already started
         if not self._capturing:
             if not self._input.start_capture():
                 return None
             self._capturing = True
 
-        # Capture frame
         captured_frame = _decklink.CapturedFrame()
         if not self._input.capture_frame(captured_frame, timeout_ms):
             return None
 
-        # Convert to RGB based on format
         return self._convert_frame_to_rgb(captured_frame, input_narrow_range)
 
     def capture_frame_with_metadata(self,
@@ -859,28 +867,23 @@ class BlackmagicInput:
                     - 'content_light': dict with 'max_cll', 'max_fall' (cd/m²)
             Or None if capture failed
         """
-        # Start capture if not already started
         if not self._capturing:
             if not self._input.start_capture():
                 return None
             self._capturing = True
 
-        # Capture frame
         captured_frame = _decklink.CapturedFrame()
         if not self._input.capture_frame(captured_frame, timeout_ms):
             return None
 
-        # Convert to RGB
         rgb_array = self._convert_frame_to_rgb(captured_frame, input_narrow_range)
         if rgb_array is None:
             return None
 
-        # Map low-level enums to high-level enums
         pixel_format = PixelFormat(captured_frame.format)
         colorspace = Matrix(captured_frame.colorspace)
         eotf = Eotf(captured_frame.eotf)
 
-        # Find matching DisplayMode
         display_mode = None
         for mode in DisplayMode:
             if mode.value == captured_frame.mode:
@@ -1004,7 +1007,6 @@ class BlackmagicInput:
 
         try:
             if pixel_format == _decklink.PixelFormat.YUV8:
-                # Convert YUV8 (2vuy) to RGB
                 return _decklink.yuv8_to_rgb_float(
                     frame_data, width, height,
                     matrix=captured_frame.colorspace,
@@ -1012,7 +1014,6 @@ class BlackmagicInput:
                 )
 
             elif pixel_format == _decklink.PixelFormat.YUV10:
-                # Convert YUV10 (v210) to RGB
                 return _decklink.yuv10_to_rgb_float(
                     frame_data, width, height,
                     matrix=captured_frame.colorspace,
@@ -1020,21 +1021,18 @@ class BlackmagicInput:
                 )
 
             elif pixel_format == _decklink.PixelFormat.RGB10:
-                # Convert RGB10 to float
                 return _decklink.rgb10_to_float(
                     frame_data, width, height,
                     input_narrow_range=input_narrow_range
                 )
 
             elif pixel_format == _decklink.PixelFormat.RGB12:
-                # Convert RGB12 to float
                 return _decklink.rgb12_to_float(
                     frame_data, width, height,
                     input_narrow_range=input_narrow_range
                 )
 
             elif pixel_format == _decklink.PixelFormat.BGRA:
-                # Convert BGRA to RGB float
                 bgra_data = np.frombuffer(frame_data, dtype=np.uint8).reshape(
                     (height, width, 4)
                 )

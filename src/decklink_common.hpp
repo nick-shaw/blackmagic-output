@@ -158,6 +158,15 @@ enum class Eotf {
     HLG = 3
 };
 
+enum class InputConnection {
+    SDI = bmdVideoConnectionSDI,
+    HDMI = bmdVideoConnectionHDMI,
+    OpticalSDI = bmdVideoConnectionOpticalSDI,
+    Component = bmdVideoConnectionComponent,
+    Composite = bmdVideoConnectionComposite,
+    SVideo = bmdVideoConnectionSVideo
+};
+
 struct VideoSettings {
     DisplayMode mode;
     PixelFormat format;
@@ -185,6 +194,8 @@ struct DeviceCapabilities {
 std::vector<std::string> getDeviceList();
 
 DeviceCapabilities getDeviceCapabilities(int deviceIndex);
+
+std::vector<InputConnection> getAvailableInputConnections(int deviceIndex);
 
 size_t calculateFrameBufferSize(const VideoSettings& settings);
 

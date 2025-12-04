@@ -348,9 +348,17 @@ Get device capabilities (name and supported input/output).
   - `'supports_input'`: True if device can capture video
   - `'supports_output'`: True if device can output video
 
-**`initialize(device_index=0) -> bool`**
+**`get_available_input_connections(device_index=0) -> List[InputConnection]`**
+Get available input connections for a DeckLink device.
+- `device_index`: Index of device to query (default: 0)
+- Returns: List of InputConnection enum values (e.g., `[InputConnection.SDI, InputConnection.HDMI]`)
+
+Use this to check which physical inputs are available on a device before selecting one with `initialize()`.
+
+**`initialize(device_index=0, input_connection=None) -> bool`**
 Initialize the specified DeckLink device for input and start capture.
 - `device_index`: Index of device to use (default: 0)
+- `input_connection`: Optional InputConnection enum to select specific input (e.g., `InputConnection.SDI`, `InputConnection.HDMI`). If None, uses the device's current/default input.
 - Returns: True if successful
 
 Immediately activates capture mode, which will:
@@ -527,6 +535,109 @@ class DisplayModeInfo:
     framerate: float                  # Frame rate (e.g., 25.0, 29.97, 60.0)
 ```
 
+**`DeviceCapabilities`**
+```python
+class DeviceCapabilities:
+    name: str                         # Device name
+    supports_input: bool              # True if device can capture video
+    supports_output: bool             # True if device can output video
+```
+
+Returned by `get_device_capabilities()` to query what a device supports before initializing it.
+
+**`CapturedFrame`**
+```python
+class CapturedFrame:
+    # Frame data
+    data: List[uint8]                 # Raw frame data
+    width: int                        # Frame width in pixels
+    height: int                       # Frame height in pixels
+    format: PixelFormat               # Pixel format
+    mode: DisplayMode                 # Display mode
+    valid: bool                       # Whether frame is valid
+
+    # Format metadata
+    colorspace: Gamut                 # Color matrix (Rec601/Rec709/Rec2020)
+    eotf: Eotf                        # Transfer function (SDR/PQ/HLG)
+    has_metadata: bool                # Whether metadata is present
+
+    # HDR metadata (if present)
+    display_primaries_red_x: float
+    display_primaries_red_y: float
+    display_primaries_green_x: float
+    display_primaries_green_y: float
+    display_primaries_blue_x: float
+    display_primaries_blue_y: float
+    has_display_primaries: bool
+
+    white_point_x: float
+    white_point_y: float
+    has_white_point: bool
+
+    max_mastering_luminance: float
+    min_mastering_luminance: float
+    has_mastering_luminance: bool
+
+    max_content_light_level: float
+    has_max_cll: bool
+
+    max_frame_average_light_level: float
+    has_max_fall: bool
+```
+
+Used by the low-level `DeckLinkInput.capture_frame()` method. Contains raw frame data plus all detected metadata including HDR information.
+
+### Low-Level API: DeckLinkInput Class
+
+Direct C++ API for more fine-grained control over video capture.
+
+#### Methods
+
+**`get_device_list() -> List[str]`**
+Get list of available DeckLink devices.
+
+**`get_available_input_connections(device_index=0) -> List[InputConnection]`**
+Get available input connections for a DeckLink device.
+- `device_index`: Index of device to query (default: 0)
+- Returns: List of InputConnection enum values
+
+**`initialize(device_index=0, input_connection=None) -> bool`**
+Initialize the specified DeckLink device for input.
+- `device_index`: Index of device to use (default: 0)
+- `input_connection`: Optional InputConnection enum to select specific input. If None, uses device's current/default input.
+- Returns: True if successful
+
+**`start_capture() -> bool`**
+Start capturing with auto-detected format.
+- Returns: True if successful
+
+**`capture_frame(frame, timeout_ms=5000) -> bool`**
+Capture a single frame.
+- `frame`: CapturedFrame object to populate
+- `timeout_ms`: Timeout in milliseconds (default: 5000)
+- Returns: True if successful
+
+**`stop_capture() -> bool`**
+Stop video capture.
+- Returns: True if successful
+
+**`get_detected_format() -> VideoSettings`**
+Get the detected video format.
+- Returns: VideoSettings object with format information
+
+**`get_detected_pixel_format() -> PixelFormat`**
+Get the detected pixel format.
+- Returns: PixelFormat enum value
+
+**`get_video_settings(mode) -> VideoSettings`**
+Get video settings for a display mode.
+
+**`get_supported_display_modes() -> List[DisplayModeInfo]`**
+Get list of supported display modes for the initialized device.
+
+**`cleanup()`**
+Cleanup and release resources.
+
 ### Utility Functions
 
 **`rgb_to_bgra(rgb_array, width, height) -> np.ndarray`**
@@ -664,6 +775,37 @@ The `output_narrow_range` parameter controls the **actual encoded values** in th
 - `SDR`: Standard Dynamic Range (BT.1886 transfer function)
 - `PQ`: Perceptual Quantizer (SMPTE ST 2084, HDR10)
 - `HLG`: Hybrid Log-Gamma (HDR broadcast standard)
+
+**`InputConnection`**
+
+Physical input connections available on DeckLink devices. Use `get_available_input_connections()` to query which inputs are available on a specific device.
+
+- `SDI`: SDI input (Serial Digital Interface)
+- `HDMI`: HDMI input
+- `OpticalSDI`: Optical SDI input
+- `Component`: Component video input (Y, Pb, Pr)
+- `Composite`: Composite video input (CVBS)
+- `SVideo`: S-Video input (Y/C)
+
+**Example:**
+```python
+from blackmagic_io import BlackmagicInput, InputConnection
+
+with BlackmagicInput() as input_device:
+    # Query available inputs
+    inputs = input_device.get_available_input_connections(0)
+    print(f"Available inputs: {[str(inp) for inp in inputs]}")
+
+    # Initialize with HDMI input
+    if InputConnection.HDMI in inputs:
+        input_device.initialize(0, InputConnection.HDMI)
+    else:
+        # Use default input
+        input_device.initialize(0)
+
+    # Capture frame
+    rgb = input_device.capture_frame_as_rgb()
+```
 
 ## Examples
 

@@ -85,6 +85,7 @@ private:
 DeckLinkInput::DeckLinkInput()
     : m_deckLink(nullptr)
     , m_deckLinkInput(nullptr)
+    , m_deckLinkConfiguration(nullptr)
     , m_callback(nullptr)
     , m_inputEnabled(false)
     , m_frameReceived(false)
@@ -106,7 +107,7 @@ DeckLinkInput::~DeckLinkInput()
     cleanup();
 }
 
-bool DeckLinkInput::initialize(int deviceIndex)
+bool DeckLinkInput::initialize(int deviceIndex, InputConnection* inputConnection)
 {
     IDeckLinkIterator* deckLinkIterator = DeckLink::CreateDeckLinkIteratorInstance();
     if (!deckLinkIterator) {
@@ -128,6 +129,19 @@ bool DeckLinkInput::initialize(int deviceIndex)
 
     deckLinkIterator->Release();
     m_deckLink = deckLink;
+
+    if (m_deckLink->QueryInterface(IID_IDeckLinkConfiguration, (void**)&m_deckLinkConfiguration) != S_OK) {
+        std::cerr << "Could not get IDeckLinkConfiguration interface" << std::endl;
+        return false;
+    }
+
+    if (inputConnection != nullptr) {
+        if (m_deckLinkConfiguration->SetInt(bmdDeckLinkConfigVideoInputConnection,
+                                           static_cast<int64_t>(*inputConnection)) != S_OK) {
+            std::cerr << "Could not set input connection" << std::endl;
+            return false;
+        }
+    }
 
     if (m_deckLink->QueryInterface(IID_IDeckLinkInput, (void**)&m_deckLinkInput) != S_OK) {
         std::cerr << "Could not get IDeckLinkInput interface" << std::endl;
@@ -402,6 +416,11 @@ void DeckLinkInput::cleanup()
         m_deckLinkInput = nullptr;
     }
 
+    if (m_deckLinkConfiguration) {
+        m_deckLinkConfiguration->Release();
+        m_deckLinkConfiguration = nullptr;
+    }
+
     if (m_deckLink) {
         m_deckLink->Release();
         m_deckLink = nullptr;
@@ -411,6 +430,11 @@ void DeckLinkInput::cleanup()
 std::vector<std::string> DeckLinkInput::getDeviceList()
 {
     return DeckLink::getDeviceList();
+}
+
+std::vector<DeckLinkInput::InputConnection> DeckLinkInput::getAvailableInputConnections(int deviceIndex)
+{
+    return DeckLink::getAvailableInputConnections(deviceIndex);
 }
 
 DeckLinkInput::VideoSettings DeckLinkInput::getVideoSettings(DisplayMode mode)

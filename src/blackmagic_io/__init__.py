@@ -17,6 +17,12 @@ from .blackmagic_io import (
     create_test_pattern,
 )
 
+# Import InputConnection from low-level API
+try:
+    from decklink_io import InputConnection
+except ImportError:
+    InputConnection = None
+
 # Re-export low-level API for advanced use
 try:
     import decklink_io
@@ -198,6 +204,7 @@ __all__ = [
     "PixelFormat",
     "Matrix",
     "Eotf",
+    "InputConnection",
     "create_test_pattern",
     # Low-level API
     "DeckLinkOutput",

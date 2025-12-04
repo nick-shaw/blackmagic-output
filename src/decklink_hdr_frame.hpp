@@ -85,7 +85,6 @@ public:
     virtual HRESULT GetInt(BMDDeckLinkFrameMetadataID metadataID, int64_t* value) override;
     virtual HRESULT GetFloat(BMDDeckLinkFrameMetadataID metadataID, double* value) override;
 #ifdef _WIN32
-    // Windows uses BOOL and BSTR types
     virtual HRESULT GetFlag(BMDDeckLinkFrameMetadataID metadataID, BOOL* value) override {
         return E_INVALIDARG;
     }
@@ -100,7 +99,6 @@ public:
         return E_INVALIDARG;
     }
 #else
-    // Linux
     virtual HRESULT GetFlag(BMDDeckLinkFrameMetadataID metadataID, bool* value) override {
         return E_INVALIDARG;
     }

@@ -131,7 +131,6 @@ PixelValue ExtractPixelValue(void* frameBytes, int width, int height, int rowByt
     PixelValue result = {0, 0, 0, ""};
     UINT8* buffer = (UINT8*)frameBytes;
 
-    // Clamp coordinates
     if (pixelX < 0) pixelX = 0;
     if (pixelY < 0) pixelY = 0;
     if (pixelX >= width) pixelX = width - 1;
@@ -357,7 +356,6 @@ public:
         return 1;
     }
 
-    // The callback that is called when a property of the video input stream has changed.
     HRESULT STDMETHODCALLTYPE VideoInputFormatChanged(
         /* in */ BMDVideoInputFormatChangedEvents notificationEvents,
         /* in */ IDeckLinkDisplayMode *newDisplayMode,

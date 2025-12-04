@@ -18,6 +18,7 @@ public:
     using Eotf = DeckLink::Eotf;
     using VideoSettings = DeckLink::VideoSettings;
     using DisplayModeInfo = DeckLink::DisplayModeInfo;
+    using InputConnection = DeckLink::InputConnection;
 
     struct CapturedFrame {
         std::vector<uint8_t> data;
@@ -56,7 +57,7 @@ public:
     DeckLinkInput();
     ~DeckLinkInput();
 
-    bool initialize(int deviceIndex = 0);
+    bool initialize(int deviceIndex = 0, InputConnection* inputConnection = nullptr);
     bool startCapture();
     bool captureFrame(CapturedFrame& frame, int timeoutMs = 5000);
     bool stopCapture();
@@ -66,6 +67,7 @@ public:
     PixelFormat getDetectedPixelFormat();
 
     std::vector<std::string> getDeviceList();
+    std::vector<InputConnection> getAvailableInputConnections(int deviceIndex = 0);
     VideoSettings getVideoSettings(DisplayMode mode);
     std::vector<DisplayModeInfo> getSupportedDisplayModes();
 
@@ -74,6 +76,7 @@ private:
 
     IDeckLink* m_deckLink;
     IDeckLinkInput* m_deckLinkInput;
+    IDeckLinkConfiguration* m_deckLinkConfiguration;
     DeckLinkInputCallback* m_callback;
 
     VideoSettings m_currentSettings;

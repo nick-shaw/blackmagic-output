@@ -148,6 +148,58 @@ DeviceCapabilities getDeviceCapabilities(int deviceIndex)
     return caps;
 }
 
+std::vector<InputConnection> getAvailableInputConnections(int deviceIndex)
+{
+    std::vector<InputConnection> connections;
+
+    IDeckLinkIterator* deckLinkIterator = CreateDeckLinkIteratorInstance();
+    if (!deckLinkIterator) {
+        return connections;
+    }
+
+    IDeckLink* deckLink = nullptr;
+    int currentIndex = 0;
+
+    while (deckLinkIterator->Next(&deckLink) == S_OK) {
+        if (currentIndex == deviceIndex) {
+            IDeckLinkProfileAttributes* attributes = nullptr;
+            if (deckLink->QueryInterface(IID_IDeckLinkProfileAttributes, (void**)&attributes) == S_OK) {
+                int64_t availableInputs = 0;
+                if (attributes->GetInt(BMDDeckLinkVideoInputConnections, &availableInputs) == S_OK) {
+                    if (availableInputs & bmdVideoConnectionSDI) {
+                        connections.push_back(InputConnection::SDI);
+                    }
+                    if (availableInputs & bmdVideoConnectionHDMI) {
+                        connections.push_back(InputConnection::HDMI);
+                    }
+                    if (availableInputs & bmdVideoConnectionOpticalSDI) {
+                        connections.push_back(InputConnection::OpticalSDI);
+                    }
+                    if (availableInputs & bmdVideoConnectionComponent) {
+                        connections.push_back(InputConnection::Component);
+                    }
+                    if (availableInputs & bmdVideoConnectionComposite) {
+                        connections.push_back(InputConnection::Composite);
+                    }
+                    if (availableInputs & bmdVideoConnectionSVideo) {
+                        connections.push_back(InputConnection::SVideo);
+                    }
+                }
+                attributes->Release();
+            }
+
+            deckLink->Release();
+            break;
+        }
+
+        deckLink->Release();
+        currentIndex++;
+    }
+
+    deckLinkIterator->Release();
+    return connections;
+}
+
 size_t calculateFrameBufferSize(const VideoSettings& settings)
 {
     size_t frameSize;

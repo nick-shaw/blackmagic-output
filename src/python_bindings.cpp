@@ -1778,6 +1778,14 @@ PYBIND11_MODULE(decklink_io, m) {
         .value("PQ", DeckLinkOutput::Eotf::PQ)
         .value("HLG", DeckLinkOutput::Eotf::HLG);
 
+    py::enum_<DeckLinkInput::InputConnection>(m, "InputConnection")
+        .value("SDI", DeckLinkInput::InputConnection::SDI)
+        .value("HDMI", DeckLinkInput::InputConnection::HDMI)
+        .value("OpticalSDI", DeckLinkInput::InputConnection::OpticalSDI)
+        .value("Component", DeckLinkInput::InputConnection::Component)
+        .value("Composite", DeckLinkInput::InputConnection::Composite)
+        .value("SVideo", DeckLinkInput::InputConnection::SVideo);
+
     // HdrMetadataCustom struct
     py::class_<DeckLinkOutput::HdrMetadataCustom>(m, "HdrMetadataCustom")
         .def(py::init<>())
@@ -2001,7 +2009,7 @@ PYBIND11_MODULE(decklink_io, m) {
     py::class_<DeckLinkInput>(m, "DeckLinkInput")
         .def(py::init<>())
         .def("initialize", &DeckLinkInput::initialize, "Initialize DeckLink device for input",
-             py::arg("device_index") = 0)
+             py::arg("device_index") = 0, py::arg("input_connection") = nullptr)
         .def("start_capture", &DeckLinkInput::startCapture, "Start capturing with auto-detected format")
         .def("capture_frame", &DeckLinkInput::captureFrame, "Capture a single frame",
              py::arg("frame"), py::arg("timeout_ms") = 5000)
@@ -2010,6 +2018,8 @@ PYBIND11_MODULE(decklink_io, m) {
         .def("get_detected_format", &DeckLinkInput::getDetectedFormat, "Get the detected video format")
         .def("get_detected_pixel_format", &DeckLinkInput::getDetectedPixelFormat, "Get the detected pixel format")
         .def("get_device_list", &DeckLinkInput::getDeviceList, "Get list of DeckLink devices")
+        .def("get_available_input_connections", &DeckLinkInput::getAvailableInputConnections,
+             "Get available input connections for a device", py::arg("device_index") = 0)
         .def("get_video_settings", &DeckLinkInput::getVideoSettings, "Get video settings for display mode")
         .def("get_supported_display_modes", &DeckLinkInput::getSupportedDisplayModes, "Get list of supported display modes");
 
