@@ -1211,6 +1211,8 @@ py::array_t<uint16_t> rgb10_to_uint16(py::array_t<uint8_t> rgb_array, int width,
         out_range = 65535.0;
     }
 
+    bool use_bitshift = (input_narrow_range == output_narrow_range);
+
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             uint32_t word = src[y * width + x];
@@ -1220,20 +1222,28 @@ py::array_t<uint16_t> rgb10_to_uint16(py::array_t<uint8_t> rgb_array, int width,
             uint16_t g10 = (word >> 12) & 0x3FF;
             uint16_t b10 = (word >> 2) & 0x3FF;
 
-            // Convert to output range
-            double r_norm = (r10 - in_min) / in_range;
-            double g_norm = (g10 - in_min) / in_range;
-            double b_norm = (b10 - in_min) / in_range;
-
-            // Clamp to 0.0-1.0
-            r_norm = std::max(0.0, std::min(1.0, r_norm));
-            g_norm = std::max(0.0, std::min(1.0, g_norm));
-            b_norm = std::max(0.0, std::min(1.0, b_norm));
-
             int pixel_idx = (y * width + x) * 3;
-            dst[pixel_idx] = static_cast<uint16_t>(r_norm * out_range + out_min);
-            dst[pixel_idx + 1] = static_cast<uint16_t>(g_norm * out_range + out_min);
-            dst[pixel_idx + 2] = static_cast<uint16_t>(b_norm * out_range + out_min);
+
+            if (use_bitshift) {
+                // Same range: simple bit-shift (exact inverse of packing)
+                dst[pixel_idx] = r10 << 6;
+                dst[pixel_idx + 1] = g10 << 6;
+                dst[pixel_idx + 2] = b10 << 6;
+            } else {
+                // Convert to output range
+                double r_norm = (r10 - in_min) / in_range;
+                double g_norm = (g10 - in_min) / in_range;
+                double b_norm = (b10 - in_min) / in_range;
+
+                // Clamp to 0.0-1.0
+                r_norm = std::max(0.0, std::min(1.0, r_norm));
+                g_norm = std::max(0.0, std::min(1.0, g_norm));
+                b_norm = std::max(0.0, std::min(1.0, b_norm));
+
+                dst[pixel_idx] = static_cast<uint16_t>(r_norm * out_range + out_min);
+                dst[pixel_idx + 1] = static_cast<uint16_t>(g_norm * out_range + out_min);
+                dst[pixel_idx + 2] = static_cast<uint16_t>(b_norm * out_range + out_min);
+            }
         }
     }
 
@@ -1382,6 +1392,8 @@ py::array_t<uint16_t> rgb12_to_uint16(py::array_t<uint8_t> rgb_array, int width,
         out_range = 65535.0;
     }
 
+    bool use_bitshift = (input_narrow_range == output_narrow_range);
+
     for (int y = 0; y < height; y++) {
         const uint32_t* row_src = src + (y * ((width + 7) / 8) * 9);
 
@@ -1426,18 +1438,26 @@ py::array_t<uint16_t> rgb12_to_uint16(py::array_t<uint8_t> rgb_array, int width,
 
             // Convert to output range
             for (int i = 0; i < 8 && (x + i) < width; i++) {
-                double r_norm = (r[i] - in_min) / in_range;
-                double g_norm = (g[i] - in_min) / in_range;
-                double b_norm = (b[i] - in_min) / in_range;
-
-                r_norm = std::max(0.0, std::min(1.0, r_norm));
-                g_norm = std::max(0.0, std::min(1.0, g_norm));
-                b_norm = std::max(0.0, std::min(1.0, b_norm));
-
                 int pixel_idx = (y * width + x + i) * 3;
-                dst[pixel_idx] = static_cast<uint16_t>(r_norm * out_range + out_min);
-                dst[pixel_idx + 1] = static_cast<uint16_t>(g_norm * out_range + out_min);
-                dst[pixel_idx + 2] = static_cast<uint16_t>(b_norm * out_range + out_min);
+
+                if (use_bitshift) {
+                    // Same range: simple bit-shift (exact inverse of packing)
+                    dst[pixel_idx] = r[i] << 4;
+                    dst[pixel_idx + 1] = g[i] << 4;
+                    dst[pixel_idx + 2] = b[i] << 4;
+                } else {
+                    double r_norm = (r[i] - in_min) / in_range;
+                    double g_norm = (g[i] - in_min) / in_range;
+                    double b_norm = (b[i] - in_min) / in_range;
+
+                    r_norm = std::max(0.0, std::min(1.0, r_norm));
+                    g_norm = std::max(0.0, std::min(1.0, g_norm));
+                    b_norm = std::max(0.0, std::min(1.0, b_norm));
+
+                    dst[pixel_idx] = static_cast<uint16_t>(r_norm * out_range + out_min);
+                    dst[pixel_idx + 1] = static_cast<uint16_t>(g_norm * out_range + out_min);
+                    dst[pixel_idx + 2] = static_cast<uint16_t>(b_norm * out_range + out_min);
+                }
             }
         }
     }
