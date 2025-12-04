@@ -41,6 +41,7 @@ try:
     )
     # Import C++ conversion functions with underscore prefix
     from decklink_io import (
+        # Packing (RGB -> format)
         rgb_to_bgra as _rgb_to_bgra,
         rgb_uint16_to_yuv10 as _rgb_uint16_to_yuv10,
         rgb_float_to_yuv10 as _rgb_float_to_yuv10,
@@ -48,6 +49,20 @@ try:
         rgb_float_to_rgb10 as _rgb_float_to_rgb10,
         rgb_uint16_to_rgb12 as _rgb_uint16_to_rgb12,
         rgb_float_to_rgb12 as _rgb_float_to_rgb12,
+        # Unpacking (format -> RGB)
+        yuv10_to_rgb_uint16 as _yuv10_to_rgb_uint16,
+        yuv10_to_rgb_float as _yuv10_to_rgb_float,
+        yuv8_to_rgb_uint16 as _yuv8_to_rgb_uint16,
+        yuv8_to_rgb_float as _yuv8_to_rgb_float,
+        rgb10_to_uint16 as _rgb10_to_uint16,
+        rgb10_to_float as _rgb10_to_float,
+        rgb12_to_uint16 as _rgb12_to_uint16,
+        rgb12_to_float as _rgb12_to_float,
+        # Unpacking (format -> components)
+        unpack_v210 as _unpack_v210,
+        unpack_2vuy as _unpack_2vuy,
+        unpack_rgb10 as _unpack_rgb10,
+        unpack_rgb12 as _unpack_rgb12,
     )
 
     # Wrap conversion functions to ensure C-contiguous arrays
@@ -189,6 +204,192 @@ try:
         rgb_array = np.ascontiguousarray(rgb_array)
         return _rgb_float_to_rgb12(rgb_array, width, height, output_narrow_range)
 
+    # Unpacking functions (format -> RGB)
+    def yuv10_to_rgb_uint16(yuv_array, width, height, matrix=Gamut.Rec709, input_narrow_range=True, output_narrow_range=False):
+        """Convert 10-bit YUV (v210) to RGB uint16.
+
+        Args:
+            yuv_array: Flat uint8 array in v210 format
+            width: Image width
+            height: Image height
+            matrix: Color matrix (Rec601, Rec709, or Rec2020)
+            input_narrow_range: If True, input is narrow range (Y: 64-940, UV: 64-960). Default: True
+            output_narrow_range: If True, output is narrow range (4096-60160 @16-bit). Default: False
+
+        Returns:
+            HxWx3 RGB array (uint16)
+        """
+        yuv_array = np.ascontiguousarray(yuv_array)
+        return _yuv10_to_rgb_uint16(yuv_array, width, height, matrix, input_narrow_range, output_narrow_range)
+
+    def yuv10_to_rgb_float(yuv_array, width, height, matrix=Gamut.Rec709, input_narrow_range=True):
+        """Convert 10-bit YUV (v210) to RGB float.
+
+        Args:
+            yuv_array: Flat uint8 array in v210 format
+            width: Image width
+            height: Image height
+            matrix: Color matrix (Rec601, Rec709, or Rec2020)
+            input_narrow_range: If True, input is narrow range (Y: 64-940, UV: 64-960). Default: True
+
+        Returns:
+            HxWx3 RGB array (float, 0.0-1.0 full range)
+        """
+        yuv_array = np.ascontiguousarray(yuv_array)
+        return _yuv10_to_rgb_float(yuv_array, width, height, matrix, input_narrow_range)
+
+    def yuv8_to_rgb_uint16(yuv_array, width, height, matrix=Gamut.Rec709, input_narrow_range=True, output_narrow_range=False):
+        """Convert 8-bit YUV (2vuy) to RGB uint16.
+
+        Args:
+            yuv_array: Flat uint8 array in 2vuy format
+            width: Image width
+            height: Image height
+            matrix: Color matrix (Rec601, Rec709, or Rec2020)
+            input_narrow_range: If True, input is narrow range (Y: 16-235, UV: 16-240). Default: True
+            output_narrow_range: If True, output is narrow range (4096-60160 @16-bit). Default: False
+
+        Returns:
+            HxWx3 RGB array (uint16)
+        """
+        yuv_array = np.ascontiguousarray(yuv_array)
+        return _yuv8_to_rgb_uint16(yuv_array, width, height, matrix, input_narrow_range, output_narrow_range)
+
+    def yuv8_to_rgb_float(yuv_array, width, height, matrix=Gamut.Rec709, input_narrow_range=True):
+        """Convert 8-bit YUV (2vuy) to RGB float.
+
+        Args:
+            yuv_array: Flat uint8 array in 2vuy format
+            width: Image width
+            height: Image height
+            matrix: Color matrix (Rec601, Rec709, or Rec2020)
+            input_narrow_range: If True, input is narrow range (Y: 16-235, UV: 16-240). Default: True
+
+        Returns:
+            HxWx3 RGB array (float, 0.0-1.0 full range)
+        """
+        yuv_array = np.ascontiguousarray(yuv_array)
+        return _yuv8_to_rgb_float(yuv_array, width, height, matrix, input_narrow_range)
+
+    def rgb10_to_uint16(rgb_array, width, height, input_narrow_range=True, output_narrow_range=False):
+        """Convert 10-bit RGB (R10l) to RGB uint16.
+
+        Args:
+            rgb_array: Flat uint8 array in R10l format
+            width: Image width
+            height: Image height
+            input_narrow_range: If True, input is narrow range (64-940 @10-bit). Default: True
+            output_narrow_range: If True, output is narrow range (4096-60160 @16-bit). Default: False
+
+        Returns:
+            HxWx3 RGB array (uint16)
+        """
+        rgb_array = np.ascontiguousarray(rgb_array)
+        return _rgb10_to_uint16(rgb_array, width, height, input_narrow_range, output_narrow_range)
+
+    def rgb10_to_float(rgb_array, width, height, input_narrow_range=True):
+        """Convert 10-bit RGB (R10l) to RGB float.
+
+        Args:
+            rgb_array: Flat uint8 array in R10l format
+            width: Image width
+            height: Image height
+            input_narrow_range: If True, input is narrow range (64-940 @10-bit). Default: True
+
+        Returns:
+            HxWx3 RGB array (float, 0.0-1.0 full range)
+        """
+        rgb_array = np.ascontiguousarray(rgb_array)
+        return _rgb10_to_float(rgb_array, width, height, input_narrow_range)
+
+    def rgb12_to_uint16(rgb_array, width, height, input_narrow_range=False, output_narrow_range=False):
+        """Convert 12-bit RGB (R12L) to RGB uint16.
+
+        Args:
+            rgb_array: Flat uint8 array in R12L format
+            width: Image width
+            height: Image height
+            input_narrow_range: If True, input is narrow range (256-3760 @12-bit). Default: False
+            output_narrow_range: If True, output is narrow range (4096-60160 @16-bit). Default: False
+
+        Returns:
+            HxWx3 RGB array (uint16)
+        """
+        rgb_array = np.ascontiguousarray(rgb_array)
+        return _rgb12_to_uint16(rgb_array, width, height, input_narrow_range, output_narrow_range)
+
+    def rgb12_to_float(rgb_array, width, height, input_narrow_range=False):
+        """Convert 12-bit RGB (R12L) to RGB float.
+
+        Args:
+            rgb_array: Flat uint8 array in R12L format
+            width: Image width
+            height: Image height
+            input_narrow_range: If True, input is narrow range (256-3760 @12-bit). Default: False
+
+        Returns:
+            HxWx3 RGB array (float, 0.0-1.0 full range)
+        """
+        rgb_array = np.ascontiguousarray(rgb_array)
+        return _rgb12_to_float(rgb_array, width, height, input_narrow_range)
+
+    # Unpacking functions (format -> components)
+    def unpack_v210(yuv_array, width, height):
+        """Unpack 10-bit YUV (v210) to separate Y, Cb, Cr arrays.
+
+        Args:
+            yuv_array: Flat uint8 array in v210 format
+            width: Image width
+            height: Image height
+
+        Returns:
+            Dictionary with 'y', 'cb', 'cr' keys, each containing HxW uint16 array (10-bit values)
+        """
+        yuv_array = np.ascontiguousarray(yuv_array)
+        return _unpack_v210(yuv_array, width, height)
+
+    def unpack_2vuy(yuv_array, width, height):
+        """Unpack 8-bit YUV (2vuy) to separate Y, Cb, Cr arrays.
+
+        Args:
+            yuv_array: Flat uint8 array in 2vuy format
+            width: Image width
+            height: Image height
+
+        Returns:
+            Dictionary with 'y', 'cb', 'cr' keys, each containing HxW uint8 array
+        """
+        yuv_array = np.ascontiguousarray(yuv_array)
+        return _unpack_2vuy(yuv_array, width, height)
+
+    def unpack_rgb10(rgb_array, width, height):
+        """Unpack 10-bit RGB (R10l) to separate R, G, B arrays.
+
+        Args:
+            rgb_array: Flat uint8 array in R10l format
+            width: Image width
+            height: Image height
+
+        Returns:
+            Dictionary with 'r', 'g', 'b' keys, each containing HxW uint16 array (10-bit values)
+        """
+        rgb_array = np.ascontiguousarray(rgb_array)
+        return _unpack_rgb10(rgb_array, width, height)
+
+    def unpack_rgb12(rgb_array, width, height):
+        """Unpack 12-bit RGB (R12L) to separate R, G, B arrays.
+
+        Args:
+            rgb_array: Flat uint8 array in R12L format
+            width: Image width
+            height: Image height
+
+        Returns:
+            Dictionary with 'r', 'g', 'b' keys, each containing HxW uint16 array (12-bit values)
+        """
+        rgb_array = np.ascontiguousarray(rgb_array)
+        return _unpack_rgb12(rgb_array, width, height)
+
 except ImportError:
     # C++ extension not built yet
     pass
@@ -217,7 +418,7 @@ __all__ = [
     "Gamut",
     # Device utilities
     "get_device_capabilities",
-    # Conversion utilities
+    # Conversion utilities - Packing (RGB -> format)
     "rgb_to_bgra",
     "rgb_uint16_to_yuv10",
     "rgb_float_to_yuv10",
@@ -225,4 +426,18 @@ __all__ = [
     "rgb_float_to_rgb10",
     "rgb_uint16_to_rgb12",
     "rgb_float_to_rgb12",
+    # Conversion utilities - Unpacking (format -> RGB)
+    "yuv10_to_rgb_uint16",
+    "yuv10_to_rgb_float",
+    "yuv8_to_rgb_uint16",
+    "yuv8_to_rgb_float",
+    "rgb10_to_uint16",
+    "rgb10_to_float",
+    "rgb12_to_uint16",
+    "rgb12_to_float",
+    # Conversion utilities - Unpacking (format -> components)
+    "unpack_v210",
+    "unpack_2vuy",
+    "unpack_rgb10",
+    "unpack_rgb12",
 ]
