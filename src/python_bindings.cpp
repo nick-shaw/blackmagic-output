@@ -2134,8 +2134,8 @@ PYBIND11_MODULE(decklink_io, m) {
         .def_readwrite("display_primaries_blue_y", &DeckLinkOutput::HdrMetadataCustom::displayPrimariesBlueY)
         .def_readwrite("white_point_x", &DeckLinkOutput::HdrMetadataCustom::whitePointX)
         .def_readwrite("white_point_y", &DeckLinkOutput::HdrMetadataCustom::whitePointY)
-        .def_readwrite("max_mastering_luminance", &DeckLinkOutput::HdrMetadataCustom::maxMasteringLuminance)
-        .def_readwrite("min_mastering_luminance", &DeckLinkOutput::HdrMetadataCustom::minMasteringLuminance)
+        .def_readwrite("max_display_mastering_luminance", &DeckLinkOutput::HdrMetadataCustom::maxMasteringLuminance)
+        .def_readwrite("min_display_mastering_luminance", &DeckLinkOutput::HdrMetadataCustom::minMasteringLuminance)
         .def_readwrite("max_content_light_level", &DeckLinkOutput::HdrMetadataCustom::maxContentLightLevel)
         .def_readwrite("max_frame_average_light_level", &DeckLinkOutput::HdrMetadataCustom::maxFrameAverageLightLevel);
 
@@ -2352,8 +2352,8 @@ PYBIND11_MODULE(decklink_io, m) {
         .def_readonly("white_point_x", &DeckLinkInput::CapturedFrame::whitePointX)
         .def_readonly("white_point_y", &DeckLinkInput::CapturedFrame::whitePointY)
         .def_readonly("has_white_point", &DeckLinkInput::CapturedFrame::hasWhitePoint)
-        .def_readonly("max_mastering_luminance", &DeckLinkInput::CapturedFrame::maxMasteringLuminance)
-        .def_readonly("min_mastering_luminance", &DeckLinkInput::CapturedFrame::minMasteringLuminance)
+        .def_readonly("max_display_mastering_luminance", &DeckLinkInput::CapturedFrame::maxMasteringLuminance)
+        .def_readonly("min_display_mastering_luminance", &DeckLinkInput::CapturedFrame::minMasteringLuminance)
         .def_readonly("has_mastering_luminance", &DeckLinkInput::CapturedFrame::hasMasteringLuminance)
         .def_readonly("max_content_light_level", &DeckLinkInput::CapturedFrame::maxContentLightLevel)
         .def_readonly("has_max_cll", &DeckLinkInput::CapturedFrame::hasMaxCLL)

@@ -948,8 +948,8 @@ class BlackmagicInput:
 
         if captured_frame.has_mastering_luminance:
             hdr_metadata['mastering_luminance'] = {
-                'max': captured_frame.max_mastering_luminance,
-                'min': captured_frame.min_mastering_luminance
+                'max': captured_frame.max_display_mastering_luminance,
+                'min': captured_frame.min_display_mastering_luminance
             }
 
         content_light = {}

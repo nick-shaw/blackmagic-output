@@ -80,8 +80,8 @@ def example_with_custom_metadata():
     custom.display_primaries_blue_y = 0.06
     custom.white_point_x = 0.3127
     custom.white_point_y = 0.3290
-    custom.max_mastering_luminance = 1000.0
-    custom.min_mastering_luminance = 0.0001
+    custom.max_display_mastering_luminance = 1000.0
+    custom.min_display_mastering_luminance = 0.0001
     custom.max_content_light_level = 1000.0
     custom.max_frame_average_light_level = 400.0
 

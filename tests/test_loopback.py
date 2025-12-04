@@ -41,8 +41,8 @@ def test_pixel_format(output_device, input_device, pixel_format, display_mode, f
         hdr_metadata.white_point_x = 0.3127
         hdr_metadata.white_point_y = 0.3290
         # Mastering display luminance
-        hdr_metadata.max_mastering_luminance = 1000.0  # 1000 nits
-        hdr_metadata.min_mastering_luminance = 0.005   # 0.005 nits
+        hdr_metadata.max_display_mastering_luminance = 1000.0  # 1000 nits
+        hdr_metadata.min_display_mastering_luminance = 0.005   # 0.005 nits
         # Content light level
         hdr_metadata.max_content_light_level = 800.0           # 800 nits
         hdr_metadata.max_frame_average_light_level = 400.0     # 400 nits
@@ -191,10 +191,10 @@ def test_pixel_format(output_device, input_device, pixel_format, display_mode, f
         # Check mastering luminance
         if captured_frame.has_mastering_luminance:
             print(f"  ✓ Mastering luminance:")
-            print(f"    Max: {captured_frame.max_mastering_luminance:.1f} nits")
-            print(f"    Min: {captured_frame.min_mastering_luminance:.4f} nits")
-            if abs(captured_frame.max_mastering_luminance - 1000.0) > 1.0 or \
-               abs(captured_frame.min_mastering_luminance - 0.005) > 0.001:
+            print(f"    Max: {captured_frame.max_display_mastering_luminance:.1f} nits")
+            print(f"    Min: {captured_frame.min_display_mastering_luminance:.4f} nits")
+            if abs(captured_frame.max_display_mastering_luminance - 1000.0) > 1.0 or \
+               abs(captured_frame.min_display_mastering_luminance - 0.005) > 0.001:
                 print(f"    ✗ Mastering luminance mismatch (expected 1000.0, 0.005)")
                 metadata_passed = False
         else:

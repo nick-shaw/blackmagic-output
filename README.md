@@ -506,8 +506,8 @@ class HdrMetadataCustom:
     white_point_y: float
 
     # Luminance values (nits)
-    max_mastering_luminance: float
-    min_mastering_luminance: float
+    max_display_mastering_luminance: float
+    min_display_mastering_luminance: float
     max_content_light_level: float
     max_frame_average_light_level: float
 ```
@@ -574,8 +574,8 @@ class CapturedFrame:
     white_point_y: float
     has_white_point: bool
 
-    max_mastering_luminance: float
-    min_mastering_luminance: float
+    max_display_mastering_luminance: float
+    min_display_mastering_luminance: float
     has_mastering_luminance: bool
 
     max_content_light_level: float
@@ -1345,8 +1345,8 @@ custom = dl.HdrMetadataCustom()
 custom.display_primaries_red_x = 0.708
 custom.display_primaries_red_y = 0.292
 # ... set other values ...
-custom.max_mastering_luminance = 1000.0
-custom.min_mastering_luminance = 0.0001
+custom.max_display_mastering_luminance = 1000.0
+custom.min_display_mastering_luminance = 0.0001
 
 # Use in simplified API
 with BlackmagicOutput() as output:
@@ -1382,8 +1382,8 @@ custom.white_point_x = 0.3127
 custom.white_point_y = 0.3290
 
 # Mastering display luminance
-custom.max_mastering_luminance = 4000.0      # 4000 nits peak (e.g., for HDR10+ content)
-custom.min_mastering_luminance = 0.0005      # 0.0005 nits black level
+custom.max_display_mastering_luminance = 4000.0      # 4000 nits peak (e.g., for HDR10+ content)
+custom.min_display_mastering_luminance = 0.0005      # 0.0005 nits black level
 
 # Content light levels
 custom.max_content_light_level = 2000.0     # 2000 nits max content (MaxCLL)
@@ -1405,8 +1405,8 @@ All 14 SMPTE ST 2086 / CEA-861.3 HDR static metadata fields are supported:
 - `white_point_x`, `white_point_y`
 
 **Mastering Display Luminance:**
-- `max_mastering_luminance` (nits) - Peak luminance of mastering display
-- `min_mastering_luminance` (nits) - Minimum luminance of mastering display
+- `max_display_mastering_luminance` (nits) - Peak luminance of mastering display
+- `min_display_mastering_luminance` (nits) - Minimum luminance of mastering display
 
 **Content Light Levels:**
 - `max_content_light_level` (nits) - Maximum luminance of any pixel (MaxCLL)
