@@ -29,6 +29,28 @@ public:
         Eotf eotf;
         bool hasMetadata;
         bool valid;
+
+        double displayPrimariesRedX;
+        double displayPrimariesRedY;
+        double displayPrimariesGreenX;
+        double displayPrimariesGreenY;
+        double displayPrimariesBlueX;
+        double displayPrimariesBlueY;
+        bool hasDisplayPrimaries;
+
+        double whitePointX;
+        double whitePointY;
+        bool hasWhitePoint;
+
+        double maxMasteringLuminance;
+        double minMasteringLuminance;
+        bool hasMasteringLuminance;
+
+        double maxContentLightLevel;
+        bool hasMaxCLL;
+
+        double maxFrameAverageLightLevel;
+        bool hasMaxFALL;
     };
 
     DeckLinkInput();

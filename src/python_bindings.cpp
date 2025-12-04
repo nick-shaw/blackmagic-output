@@ -1978,7 +1978,24 @@ PYBIND11_MODULE(decklink_io, m) {
         .def_readonly("colorspace", &DeckLinkInput::CapturedFrame::colorspace)
         .def_readonly("eotf", &DeckLinkInput::CapturedFrame::eotf)
         .def_readonly("has_metadata", &DeckLinkInput::CapturedFrame::hasMetadata)
-        .def_readonly("valid", &DeckLinkInput::CapturedFrame::valid);
+        .def_readonly("valid", &DeckLinkInput::CapturedFrame::valid)
+        .def_readonly("display_primaries_red_x", &DeckLinkInput::CapturedFrame::displayPrimariesRedX)
+        .def_readonly("display_primaries_red_y", &DeckLinkInput::CapturedFrame::displayPrimariesRedY)
+        .def_readonly("display_primaries_green_x", &DeckLinkInput::CapturedFrame::displayPrimariesGreenX)
+        .def_readonly("display_primaries_green_y", &DeckLinkInput::CapturedFrame::displayPrimariesGreenY)
+        .def_readonly("display_primaries_blue_x", &DeckLinkInput::CapturedFrame::displayPrimariesBlueX)
+        .def_readonly("display_primaries_blue_y", &DeckLinkInput::CapturedFrame::displayPrimariesBlueY)
+        .def_readonly("has_display_primaries", &DeckLinkInput::CapturedFrame::hasDisplayPrimaries)
+        .def_readonly("white_point_x", &DeckLinkInput::CapturedFrame::whitePointX)
+        .def_readonly("white_point_y", &DeckLinkInput::CapturedFrame::whitePointY)
+        .def_readonly("has_white_point", &DeckLinkInput::CapturedFrame::hasWhitePoint)
+        .def_readonly("max_mastering_luminance", &DeckLinkInput::CapturedFrame::maxMasteringLuminance)
+        .def_readonly("min_mastering_luminance", &DeckLinkInput::CapturedFrame::minMasteringLuminance)
+        .def_readonly("has_mastering_luminance", &DeckLinkInput::CapturedFrame::hasMasteringLuminance)
+        .def_readonly("max_content_light_level", &DeckLinkInput::CapturedFrame::maxContentLightLevel)
+        .def_readonly("has_max_cll", &DeckLinkInput::CapturedFrame::hasMaxCLL)
+        .def_readonly("max_frame_average_light_level", &DeckLinkInput::CapturedFrame::maxFrameAverageLightLevel)
+        .def_readonly("has_max_fall", &DeckLinkInput::CapturedFrame::hasMaxFALL);
 
     // Input - DeckLinkInput class
     py::class_<DeckLinkInput>(m, "DeckLinkInput")

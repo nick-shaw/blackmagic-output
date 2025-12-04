@@ -852,6 +852,11 @@ class BlackmagicInput:
                 - 'colorspace': Matrix (Rec.601/709/2020)
                 - 'eotf': Eotf (SDR/PQ/HLG)
                 - 'input_narrow_range': bool (what was used for conversion)
+                - 'hdr_metadata': dict with HDR metadata (if present):
+                    - 'display_primaries': dict with 'red', 'green', 'blue' (each with 'x', 'y')
+                    - 'white_point': dict with 'x', 'y'
+                    - 'mastering_luminance': dict with 'max', 'min' (cd/m²)
+                    - 'content_light': dict with 'max_cll', 'max_fall' (cd/m²)
             Or None if capture failed
         """
         # Start capture if not already started
@@ -882,7 +887,7 @@ class BlackmagicInput:
                 display_mode = mode
                 break
 
-        return {
+        result = {
             'rgb': rgb_array,
             'width': captured_frame.width,
             'height': captured_frame.height,
@@ -892,6 +897,49 @@ class BlackmagicInput:
             'eotf': eotf.name,
             'input_narrow_range': input_narrow_range
         }
+
+        hdr_metadata = {}
+
+        if captured_frame.has_display_primaries:
+            hdr_metadata['display_primaries'] = {
+                'red': {
+                    'x': captured_frame.display_primaries_red_x,
+                    'y': captured_frame.display_primaries_red_y
+                },
+                'green': {
+                    'x': captured_frame.display_primaries_green_x,
+                    'y': captured_frame.display_primaries_green_y
+                },
+                'blue': {
+                    'x': captured_frame.display_primaries_blue_x,
+                    'y': captured_frame.display_primaries_blue_y
+                }
+            }
+
+        if captured_frame.has_white_point:
+            hdr_metadata['white_point'] = {
+                'x': captured_frame.white_point_x,
+                'y': captured_frame.white_point_y
+            }
+
+        if captured_frame.has_mastering_luminance:
+            hdr_metadata['mastering_luminance'] = {
+                'max': captured_frame.max_mastering_luminance,
+                'min': captured_frame.min_mastering_luminance
+            }
+
+        content_light = {}
+        if captured_frame.has_max_cll:
+            content_light['max_cll'] = captured_frame.max_content_light_level
+        if captured_frame.has_max_fall:
+            content_light['max_fall'] = captured_frame.max_frame_average_light_level
+        if content_light:
+            hdr_metadata['content_light'] = content_light
+
+        if hdr_metadata:
+            result['hdr_metadata'] = hdr_metadata
+
+        return result
 
     def get_detected_format(self) -> Optional[dict]:
         """Get detected format information.

@@ -94,6 +94,11 @@ DeckLinkInput::DeckLinkInput()
     m_lastFrame.hasMetadata = false;
     m_lastFrame.colorspace = Gamut::Rec709;
     m_lastFrame.eotf = Eotf::SDR;
+    m_lastFrame.hasDisplayPrimaries = false;
+    m_lastFrame.hasWhitePoint = false;
+    m_lastFrame.hasMasteringLuminance = false;
+    m_lastFrame.hasMaxCLL = false;
+    m_lastFrame.hasMaxFALL = false;
 }
 
 DeckLinkInput::~DeckLinkInput()
@@ -222,6 +227,11 @@ void DeckLinkInput::onFrameArrived(IDeckLinkVideoInputFrame* videoFrame)
     m_lastFrame.hasMetadata = false;
     m_lastFrame.colorspace = Gamut::Rec709;
     m_lastFrame.eotf = Eotf::SDR;
+    m_lastFrame.hasDisplayPrimaries = false;
+    m_lastFrame.hasWhitePoint = false;
+    m_lastFrame.hasMasteringLuminance = false;
+    m_lastFrame.hasMaxCLL = false;
+    m_lastFrame.hasMaxFALL = false;
 
     IDeckLinkVideoFrameMetadataExtensions* metadataExt = nullptr;
     if (videoFrame->QueryInterface(IID_IDeckLinkVideoFrameMetadataExtensions, (void**)&metadataExt) == S_OK) {
@@ -259,6 +269,33 @@ void DeckLinkInput::onFrameArrived(IDeckLinkVideoInputFrame* videoFrame)
                     m_lastFrame.eotf = Eotf::HLG;
                     break;
             }
+        }
+
+        if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesRedX, &m_lastFrame.displayPrimariesRedX) == S_OK &&
+            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesRedY, &m_lastFrame.displayPrimariesRedY) == S_OK &&
+            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesGreenX, &m_lastFrame.displayPrimariesGreenX) == S_OK &&
+            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesGreenY, &m_lastFrame.displayPrimariesGreenY) == S_OK &&
+            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesBlueX, &m_lastFrame.displayPrimariesBlueX) == S_OK &&
+            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesBlueY, &m_lastFrame.displayPrimariesBlueY) == S_OK) {
+            m_lastFrame.hasDisplayPrimaries = true;
+        }
+
+        if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRWhitePointX, &m_lastFrame.whitePointX) == S_OK &&
+            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRWhitePointY, &m_lastFrame.whitePointY) == S_OK) {
+            m_lastFrame.hasWhitePoint = true;
+        }
+
+        if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMaxDisplayMasteringLuminance, &m_lastFrame.maxMasteringLuminance) == S_OK &&
+            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMinDisplayMasteringLuminance, &m_lastFrame.minMasteringLuminance) == S_OK) {
+            m_lastFrame.hasMasteringLuminance = true;
+        }
+
+        if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMaximumContentLightLevel, &m_lastFrame.maxContentLightLevel) == S_OK) {
+            m_lastFrame.hasMaxCLL = true;
+        }
+
+        if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMaximumFrameAverageLightLevel, &m_lastFrame.maxFrameAverageLightLevel) == S_OK) {
+            m_lastFrame.hasMaxFALL = true;
         }
 
         metadataExt->Release();
