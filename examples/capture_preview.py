@@ -117,15 +117,17 @@ def simple_preview(device_index=0, scale=1.0):
         fps_frame_count = 0
         current_fps = 0.0
         metadata = None
+        prev_metadata = None
 
         try:
             while True:
-                rgb_frame = input_device.capture_frame_as_uint8()
+                frame_data = input_device.capture_frame_as_uint8_with_metadata()
 
-                if rgb_frame is None:
+                if frame_data is None:
                     print("Failed to capture frame")
                     continue
 
+                rgb_frame = frame_data['rgb']
                 frame_count += 1
                 fps_frame_count += 1
 
@@ -136,19 +138,38 @@ def simple_preview(device_index=0, scale=1.0):
                               f"({format_info['width']}x{format_info['height']} "
                               f"@ {format_info['framerate']} fps)")
 
-                    # Capture metadata once for display
-                    frame_with_metadata = input_device.capture_frame_with_metadata(timeout_ms=1000)
-                    if frame_with_metadata:
-                        metadata = {
-                            'mode': frame_with_metadata['mode'],
-                            'format': frame_with_metadata['format'],
-                            'eotf': frame_with_metadata['eotf'],
-                            'colorspace': frame_with_metadata['colorspace']
-                        }
-                        print(f"  Mode: {metadata['mode']}, "
-                              f"Format: {metadata['format']}, "
-                              f"EOTF: {metadata['eotf']}, "
-                              f"Matrix: {metadata['colorspace']}")
+                    metadata = {
+                        'mode': frame_data['mode'],
+                        'format': frame_data['format'],
+                        'eotf': frame_data['eotf'],
+                        'colorspace': frame_data['colorspace']
+                    }
+                    print(f"  Mode: {metadata['mode']}, "
+                          f"Format: {metadata['format']}, "
+                          f"EOTF: {metadata['eotf']}, "
+                          f"Matrix: {metadata['colorspace']}")
+                    prev_metadata = metadata.copy()
+                else:
+                    current_metadata = {
+                        'mode': frame_data['mode'],
+                        'format': frame_data['format'],
+                        'eotf': frame_data['eotf'],
+                        'colorspace': frame_data['colorspace']
+                    }
+
+                    if current_metadata != prev_metadata:
+                        print(f"\n*** METADATA CHANGE DETECTED ***")
+                        if current_metadata['mode'] != prev_metadata['mode']:
+                            print(f"  Mode: {prev_metadata['mode']} -> {current_metadata['mode']}")
+                        if current_metadata['format'] != prev_metadata['format']:
+                            print(f"  Format: {prev_metadata['format']} -> {current_metadata['format']}")
+                        if current_metadata['eotf'] != prev_metadata['eotf']:
+                            print(f"  EOTF: {prev_metadata['eotf']} -> {current_metadata['eotf']}")
+                        if current_metadata['colorspace'] != prev_metadata['colorspace']:
+                            print(f"  Colorspace: {prev_metadata['colorspace']} -> {current_metadata['colorspace']}")
+
+                        metadata = current_metadata
+                        prev_metadata = current_metadata.copy()
 
                 now = time.time()
                 if now - last_fps_update >= 1.0:
@@ -167,7 +188,7 @@ def simple_preview(device_index=0, scale=1.0):
 
                 # Display FPS in top right (right-justified)
                 if current_fps > 0:
-                    fps_text = f"FPS: {current_fps:.1f}"
+                    fps_text = f"Preview FPS: {current_fps:.1f}"
                     font = cv2.FONT_HERSHEY_SIMPLEX
                     font_scale = 0.6
                     thickness = 2

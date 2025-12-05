@@ -864,6 +864,112 @@ class BlackmagicInput:
 
         return self._convert_frame_to_uint8(captured_frame, input_narrow_range)
 
+    def capture_frame_as_uint8_with_metadata(self,
+                                            timeout_ms: int = 5000,
+                                            input_narrow_range: bool = True) -> Optional[dict]:
+        """Capture a frame and convert to RGB uint8 with metadata (fast preview with metadata).
+
+        Automatically detects pixel format and converts to RGB uint8 (0-255).
+        Uses colorspace metadata from the captured frame for YUV conversion.
+
+        Args:
+            timeout_ms: Capture timeout in milliseconds (default: 5000)
+            input_narrow_range: Whether input uses narrow range encoding (default: True)
+
+        Returns:
+            Dictionary with:
+                - 'rgb': RGB array (H×W×3), dtype uint8, range 0-255
+                - 'width': int
+                - 'height': int
+                - 'format': PixelFormat name
+                - 'mode': DisplayMode name
+                - 'colorspace': Matrix name (Rec.601/709/2020)
+                - 'eotf': Eotf name (SDR/PQ/HLG)
+                - 'input_narrow_range': bool (what was used for conversion)
+                - 'hdr_metadata': dict with HDR metadata (if present):
+                    - 'display_primaries': dict with 'red', 'green', 'blue' (each with 'x', 'y')
+                    - 'white_point': dict with 'x', 'y'
+                    - 'mastering_luminance': dict with 'max', 'min' (cd/m²)
+                    - 'content_light': dict with 'max_cll', 'max_fall' (cd/m²)
+            Or None if capture failed
+        """
+        if not self._capturing:
+            if not self._input.start_capture():
+                return None
+            self._capturing = True
+
+        captured_frame = _decklink.CapturedFrame()
+        if not self._input.capture_frame(captured_frame, timeout_ms):
+            return None
+
+        rgb_array = self._convert_frame_to_uint8(captured_frame, input_narrow_range)
+        if rgb_array is None:
+            return None
+
+        pixel_format = PixelFormat(captured_frame.format)
+        colorspace = Matrix(captured_frame.colorspace)
+        eotf = Eotf(captured_frame.eotf)
+
+        display_mode = None
+        for mode in DisplayMode:
+            if mode.value == captured_frame.mode:
+                display_mode = mode
+                break
+
+        result = {
+            'rgb': rgb_array,
+            'width': captured_frame.width,
+            'height': captured_frame.height,
+            'format': pixel_format.name,
+            'mode': display_mode.name if display_mode else 'Unknown',
+            'colorspace': colorspace.name,
+            'eotf': eotf.name,
+            'input_narrow_range': input_narrow_range
+        }
+
+        hdr_metadata = {}
+
+        if captured_frame.has_display_primaries:
+            hdr_metadata['display_primaries'] = {
+                'red': {
+                    'x': captured_frame.display_primaries_red_x,
+                    'y': captured_frame.display_primaries_red_y
+                },
+                'green': {
+                    'x': captured_frame.display_primaries_green_x,
+                    'y': captured_frame.display_primaries_green_y
+                },
+                'blue': {
+                    'x': captured_frame.display_primaries_blue_x,
+                    'y': captured_frame.display_primaries_blue_y
+                }
+            }
+
+        if captured_frame.has_white_point:
+            hdr_metadata['white_point'] = {
+                'x': captured_frame.white_point_x,
+                'y': captured_frame.white_point_y
+            }
+
+        if captured_frame.has_mastering_luminance:
+            hdr_metadata['mastering_luminance'] = {
+                'max': captured_frame.max_display_mastering_luminance,
+                'min': captured_frame.min_display_mastering_luminance
+            }
+
+        content_light = {}
+        if captured_frame.has_max_cll:
+            content_light['max_cll'] = captured_frame.max_content_light_level
+        if captured_frame.has_max_fall:
+            content_light['max_fall'] = captured_frame.max_frame_average_light_level
+        if content_light:
+            hdr_metadata['content_light'] = content_light
+
+        if hdr_metadata:
+            result['hdr_metadata'] = hdr_metadata
+
+        return result
+
     def capture_frame_as_rgb(self,
                             timeout_ms: int = 5000,
                             input_narrow_range: bool = True) -> Optional[np.ndarray]:
