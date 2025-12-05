@@ -157,7 +157,7 @@ bool DeckLinkInput::initialize(int deviceIndex, InputConnection* inputConnection
     return true;
 }
 
-bool DeckLinkInput::startCapture()
+bool DeckLinkInput::startCapture(PixelFormat format)
 {
     if (!m_deckLinkInput) {
         std::cerr << "DeckLink input not initialized" << std::endl;
@@ -169,12 +169,34 @@ bool DeckLinkInput::startCapture()
         m_inputEnabled = false;
     }
 
-    m_currentSettings.format = PixelFormat::Format10BitYUV;
+    m_currentSettings.format = format;
     m_formatDetected = false;
+
+    BMDPixelFormat bmdPixelFormat;
+    switch (format) {
+        case PixelFormat::Format10BitYUV:
+            bmdPixelFormat = bmdFormat10BitYUV;
+            break;
+        case PixelFormat::Format8BitYUV:
+            bmdPixelFormat = bmdFormat8BitYUV;
+            break;
+        case PixelFormat::Format8BitBGRA:
+            bmdPixelFormat = bmdFormat8BitBGRA;
+            break;
+        case PixelFormat::Format10BitRGB:
+            bmdPixelFormat = bmdFormat10BitRGB;
+            break;
+        case PixelFormat::Format12BitRGB:
+            bmdPixelFormat = bmdFormat12BitRGB;
+            break;
+        default:
+            std::cerr << "Unsupported pixel format for capture" << std::endl;
+            return false;
+    }
 
     if (m_deckLinkInput->EnableVideoInput(
             bmdModeHD1080p2997,
-            bmdFormat10BitYUV,
+            bmdPixelFormat,
             bmdVideoInputEnableFormatDetection) != S_OK) {
         std::cerr << "Could not enable video input with format detection" << std::endl;
         return false;
@@ -225,27 +247,27 @@ bool DeckLinkInput::captureFrame(CapturedFrame& frame, int timeoutMs)
         return false;
     }
 
-    frame = m_lastFrame;
+    frame = std::move(m_lastFrame);
     return true;
 }
 
 void DeckLinkInput::onFrameArrived(IDeckLinkVideoInputFrame* videoFrame)
 {
-    std::lock_guard<std::mutex> lock(m_frameMutex);
+    CapturedFrame tempFrame;
 
-    m_lastFrame.width = videoFrame->GetWidth();
-    m_lastFrame.height = videoFrame->GetHeight();
-    m_lastFrame.format = static_cast<PixelFormat>(videoFrame->GetPixelFormat());
-    m_lastFrame.mode = m_currentSettings.mode;
+    tempFrame.width = videoFrame->GetWidth();
+    tempFrame.height = videoFrame->GetHeight();
+    tempFrame.format = static_cast<PixelFormat>(videoFrame->GetPixelFormat());
+    tempFrame.mode = m_currentSettings.mode;
 
-    m_lastFrame.hasMetadata = false;
-    m_lastFrame.colorspace = Gamut::Rec709;
-    m_lastFrame.eotf = Eotf::SDR;
-    m_lastFrame.hasDisplayPrimaries = false;
-    m_lastFrame.hasWhitePoint = false;
-    m_lastFrame.hasMasteringLuminance = false;
-    m_lastFrame.hasMaxCLL = false;
-    m_lastFrame.hasMaxFALL = false;
+    tempFrame.hasMetadata = false;
+    tempFrame.colorspace = Gamut::Rec709;
+    tempFrame.eotf = Eotf::SDR;
+    tempFrame.hasDisplayPrimaries = false;
+    tempFrame.hasWhitePoint = false;
+    tempFrame.hasMasteringLuminance = false;
+    tempFrame.hasMaxCLL = false;
+    tempFrame.hasMaxFALL = false;
 
     IDeckLinkVideoFrameMetadataExtensions* metadataExt = nullptr;
     if (videoFrame->QueryInterface(IID_IDeckLinkVideoFrameMetadataExtensions, (void**)&metadataExt) == S_OK) {
@@ -253,63 +275,63 @@ void DeckLinkInput::onFrameArrived(IDeckLinkVideoInputFrame* videoFrame)
         int64_t eotf = 0;
 
         if (metadataExt->GetInt(bmdDeckLinkFrameMetadataColorspace, &colorspace) == S_OK) {
-            m_lastFrame.hasMetadata = true;
+            tempFrame.hasMetadata = true;
             switch (colorspace) {
                 case bmdColorspaceRec601:
-                    m_lastFrame.colorspace = Gamut::Rec601;
+                    tempFrame.colorspace = Gamut::Rec601;
                     break;
                 case bmdColorspaceRec709:
-                    m_lastFrame.colorspace = Gamut::Rec709;
+                    tempFrame.colorspace = Gamut::Rec709;
                     break;
                 case bmdColorspaceRec2020:
-                    m_lastFrame.colorspace = Gamut::Rec2020;
+                    tempFrame.colorspace = Gamut::Rec2020;
                     break;
             }
         }
 
         if (metadataExt->GetInt(bmdDeckLinkFrameMetadataHDRElectroOpticalTransferFunc, &eotf) == S_OK) {
-            m_lastFrame.hasMetadata = true;
+            tempFrame.hasMetadata = true;
             switch (eotf) {
                 case kEOTF_SDR:
-                    m_lastFrame.eotf = Eotf::SDR;
+                    tempFrame.eotf = Eotf::SDR;
                     break;
                 case kEOTF_HDR_Traditional:
-                    m_lastFrame.eotf = Eotf::HDR_Traditional;
+                    tempFrame.eotf = Eotf::HDR_Traditional;
                     break;
                 case kEOTF_PQ:
-                    m_lastFrame.eotf = Eotf::PQ;
+                    tempFrame.eotf = Eotf::PQ;
                     break;
                 case kEOTF_HLG:
-                    m_lastFrame.eotf = Eotf::HLG;
+                    tempFrame.eotf = Eotf::HLG;
                     break;
             }
         }
 
-        if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesRedX, &m_lastFrame.displayPrimariesRedX) == S_OK &&
-            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesRedY, &m_lastFrame.displayPrimariesRedY) == S_OK &&
-            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesGreenX, &m_lastFrame.displayPrimariesGreenX) == S_OK &&
-            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesGreenY, &m_lastFrame.displayPrimariesGreenY) == S_OK &&
-            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesBlueX, &m_lastFrame.displayPrimariesBlueX) == S_OK &&
-            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesBlueY, &m_lastFrame.displayPrimariesBlueY) == S_OK) {
-            m_lastFrame.hasDisplayPrimaries = true;
+        if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesRedX, &tempFrame.displayPrimariesRedX) == S_OK &&
+            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesRedY, &tempFrame.displayPrimariesRedY) == S_OK &&
+            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesGreenX, &tempFrame.displayPrimariesGreenX) == S_OK &&
+            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesGreenY, &tempFrame.displayPrimariesGreenY) == S_OK &&
+            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesBlueX, &tempFrame.displayPrimariesBlueX) == S_OK &&
+            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRDisplayPrimariesBlueY, &tempFrame.displayPrimariesBlueY) == S_OK) {
+            tempFrame.hasDisplayPrimaries = true;
         }
 
-        if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRWhitePointX, &m_lastFrame.whitePointX) == S_OK &&
-            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRWhitePointY, &m_lastFrame.whitePointY) == S_OK) {
-            m_lastFrame.hasWhitePoint = true;
+        if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRWhitePointX, &tempFrame.whitePointX) == S_OK &&
+            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRWhitePointY, &tempFrame.whitePointY) == S_OK) {
+            tempFrame.hasWhitePoint = true;
         }
 
-        if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMaxDisplayMasteringLuminance, &m_lastFrame.maxMasteringLuminance) == S_OK &&
-            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMinDisplayMasteringLuminance, &m_lastFrame.minMasteringLuminance) == S_OK) {
-            m_lastFrame.hasMasteringLuminance = true;
+        if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMaxDisplayMasteringLuminance, &tempFrame.maxMasteringLuminance) == S_OK &&
+            metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMinDisplayMasteringLuminance, &tempFrame.minMasteringLuminance) == S_OK) {
+            tempFrame.hasMasteringLuminance = true;
         }
 
-        if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMaximumContentLightLevel, &m_lastFrame.maxContentLightLevel) == S_OK) {
-            m_lastFrame.hasMaxCLL = true;
+        if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMaximumContentLightLevel, &tempFrame.maxContentLightLevel) == S_OK) {
+            tempFrame.hasMaxCLL = true;
         }
 
-        if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMaximumFrameAverageLightLevel, &m_lastFrame.maxFrameAverageLightLevel) == S_OK) {
-            m_lastFrame.hasMaxFALL = true;
+        if (metadataExt->GetFloat(bmdDeckLinkFrameMetadataHDRMaximumFrameAverageLightLevel, &tempFrame.maxFrameAverageLightLevel) == S_OK) {
+            tempFrame.hasMaxFALL = true;
         }
 
         metadataExt->Release();
@@ -318,14 +340,18 @@ void DeckLinkInput::onFrameArrived(IDeckLinkVideoInputFrame* videoFrame)
     void* frameBytes;
     if (videoFrame->GetBytes(&frameBytes) == S_OK) {
         long frameSize = videoFrame->GetRowBytes() * videoFrame->GetHeight();
-        m_lastFrame.data.resize(frameSize);
-        std::memcpy(m_lastFrame.data.data(), frameBytes, frameSize);
-        m_lastFrame.valid = true;
+        tempFrame.data.resize(frameSize);
+        std::memcpy(tempFrame.data.data(), frameBytes, frameSize);
+        tempFrame.valid = true;
     } else {
-        m_lastFrame.valid = false;
+        tempFrame.valid = false;
     }
 
-    m_frameReceived = true;
+    {
+        std::lock_guard<std::mutex> lock(m_frameMutex);
+        m_lastFrame = std::move(tempFrame);
+        m_frameReceived = true;
+    }
     m_frameCondition.notify_one();
 }
 

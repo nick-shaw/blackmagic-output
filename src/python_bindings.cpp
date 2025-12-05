@@ -2361,7 +2361,13 @@ PYBIND11_MODULE(decklink_io, m) {
     // Input - CapturedFrame struct
     py::class_<DeckLinkInput::CapturedFrame>(m, "CapturedFrame")
         .def(py::init<>())
-        .def_readonly("data", &DeckLinkInput::CapturedFrame::data)
+        .def_property_readonly("data", [](DeckLinkInput::CapturedFrame& frame) {
+            return py::memoryview::from_memory(
+                frame.data.data(),
+                frame.data.size(),
+                true  // read-only
+            );
+        })
         .def_readonly("width", &DeckLinkInput::CapturedFrame::width)
         .def_readonly("height", &DeckLinkInput::CapturedFrame::height)
         .def_readonly("format", &DeckLinkInput::CapturedFrame::format)
@@ -2393,7 +2399,8 @@ PYBIND11_MODULE(decklink_io, m) {
         .def(py::init<>())
         .def("initialize", &DeckLinkInput::initialize, "Initialize DeckLink device for input",
              py::arg("device_index") = 0, py::arg("input_connection") = nullptr)
-        .def("start_capture", &DeckLinkInput::startCapture, "Start capturing with auto-detected format")
+        .def("start_capture", &DeckLinkInput::startCapture, "Start capturing with specified or auto-detected format",
+             py::arg("format") = DeckLink::PixelFormat::Format10BitYUV)
         .def("capture_frame", &DeckLinkInput::captureFrame, "Capture a single frame",
              py::arg("frame"), py::arg("timeout_ms") = 5000)
         .def("stop_capture", &DeckLinkInput::stopCapture, "Stop video capture")
