@@ -767,7 +767,7 @@ class BlackmagicInput:
         self.cleanup()
         return False
 
-    def initialize(self, device_index: int = 0, input_connection=None) -> bool:
+    def initialize(self, device_index: int = 0, input_connection=None, pixel_format: Optional[PixelFormat] = None) -> bool:
         """Initialize DeckLink device for input and start capture.
 
         Immediately activates capture mode, which will:
@@ -780,13 +780,19 @@ class BlackmagicInput:
             input_connection: Optional InputConnection enum to select specific input
                 (e.g., InputConnection.SDI, InputConnection.HDMI). If None, uses
                 the device's current/default input.
+            pixel_format: Optional PixelFormat to request from hardware.
+                Use PixelFormat.BGRA for fast preview. If None, defaults to YUV10.
 
         Returns:
             True if successful, False otherwise
         """
         if self._input.initialize(device_index, input_connection):
             self._initialized = True
-            if self._input.start_capture():
+            if pixel_format is None:
+                capture_result = self._input.start_capture()
+            else:
+                capture_result = self._input.start_capture(pixel_format.value)
+            if capture_result:
                 self._capturing = True
                 return True
             return False
@@ -831,6 +837,32 @@ class BlackmagicInput:
             List of InputConnection enum values (e.g., [InputConnection.SDI, InputConnection.HDMI])
         """
         return self._input.get_available_input_connections(device_index)
+
+    def capture_frame_as_uint8(self,
+                              timeout_ms: int = 5000,
+                              input_narrow_range: bool = True) -> Optional[np.ndarray]:
+        """Capture a frame and convert to RGB uint8 array (faster than float).
+
+        Automatically detects pixel format and converts to RGB uint8 (0-255).
+        Uses colorspace metadata from the captured frame for YUV conversion.
+
+        Args:
+            timeout_ms: Capture timeout in milliseconds (default: 5000)
+            input_narrow_range: Whether input uses narrow range encoding (default: True)
+
+        Returns:
+            RGB array (H×W×3), dtype uint8, range 0-255, or None if capture failed
+        """
+        if not self._capturing:
+            if not self._input.start_capture():
+                return None
+            self._capturing = True
+
+        captured_frame = _decklink.CapturedFrame()
+        if not self._input.capture_frame(captured_frame, timeout_ms):
+            return None
+
+        return self._convert_frame_to_uint8(captured_frame, input_narrow_range)
 
     def capture_frame_as_rgb(self,
                             timeout_ms: int = 5000,
@@ -1010,6 +1042,72 @@ class BlackmagicInput:
         if self._initialized:
             self._input.cleanup()
             self._initialized = False
+
+    def _convert_frame_to_uint8(self, captured_frame, input_narrow_range: bool) -> Optional[np.ndarray]:
+        """Convert captured frame to RGB uint8 array.
+
+        Args:
+            captured_frame: CapturedFrame object from low-level API
+            input_narrow_range: Whether to interpret input as narrow range
+
+        Returns:
+            RGB array (H×W×3), dtype uint8, or None if conversion failed
+        """
+        frame_data = np.array(captured_frame.data, dtype=np.uint8)
+        width = captured_frame.width
+        height = captured_frame.height
+        pixel_format = captured_frame.format
+
+        try:
+            if pixel_format == _decklink.PixelFormat.YUV8:
+                rgb_uint16 = _decklink.yuv8_to_rgb_uint16(
+                    frame_data, width, height,
+                    matrix=captured_frame.colorspace,
+                    input_narrow_range=input_narrow_range,
+                    output_narrow_range=False
+                )
+                return (rgb_uint16 >> 8).astype(np.uint8)
+
+            elif pixel_format == _decklink.PixelFormat.YUV10:
+                rgb_uint16 = _decklink.yuv10_to_rgb_uint16(
+                    frame_data, width, height,
+                    matrix=captured_frame.colorspace,
+                    input_narrow_range=input_narrow_range,
+                    output_narrow_range=False
+                )
+                return (rgb_uint16 >> 8).astype(np.uint8)
+
+            elif pixel_format == _decklink.PixelFormat.RGB10:
+                rgb_uint16 = _decklink.rgb10_to_uint16(
+                    frame_data, width, height,
+                    input_narrow_range=input_narrow_range,
+                    output_narrow_range=False
+                )
+                return (rgb_uint16 >> 8).astype(np.uint8)
+
+            elif pixel_format == _decklink.PixelFormat.RGB12:
+                rgb_uint16 = _decklink.rgb12_to_uint16(
+                    frame_data, width, height,
+                    input_narrow_range=input_narrow_range,
+                    output_narrow_range=False
+                )
+                return (rgb_uint16 >> 8).astype(np.uint8)
+
+            elif pixel_format == _decklink.PixelFormat.BGRA:
+                bgra_data = np.frombuffer(frame_data, dtype=np.uint8).reshape(
+                    (height, width, 4)
+                )
+                rgb_array = np.empty((height, width, 3), dtype=np.uint8)
+                rgb_array[:, :, 0] = bgra_data[:, :, 2]  # R
+                rgb_array[:, :, 1] = bgra_data[:, :, 1]  # G
+                rgb_array[:, :, 2] = bgra_data[:, :, 0]  # B
+                return rgb_array
+
+            else:
+                return None
+
+        except Exception:
+            return None
 
     def _convert_frame_to_rgb(self, captured_frame, input_narrow_range: bool) -> Optional[np.ndarray]:
         """Convert captured frame to RGB float array.

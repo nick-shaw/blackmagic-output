@@ -58,7 +58,7 @@ public:
     ~DeckLinkInput();
 
     bool initialize(int deviceIndex = 0, InputConnection* inputConnection = nullptr);
-    bool startCapture();
+    bool startCapture(PixelFormat format = PixelFormat::Format10BitYUV);
     bool captureFrame(CapturedFrame& frame, int timeoutMs = 5000);
     bool stopCapture();
     void cleanup();

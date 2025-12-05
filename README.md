@@ -13,7 +13,7 @@ Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](
 - **Solid Color Output**: Display solid colors for testing and calibration
 - **Dynamic Updates**: Update currently displayed frame
 - **Multiple Resolutions**: Support for all display modes supported by your DeckLink device (SD, HD, 2K, 4K, 8K, and PC modes)
-- **10-bit Y'CbCr Output**: 10-bit Y'CbCr 4:2:2 (v210) (default for uint16/float data)
+- **8 and 10-bit Y'CbCr Output**: 2vuy and v210 (default for uint16/float data)
 - **10 and 12-bit R'G'B' output**: 10 and 12-bit R'G'B' 4:4:4
 - **HDR Support**: SMPTE ST 2086 / CEA-861.3 HDR static metadata
 - **Y'CbCr matrix control**: Rec.601 (SD only), Rec.709 (HD+), and Rec.2020 (HD+) matrix support
@@ -75,7 +75,7 @@ pip install --force-reinstall -e .
 
 For examples and additional functionality:
 ```bash
-pip install imageio pillow jsonschema
+pip install opencv-python imageio pillow jsonschema
 ```
 
 **Note:** While imageio / PIL can load 16-bit TIFF files correctly, 16-bit PNG files are often converted to 8-bit during loading due to PIL limitations. For reliable 16-bit workflows, use TIFF format.
@@ -355,16 +355,19 @@ Get available input connections for a DeckLink device.
 
 Use this to check which physical inputs are available on a device before selecting one with `initialize()`.
 
-**`initialize(device_index=0, input_connection=None) -> bool`**
+**`initialize(device_index=0, input_connection=None, pixel_format=None) -> bool`**
 Initialize the specified DeckLink device for input and start capture.
 - `device_index`: Index of device to use (default: 0)
 - `input_connection`: Optional InputConnection enum to select specific input (e.g., `InputConnection.SDI`, `InputConnection.HDMI`). If None, uses the device's current/default input.
+- `pixel_format`: Optional PixelFormat to request from hardware. Use `PixelFormat.BGRA` for fast real-time preview (default: YUV10 for quality capture)
 - Returns: True if successful
 
 Immediately activates capture mode, which will:
 - Start accepting input signal
 - Activate front panel display (if present)
 - Enable format detection
+
+**Performance Note:** Requesting `PixelFormat.BGRA` enables real-time ~25fps preview by having the hardware deliver 8-bit BGRA frames directly, avoiding expensive colorspace conversions. This is ideal for monitoring and preview workflows. For quality capture workflows, use the default YUV10 format (or explicitly specify it) to capture full 10-bit precision, then use `capture_frame_as_rgb()` or `capture_frame_with_metadata()` for processing.
 
 **`capture_frame_as_rgb(timeout_ms=5000) -> Optional[np.ndarray]`**
 Capture a single frame and convert to RGB.
@@ -607,9 +610,12 @@ Initialize the specified DeckLink device for input.
 - `input_connection`: Optional InputConnection enum to select specific input. If None, uses device's current/default input.
 - Returns: True if successful
 
-**`start_capture() -> bool`**
-Start capturing with auto-detected format.
+**`start_capture(format=PixelFormat.Format10BitYUV) -> bool`**
+Start capturing with specified or auto-detected format.
+- `format`: Optional PixelFormat to request from hardware (default: Format10BitYUV)
 - Returns: True if successful
+
+Use `PixelFormat.Format8BitBGRA` for fast real-time preview workflows where 8-bit precision is acceptable. This avoids expensive colorspace conversions and enables ~25fps capture rates.
 
 **`capture_frame(frame, timeout_ms=5000) -> bool`**
 Capture a single frame.
