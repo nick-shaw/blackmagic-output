@@ -1,7 +1,7 @@
 """
 Live preview with high-quality capture capability.
 
-Uses BGRA format for fast 25fps preview.
+Uses 8-bit BGRA format for fast preview.
 Press 'c' to capture a high-quality frame and save as 16-bit TIFF.
 """
 
@@ -94,7 +94,7 @@ def simple_preview(device_index=0, scale=1.0):
 
         print("Waiting for signal...")
 
-        window_name = "BlackmagicInput Preview"
+        window_name = "Capture Preview"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
         frame_count = 0
@@ -102,10 +102,11 @@ def simple_preview(device_index=0, scale=1.0):
         last_fps_update = start_time
         fps_frame_count = 0
         current_fps = 0.0
+        metadata = None
 
         try:
             while True:
-                rgb_frame = input_device.capture_frame_as_uint8(timeout_ms=5000)
+                rgb_frame = input_device.capture_frame_as_uint8()
 
                 if rgb_frame is None:
                     print("Failed to capture frame")
@@ -120,6 +121,20 @@ def simple_preview(device_index=0, scale=1.0):
                         print(f"Detected format: {format_info['mode']} "
                               f"({format_info['width']}x{format_info['height']} "
                               f"@ {format_info['framerate']} fps)")
+
+                    # Capture metadata once for display
+                    frame_with_metadata = input_device.capture_frame_with_metadata(timeout_ms=1000)
+                    if frame_with_metadata:
+                        metadata = {
+                            'mode': frame_with_metadata['mode'],
+                            'format': frame_with_metadata['format'],
+                            'eotf': frame_with_metadata['eotf'],
+                            'colorspace': frame_with_metadata['colorspace']
+                        }
+                        print(f"  Mode: {metadata['mode']}, "
+                              f"Format: {metadata['format']}, "
+                              f"EOTF: {metadata['eotf']}, "
+                              f"Matrix: {metadata['colorspace']}")
 
                 now = time.time()
                 if now - last_fps_update >= 1.0:
@@ -136,10 +151,38 @@ def simple_preview(device_index=0, scale=1.0):
 
                 bgr_frame = cv2.cvtColor(display_frame.astype(np.uint8), cv2.COLOR_RGB2BGR)
 
+                # Display FPS in top right (right-justified)
                 if current_fps > 0:
                     fps_text = f"FPS: {current_fps:.1f}"
-                    cv2.putText(bgr_frame, fps_text, (10, 30),
-                               cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                    font = cv2.FONT_HERSHEY_SIMPLEX
+                    font_scale = 0.6
+                    thickness = 2
+                    text_size = cv2.getTextSize(fps_text, font, font_scale, thickness)[0]
+                    text_x = bgr_frame.shape[1] - text_size[0] - 10
+                    cv2.putText(bgr_frame, fps_text, (text_x, 30),
+                               font, font_scale, (0, 255, 0), thickness)
+
+                # Display metadata in top left
+                if metadata:
+                    y_offset = 30
+                    mode_text = f"Mode: {metadata['mode']}"
+                    cv2.putText(bgr_frame, mode_text, (10, y_offset),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                    y_offset += 30
+
+                    format_text = f"Format: {metadata['format']}"
+                    cv2.putText(bgr_frame, format_text, (10, y_offset),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                    y_offset += 30
+
+                    eotf_text = f"EOTF: {metadata['eotf']}"
+                    cv2.putText(bgr_frame, eotf_text, (10, y_offset),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                    y_offset += 30
+
+                    matrix_text = f"Matrix: {metadata['colorspace']}"
+                    cv2.putText(bgr_frame, matrix_text, (10, y_offset),
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
                 cv2.imshow(window_name, bgr_frame)
 
@@ -156,11 +199,6 @@ def simple_preview(device_index=0, scale=1.0):
             print("\nStopping preview...")
 
         cv2.destroyAllWindows()
-
-        elapsed = time.time() - start_time
-        avg_fps = frame_count / elapsed if elapsed > 0 else 0
-        print(f"\nCaptured {frame_count} frames in {elapsed:.1f} seconds")
-        print(f"Average FPS: {avg_fps:.2f}")
 
 
 if __name__ == "__main__":
