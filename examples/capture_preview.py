@@ -13,12 +13,17 @@ from pathlib import Path
 import imageio.v3 as iio
 from blackmagic_io import BlackmagicInput, PixelFormat
 
-def capture_high_quality_frame(input_device):
+def capture_high_quality_frame(input_device, narrow_range=False):
     """
     Capture a high-quality frame and save as 16-bit TIFF.
 
     Temporarily switches to YUV10 mode, captures one frame,
     saves it, then returns control to caller.
+
+    Args:
+        input_device: BlackmagicInput instance
+        narrow_range: If True, output narrow range (64-940 scaled to 16-bit)
+                     If False, output full range (0-1023 scaled to 16-bit)
     """
     input_device.stop_capture()
 
@@ -40,13 +45,21 @@ def capture_high_quality_frame(input_device):
         return
 
     rgb_float = frame_with_metadata['rgb']
-    rgb_uint16 = (rgb_float * 65535).astype(np.uint16)
+
+    if narrow_range:
+        # Narrow range: 0.0-1.0 maps to 16-235 in 8-bit, or 4096-60160 in 16-bit
+        rgb_uint16 = (rgb_float * (60160 - 4096) + 4096).astype(np.uint16)
+        range_str = "narrow"
+    else:
+        # Full range: 0.0-1.0 maps to 0-65535
+        rgb_uint16 = (rgb_float * 65535).astype(np.uint16)
+        range_str = "full"
 
     output_dir = Path("captures")
     output_dir.mkdir(exist_ok=True)
 
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    filename = output_dir / f"capture_{timestamp}.tif"
+    filename = output_dir / f"capture_{timestamp}_{range_str}.tif"
 
     iio.imwrite(filename, rgb_uint16, extension=".tif")
 
@@ -58,7 +71,8 @@ def capture_high_quality_frame(input_device):
         'mode': frame_with_metadata['mode'],
         'colorspace': frame_with_metadata['colorspace'],
         'eotf': frame_with_metadata['eotf'],
-        'input_narrow_range': frame_with_metadata['input_narrow_range']
+        'input_narrow_range': frame_with_metadata['input_narrow_range'],
+        'output_range': range_str
     }
 
     if 'hdr_metadata' in frame_with_metadata:
@@ -68,7 +82,7 @@ def capture_high_quality_frame(input_device):
     with open(json_filename, 'w') as f:
         json.dump(metadata, f, indent=2)
 
-    print(f"Saved: {filename}")
+    print(f"Saved: {filename} ({range_str} range)")
     print(f"       {json_filename}")
     print(f"  Shape: {rgb_uint16.shape}, dtype: {rgb_uint16.dtype}")
     print(f"  Format: {frame_with_metadata['format']}")
@@ -190,8 +204,13 @@ def simple_preview(device_index=0, scale=1.0):
                 if key == ord('q') or key == 27:
                     break
                 elif key == ord('c'):
-                    print("\nCapturing high-quality frame...")
-                    capture_high_quality_frame(input_device)
+                    print("\nCapturing high-quality frame (full range)...")
+                    capture_high_quality_frame(input_device, narrow_range=False)
+                    print("Resuming preview...")
+                    time.sleep(0.5)
+                elif key == ord('C'):
+                    print("\nCapturing high-quality frame (narrow range)...")
+                    capture_high_quality_frame(input_device, narrow_range=True)
                     print("Resuming preview...")
                     time.sleep(0.5)
 
@@ -213,7 +232,8 @@ if __name__ == "__main__":
         scale = float(sys.argv[2])
 
     print(f"Starting preview on device {device_index} at {scale}x scale")
-    print("Press 'c' to capture high-quality frame (16-bit TIFF)")
+    print("Press 'c' to capture full range (0-65535)")
+    print("Press Shift+'c' to capture narrow range (4096-60160)")
     print("Press 'q' or ESC to quit")
 
     simple_preview(device_index, scale)
