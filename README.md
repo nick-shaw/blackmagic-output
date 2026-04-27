@@ -11,11 +11,11 @@ blackmagic-output was the original output-only release of this library. In 0.16.
 Everything that worked in _blackmagic-output_ 0.15.0b0 works in _blackmagic-io_ after a small number of changes:
 
 1. Update imports:
-- `from blackmagic_output import ...` → `from blackmagic_io import ...`
-- `import decklink_output` → `import decklink_io`
+  - `from blackmagic_output import ...` → `from blackmagic_io import ...`
+  - `import decklink_output` → `import decklink_io`
 2. HDR metadata field rename (only if you used HdrMetadataCustom directly):                                                                                                                                                                                           
-- `max_mastering_luminanc`e → `max_display_mastering_luminance`
-- `min_mastering_luminance` → `min_display_mastering_luminance`
+  - `max_mastering_luminance` → `max_display_mastering_luminance`
+  - `min_mastering_luminance` → `min_display_mastering_luminance`
 
 A few output-side bugs that existed silently in 0.15.0b0 are also fixed in blackmagic-io (super-white/sub-black clamping, mid-stream display-mode reconfiguration, and uninitialised VideoSettings defaults). These are not breaking — they correct edge-case behaviour that was previously wrong.
 
@@ -31,7 +31,7 @@ A Python library for outputting video frames to Blackmagic DeckLink devices usin
 
 Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](https://www.claude.com/product/claude-code)!
 
-**⚠️ Note:** The library has only had minimal testing at this time, and is under ongoing development. Please report any issues you encounter. I am particularly interested in feedback from Linux and Windows users.
+Historical README preserved below for reference. This repository is archived and no longer accepting issue reports — please use _blackmagic-io_.
 
 ## Features
 
