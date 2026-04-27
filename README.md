@@ -1,5 +1,32 @@
 # Blackmagic DeckLink Python Output Library
 
+## blackmagic-output — DEPRECATED
+
+This repository is no longer maintained. All development, bug fixes, and new features have moved to [blackmagic-io](https://github.com/nick-shaw/blackmagic-io).
+
+blackmagic-output was the original output-only release of this library. In 0.16.0b0 the project was rebranded as _blackmagic-io_ to reflect the addition of input/capture support, and development continued in the new repository. This repository is preserved as a historical reference at v0.15.0b0, the last release made under the *blackmagic-output* name.
+
+## Migrating to blackmagic-io
+
+Everything that worked in _blackmagic-output_ 0.15.0b0 works in _blackmagic-io_ after a small number of changes:
+
+1. Update imports:
+- `from blackmagic_output import ...` → `from blackmagic_io import ...`
+- `import decklink_output` → `import decklink_io`
+2. HDR metadata field rename (only if you used HdrMetadataCustom directly):                                                                                                                                                                                           
+- `max_mastering_luminanc`e → `max_display_mastering_luminance`
+- `min_mastering_luminance` → `min_display_mastering_luminance`
+
+A few output-side bugs that existed silently in 0.15.0b0 are also fixed in blackmagic-io (super-white/sub-black clamping, mid-stream display-mode reconfiguration, and uninitialised VideoSettings defaults). These are not breaking — they correct edge-case behaviour that was previously wrong.
+
+## Why the rename?
+
+The original library was output-only, so the repo name reflected that. With input support added, "output" no longer described the project, and the name change clarifies the broader scope.
+
+-------
+
+## blackmagic-output
+
 A Python library for outputting video frames to Blackmagic DeckLink devices using the official DeckLink SDK. This library provides a simple interface for displaying static frames, solid colors, and dynamic content from NumPy arrays.
 
 Written by Nick Shaw, www.antlerpost.com, with a lot of help from [Claude Code](https://www.claude.com/product/claude-code)!
